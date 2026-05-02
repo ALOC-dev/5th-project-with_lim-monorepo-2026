@@ -5,4 +5,4 @@ export {
   type EngineProcessResult,
   type RecommendationCandidate,
   type ScoringWeights,
-} from "./engine.js";
+} from "./engine.example.js";
