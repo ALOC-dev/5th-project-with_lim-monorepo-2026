@@ -193,7 +193,5 @@ const rawMockEngineOutput = {
         ],
       },
     ],
-  },
-} satisfies EngineOutput;
-
-export const mockEngineOutput = EngineOutputSchema.parse(rawMockEngineOutput);
+  }
+}

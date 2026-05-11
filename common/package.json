@@ -19,6 +19,11 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
+    "apify-client": "^2.23.2",
+    "dotenv": "^17.4.2",
     "zod": "^4.4.1"
+  },
+  "devDependencies": {
+    "@types/node": "^25.6.2"
   }
 }

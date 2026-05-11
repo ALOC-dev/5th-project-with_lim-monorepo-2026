@@ -13,6 +13,10 @@ export type RecommendationCandidate = Omit<
   Partial<Pick<PlaceRecommendationItem, "score" | "reasons">> & {
     sourceRank?: number;
     status?: "ACTIVE" | "CLOSED" | "TEMPORARILY_CLOSED";
+    name: string;             // 식당 이름 (필수)
+    rating?: number;          // 네이버 평점 (선택)
+    visitorReviews?: number;  // 방문자 리뷰 수 (선택)
+    address?: string;         // 식당 주소 (선택)
     signals?: {
       naverRating?: number;
       kakaoRating?: number;

@@ -1,19 +1,18 @@
-import express from "express";
+// index.ts
+import { getRestaurantData } from './lib/KakaoCrawler.js';
 
-import { createApiResponse, formatServiceName } from "@monorepo/common";
+async function run() {
+  const results = await getRestaurantData('회기역 맛집');
 
-const app = express();
-const port = Number(process.env.PORT ?? 3000);
+  if (results.length === 0) {
+    console.log('❌ 결과 없음');
+  } else {
+    results.forEach((r, i) => {
+      console.log(`[${i + 1}] ${r.name}`);
+      console.log(`   ⭐ ${r.rating} | 💬 ${r.reviews}건`);
+      console.log(`---`);
+    });
+  }
+}
 
-app.get("/health", (_req, res) => {
-  res.json(
-    createApiResponse({
-      service: formatServiceName("server"),
-      status: "ok"
-    })
-  );
-});
-
-app.listen(port, () => {
-  console.log(`Server is running on http://localhost:${port}`);
-});
+run();

@@ -15,4 +15,4 @@ export const createApiError = (error: string): ApiResponse<never> => ({
 export const formatServiceName = (name: string): string =>
   name.trim().toUpperCase();
 
-export * from "./recommendation-engine/index.js";
+export * from "./recommendation-engine/test-run.js";

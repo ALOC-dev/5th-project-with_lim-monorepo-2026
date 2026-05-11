@@ -134,8 +134,9 @@ const getInputMatchScore = (
 };
 
 const getTrustScore = (candidate: RecommendationCandidate): number => {
+  // 1. 평점 데이터 취합 (실시간 수집 데이터 우선순위 적용)
   const ratings = [
-    candidate.signals?.naverRating,
+    candidate.signals?.naverRating ?? candidate.rating, // 추가한 실시간 평점 사용
     candidate.signals?.kakaoRating,
   ].filter((rating): rating is number => typeof rating === "number");
 
@@ -147,16 +148,25 @@ const getTrustScore = (candidate: RecommendationCandidate): number => {
         100
       : (candidate.score ?? 55);
 
+  // 2. 리뷰 수 데이터 취합 (실시간 수집 데이터 우선순위 적용)
+  const reviewCount = 
+    candidate.signals?.reviewCount ?? 
+    (candidate as any).visitorReviews ?? // 우리가 추가한 실시간 리뷰 수 사용
+    0;
+
   const reviewScore = logarithmicScore(
-    candidate.signals?.reviewCount ?? 0,
-    1000,
+    reviewCount,
+    1000, // 1000개일 때 만점 근접
   );
+
   const mentionScore = logarithmicScore(
     candidate.signals?.mentionCount ?? 0,
     100,
   );
+  
   const referenceScore = getReferenceScore(candidate);
 
+  // 최종 신뢰도 점수 (평점 45% + 리뷰수 25% + 언급량 15% + 외부링크 15%)
   return (
     ratingScore * 0.45 +
     reviewScore * 0.25 +
