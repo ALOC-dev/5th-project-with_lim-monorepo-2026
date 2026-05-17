@@ -6,5 +6,5 @@
     "sourceMap": true,
     "types": ["node"]
   },
-  "include": ["src", "recommendation-engine"]
+  "include": ["src", "src/recommendation-engine"]
 }
