@@ -242,7 +242,11 @@ export const evaluateSeeds = async (
         source: enrichment.source,
         status: enrichment.operationVerification.status,
         reason: enrichment.operationVerification.reason,
-        scheduleCount: enrichment.operationInfo?.schedules.length ?? 0,
+        knownScheduleCount: enrichment.operationInfo
+          ? Object.values(enrichment.operationInfo.schedules).filter(
+              (schedule) => schedule.status !== "UNKNOWN",
+            ).length
+          : 0,
         sourceUrls: enrichment.sourceUrls,
         sourceDetails: enrichment.sourceDetails,
         scrapeCache: enrichment.scrapeCache,

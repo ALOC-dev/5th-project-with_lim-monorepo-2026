@@ -18,6 +18,7 @@ const BreakTimeSchema = z
     end: z.string().regex(time24hRegex),
   })
   .strict();
+export type BreakTime = z.infer<typeof BreakTimeSchema>;
 
 export const dayOfWeekValues = [
   "MONDAY",
@@ -32,11 +33,8 @@ export const dayOfWeekValues = [
 export const DayOfWeekSchema = z.enum(dayOfWeekValues);
 export type DayOfWeek = z.infer<typeof DayOfWeekSchema>;
 
-const DaysOfWeekSchema = z.array(DayOfWeekSchema).min(1);
-
-const OpenOperationScheduleSchema = z
+const OpenDailyOperationInfoSchema = z
   .object({
-    daysOfWeek: DaysOfWeekSchema, // 같은 운영 시간이 적용되는 요일 목록
     status: z.literal("OPEN"),
     open: z.string().regex(time24hRegex), // 영업 시작 시각 (24시간 형식, 예: "10:00")
     close: z.string().regex(time24hRegex), // 영업 종료 시각 (24시간 형식, 예: "22:00")
@@ -45,56 +43,46 @@ const OpenOperationScheduleSchema = z
   })
   .strict();
 
-const ClosedOperationScheduleSchema = z
+const ClosedDailyOperationInfoSchema = z
   .object({
-    daysOfWeek: DaysOfWeekSchema, // 휴무 요일 목록
     status: z.literal("CLOSED"),
   })
   .strict();
 
-const OperationScheduleSchema = z.discriminatedUnion("status", [
-  OpenOperationScheduleSchema,
-  ClosedOperationScheduleSchema,
+const UnknownDailyOperationInfoSchema = z
+  .object({
+    status: z.literal("UNKNOWN"),
+  })
+  .strict();
+
+const DailyOperationInfoSchema = z.discriminatedUnion("status", [
+  OpenDailyOperationInfoSchema,
+  ClosedDailyOperationInfoSchema,
+  UnknownDailyOperationInfoSchema,
 ]);
-export type OperationSchedule = z.infer<typeof OperationScheduleSchema>;
+export type DailyOperationInfo = z.infer<typeof DailyOperationInfoSchema>;
+
+const OperationSchedulesSchema = z
+  .object({
+    MONDAY: DailyOperationInfoSchema,
+    TUESDAY: DailyOperationInfoSchema,
+    WEDNESDAY: DailyOperationInfoSchema,
+    THURSDAY: DailyOperationInfoSchema,
+    FRIDAY: DailyOperationInfoSchema,
+    SATURDAY: DailyOperationInfoSchema,
+    SUNDAY: DailyOperationInfoSchema,
+  })
+  .strict();
+export type OperationSchedules = z.infer<typeof OperationSchedulesSchema>;
 
 export const OperationInfoSchema = z
   .object({
     timezone: z.literal("Asia/Seoul"),
-    schedules: z.array(OperationScheduleSchema).min(1),
+    schedules: OperationSchedulesSchema,
   })
   .strict();
 
-export const CompleteWeeklyOperationInfoSchema = OperationInfoSchema.superRefine(
-  (operationInfo, ctx) => {
-    const seenDays = new Set<DayOfWeek>();
-
-    operationInfo.schedules.forEach((schedule, scheduleIndex) => {
-      schedule.daysOfWeek.forEach((dayOfWeek, dayIndex) => {
-        if (seenDays.has(dayOfWeek)) {
-          ctx.addIssue({
-            code: "custom",
-            message: `duplicate operation schedule for ${dayOfWeek}`,
-            path: ["schedules", scheduleIndex, "daysOfWeek", dayIndex],
-          });
-          return;
-        }
-        seenDays.add(dayOfWeek);
-      });
-    });
-
-    const missingDays = dayOfWeekValues.filter(
-      (dayOfWeek) => !seenDays.has(dayOfWeek),
-    );
-    if (missingDays.length > 0) {
-      ctx.addIssue({
-        code: "custom",
-        message: `missing operation schedules for ${missingDays.join(", ")}`,
-        path: ["schedules"],
-      });
-    }
-  },
-);
+export const CompleteWeeklyOperationInfoSchema = OperationInfoSchema;
 
 export type OperationInfo = z.infer<typeof OperationInfoSchema>;
 

@@ -15,6 +15,7 @@ import type { EnrichmentSourceName } from "../utils/enrichment-types.js";
 import {
   OperationVerifier,
   parseOperationInfo,
+  toOperationSchedulesRecord,
 } from "../utils/operation-hours.js";
 
 export type OperationInfoParseResult = {
@@ -238,25 +239,31 @@ const toOperationInfo = (
 ): OperationInfo =>
   OperationInfoSchema.parse({
     timezone: value.timezone,
-    schedules: value.schedules.map((schedule) => {
-      if (schedule.status === "CLOSED") {
+    schedules: toOperationSchedulesRecord(
+      value.schedules.map((schedule) => {
+        if (schedule.status === "CLOSED") {
+          return {
+            daysOfWeek: schedule.daysOfWeek as DayOfWeek[],
+            status: "CLOSED",
+          };
+        }
+
+        if (!schedule.open || !schedule.close) {
+          throw new Error("OPEN operation schedule requires open and close");
+        }
+
         return {
           daysOfWeek: schedule.daysOfWeek as DayOfWeek[],
-          status: "CLOSED",
+          status: "OPEN",
+          open: schedule.open,
+          close: schedule.close,
+          breakTimes: schedule.breakTimes ?? [],
+          ...(schedule.lastOrderTime
+            ? { lastOrderTime: schedule.lastOrderTime }
+            : {}),
         };
-      }
-
-      return {
-        daysOfWeek: schedule.daysOfWeek as DayOfWeek[],
-        status: "OPEN",
-        open: schedule.open,
-        close: schedule.close,
-        breakTimes: schedule.breakTimes ?? [],
-        ...(schedule.lastOrderTime
-          ? { lastOrderTime: schedule.lastOrderTime }
-          : {}),
-      };
-    }),
+      }),
+    ),
   });
 
 const shouldTryLlmFallback = (

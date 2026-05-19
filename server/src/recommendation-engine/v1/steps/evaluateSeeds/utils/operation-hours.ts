@@ -1,7 +1,10 @@
 import type { UserInput } from "../../../interfaces/input.js";
 import {
+  OperationInfoSchema,
   dayOfWeekValues,
+  type BreakTime,
   type DayOfWeek,
+  type DailyOperationInfo,
   type OperationInfo,
 } from "../../../interfaces/output.js";
 import type {
@@ -19,6 +22,14 @@ const DAY_LABEL_TO_DAY: Record<string, DayOfWeek> = {
   일: "SUNDAY",
 };
 
+type ParsedOperationSchedule =
+  | ({
+      daysOfWeek: DayOfWeek[];
+    } & Extract<DailyOperationInfo, { status: "OPEN" }>)
+  | ({
+      daysOfWeek: DayOfWeek[];
+    } & Extract<DailyOperationInfo, { status: "CLOSED" }>);
+
 export const parseOperationInfo = (
   text: string,
   requestedDay: DayOfWeek,
@@ -32,16 +43,16 @@ export const parseOperationInfo = (
   ];
   if (schedules.length === 0) return undefined;
 
-  return {
+  return OperationInfoSchema.parse({
     timezone: "Asia/Seoul",
-    schedules: mergeCompatibleSchedules(schedules),
-  };
+    schedules: toOperationSchedulesRecord(mergeCompatibleSchedules(schedules)),
+  });
 };
 
 const parseCurrentOperationStatus = (
   text: string,
   requestedDay: DayOfWeek,
-): OperationInfo["schedules"] => {
+): ParsedOperationSchedule[] => {
   // "오늘 휴무", "현재 영업 종료"처럼 시간 범위가 없는 현재 상태 문구만 처리한다.
   // "영업 중 23:00 종료" 같은 문구는 전체 영업시간이 아니므로 OPEN schedule로 만들지 않는다.
   const normalized = text.replace(/\s+/gu, " ");
@@ -63,11 +74,11 @@ const parseCurrentOperationStatus = (
 const DAY_SCOPE_PATTERN =
   /(?:매일|연중무휴|평일|주말|[월화수목금토일](?:요일)?(?:\s*(?:-|~|–|—)\s*[월화수목금토일](?:요일)?)?)/gu;
 
-const parseOperationSchedules = (text: string): OperationInfo["schedules"] => {
+const parseOperationSchedules = (text: string): ParsedOperationSchedule[] => {
   // 두 가지 형태를 모두 지원한다.
   // 1) "월-금 11:00-22:00 / 토 12:00-20:00"처럼 한 줄에 여러 day scope가 있는 경우
   // 2) "월요일" 다음 줄에 "11:00-22:00"이 나오는 경우
-  const schedules: OperationInfo["schedules"] = [];
+  const schedules: ParsedOperationSchedule[] = [];
   const lines = text
     .split(/\r?\n/u)
     .map((line) => line.trim())
@@ -118,7 +129,7 @@ const parseOperationSchedules = (text: string): OperationInfo["schedules"] => {
 
 const parseDayScopedSchedules = (
   line: string,
-): OperationInfo["schedules"] => {
+): ParsedOperationSchedule[] => {
   // 한 줄에 여러 요일 scope가 붙어 있을 때 scope 단위로 잘라 각 segment만 해석한다.
   // 이렇게 하지 않으면 "월-금 11:00 / 토 휴무" 같은 줄에서 휴무가 전체 요일에 번질 수 있다.
   const matches = [...line.matchAll(DAY_SCOPE_PATTERN)].filter(
@@ -126,7 +137,7 @@ const parseDayScopedSchedules = (
   );
   if (matches.length === 0) return [];
 
-  const schedules: OperationInfo["schedules"] = [];
+  const schedules: ParsedOperationSchedule[] = [];
   for (let index = 0; index < matches.length; index += 1) {
     const start = matches[index]?.index ?? 0;
     const end = matches[index + 1]?.index ?? line.length;
@@ -238,9 +249,7 @@ const isClosedScheduleLine = (line: string): boolean => {
   return /(휴무|정기휴무|쉬는\s*날)/u.test(line);
 };
 
-const parseBreakTimes = (
-  line: string,
-): Array<{ start: string; end: string }> => {
+const parseBreakTimes = (line: string): BreakTime[] => {
   if (!/(브레이크|휴게|break)/iu.test(line)) return [];
   const scoped = line
     .split(/브레이크\s*타임|브레이크|휴게|break\s*time|break/iu)
@@ -258,11 +267,11 @@ const parseLastOrderTime = (line: string): string | undefined => {
 };
 
 export const mergeCompatibleSchedules = (
-  schedules: OperationInfo["schedules"],
-): OperationInfo["schedules"] => {
+  schedules: ParsedOperationSchedule[],
+): ParsedOperationSchedule[] => {
   // 우선 day 단위로 펼친 뒤 다시 같은 schedule끼리 묶는다.
   // 더 좁은 day scope가 더 구체적인 정보이므로 "매일"보다 "토요일" schedule을 우선한다.
-  const byDay = new Map<DayOfWeek, OperationInfo["schedules"][number]>();
+  const byDay = new Map<DayOfWeek, ParsedOperationSchedule>();
   const scopeSizeByDay = new Map<DayOfWeek, number>();
   for (const schedule of schedules) {
     for (const day of schedule.daysOfWeek) {
@@ -271,7 +280,12 @@ export const mergeCompatibleSchedules = (
       const existingScopeSize = scopeSizeByDay.get(day);
       if (
         !existing ||
-        shouldReplaceSchedule(existing, next, existingScopeSize, schedule.daysOfWeek.length)
+        shouldReplaceSchedule(
+          existing,
+          next,
+          existingScopeSize,
+          schedule.daysOfWeek.length,
+        )
       ) {
         byDay.set(day, next);
         scopeSizeByDay.set(day, schedule.daysOfWeek.length);
@@ -279,7 +293,7 @@ export const mergeCompatibleSchedules = (
     }
   }
 
-  const grouped = new Map<string, OperationInfo["schedules"][number]>();
+  const grouped = new Map<string, ParsedOperationSchedule>();
   for (const schedule of byDay.values()) {
     const key = JSON.stringify({ ...schedule, daysOfWeek: undefined });
     const existing = grouped.get(key);
@@ -291,14 +305,43 @@ export const mergeCompatibleSchedules = (
 };
 
 const shouldReplaceSchedule = (
-  existing: OperationInfo["schedules"][number],
-  next: OperationInfo["schedules"][number],
+  existing: ParsedOperationSchedule,
+  next: ParsedOperationSchedule,
   existingScopeSize = existing.daysOfWeek.length,
   nextScopeSize = next.daysOfWeek.length,
 ): boolean => {
   if (nextScopeSize < existingScopeSize) return true;
   if (nextScopeSize > existingScopeSize) return false;
   return existing.status === "OPEN" && next.status === "CLOSED";
+};
+
+export const toOperationSchedulesRecord = (
+  schedules: ParsedOperationSchedule[],
+): OperationInfo["schedules"] => {
+  const byDay = Object.fromEntries(
+    dayOfWeekValues.map((day) => [day, { status: "UNKNOWN" }]),
+  ) as OperationInfo["schedules"];
+
+  for (const schedule of schedules) {
+    for (const day of schedule.daysOfWeek) {
+      if (schedule.status === "CLOSED") {
+        byDay[day] = { status: "CLOSED" };
+        continue;
+      }
+
+      byDay[day] = {
+        status: "OPEN",
+        open: schedule.open,
+        close: schedule.close,
+        breakTimes: schedule.breakTimes,
+        ...(schedule.lastOrderTime
+          ? { lastOrderTime: schedule.lastOrderTime }
+          : {}),
+      };
+    }
+  }
+
+  return byDay;
 };
 
 export class OperationVerifier {
@@ -322,11 +365,9 @@ export class OperationVerifier {
   ): OperationVerification {
     // 요청 일자/도착 시간/체류 시간을 모두 만족해야 OPEN이다.
     // 단순히 "현재 영업 중"이 아니라 사용자가 머무는 전체 window를 검증한다.
-    const schedule = operationInfo.schedules.find((item) =>
-      item.daysOfWeek.includes(this.requestedDay),
-    );
+    const schedule = operationInfo.schedules[this.requestedDay];
 
-    if (!schedule) {
+    if (schedule.status === "UNKNOWN") {
       return this.unknown({
         reason: `No operation schedule for ${this.requestedDay}`,
         sourceUrls,

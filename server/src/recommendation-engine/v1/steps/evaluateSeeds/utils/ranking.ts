@@ -48,14 +48,12 @@ const computeWeightedScore = (
     weights.trust +
     weights.accessibility +
     weights.diversity;
-  const normalize = (value: number) =>
-    totalWeight === 0 ? 0 : value / totalWeight;
 
   const total =
-    evaluation.inputMatch * normalize(weights.inputMatch) +
-    evaluation.trust * normalize(weights.trust) +
-    evaluation.accessibility * normalize(weights.accessibility) +
-    evaluation.diversity * normalize(weights.diversity);
+    evaluation.inputMatch * (weights.inputMatch / totalWeight) +
+    evaluation.trust * (weights.trust / totalWeight) +
+    evaluation.accessibility * (weights.accessibility / totalWeight) +
+    evaluation.diversity * (weights.diversity / totalWeight);
 
   const semanticAdjustment = getSemanticAdjustment(evidence);
   const adjustedTotal = Math.max(
