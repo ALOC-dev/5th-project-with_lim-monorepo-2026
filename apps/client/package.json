@@ -11,11 +11,13 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@monorepo/recommendation-engine": "workspace:*",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.0",
+    "@monorepo/recommendation-engine": "workspace:*",
+    "modern-css-reset": "^1.4.0",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^7.15.1"
   },
   "devDependencies": {
     "@types/react": "^18.3.12",
