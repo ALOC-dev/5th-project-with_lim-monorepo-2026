@@ -1,9 +1,9 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-const ROOT_DIR = process.cwd();
-const TOKEN_STUDIO_DIR = path.join(ROOT_DIR, "tokens", "token-studio");
-const SOURCE_PATH = path.join(ROOT_DIR, "tokens", "source.json");
+const CLIENT_DIR = process.cwd();
+const TOKEN_STUDIO_DIR = path.join(CLIENT_DIR, "tokens", "token-studio");
+const SOURCE_PATH = path.join(CLIENT_DIR, "tokens", "source.json");
 
 const TOKEN_SET_FILES = ["color.json", "typography.json"];
 
@@ -153,7 +153,7 @@ const main = async () => {
   }
 
   await writeJson(SOURCE_PATH, source);
-  console.log(`Generated ${path.relative(ROOT_DIR, SOURCE_PATH)}`);
+  console.log(`Generated ${path.relative(CLIENT_DIR, SOURCE_PATH)}`);
 };
 
 await main();

@@ -18,10 +18,7 @@
     "lint:fix": "eslint . --fix",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm --filter @monorepo/server test",
-    "clean": "pnpm -r clean",
-    "tokens:source": "node scripts/build-token-source.mjs",
-    "tokens:generate": "node scripts/generate-design-tokens.mjs",
-    "tokens:update": "pnpm tokens:source && pnpm tokens:generate"
+    "clean": "pnpm -r clean"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",

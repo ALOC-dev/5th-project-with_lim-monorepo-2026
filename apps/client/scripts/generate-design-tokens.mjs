@@ -1,9 +1,9 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-const ROOT_DIR = process.cwd();
-const SOURCE_PATH = path.join(ROOT_DIR, "tokens", "source.json");
-const OUTPUT_DIR = path.join(ROOT_DIR, "apps", "client", "src", "design-system");
+const CLIENT_DIR = process.cwd();
+const SOURCE_PATH = path.join(CLIENT_DIR, "tokens", "source.json");
+const OUTPUT_DIR = path.join(CLIENT_DIR, "src", "design-system");
 
 const GENERATED_HEADER = "// This file is generated. Do not edit manually.\n\n";
 
@@ -146,7 +146,7 @@ const main = async () => {
     `import { tokens } from "./tokens.generated";\n\nexport const theme = { tokens } as const;\n`,
   );
 
-  console.log(`Generated ${path.relative(ROOT_DIR, OUTPUT_DIR)}`);
+  console.log(`Generated ${path.relative(CLIENT_DIR, OUTPUT_DIR)}`);
 };
 
 await main();
