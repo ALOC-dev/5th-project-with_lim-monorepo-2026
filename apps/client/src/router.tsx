@@ -1,5 +1,6 @@
 import { createBrowserRouter, Navigate } from "react-router-dom";
 
+import HealthCheckPage from "./page/HealthCheck/page";
 import RecommendationFormPage from "./page/RecommendationForm/page";
 import RecommendationMemberPage from "./page/RecommendationMember/page";
 import RecommendationPendingPage from "./page/RecommendationPending/page";
@@ -27,6 +28,10 @@ export const router = createBrowserRouter([
   {
     path: "/place/recommendation/member",
     element: <RecommendationMemberPage />,
+  },
+  {
+    path: "/health",
+    element: <HealthCheckPage />,
   },
   {
     path: "*",
