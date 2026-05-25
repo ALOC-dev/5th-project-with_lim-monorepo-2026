@@ -7,11 +7,12 @@ import {
   type RecommendationEngineSecrets,
 } from "@monorepo/recommendation-engine";
 import {
-  EngineOutputSchema,
   type EngineOutput,
+  EngineOutputSchema,
   type UserInput,
   UserInputSchema,
 } from "@monorepo/recommendation-engine/v1/contracts";
+
 import {
   defaultTestScenarioName,
   getTestScenarioInput,
@@ -93,9 +94,7 @@ const runEngineTest = async (
   input: UserInput,
 ): Promise<TestRun> => {
   const runName =
-    scenarioName === defaultTestScenarioName
-      ? testName
-      : `${testName}-${scenarioName}`;
+    scenarioName === defaultTestScenarioName ? testName : `${testName}-${scenarioName}`;
   testMonitor.startCheck(runName);
   const start = performance.now();
   const artifactPrefix = `${formatDatePrefix(new Date())}.${runName}`;
@@ -106,15 +105,7 @@ const runEngineTest = async (
     const execution = await executeEngineTest(input, scenarioName);
     return toRun(execution, runName, scenarioName, start, resultFile, logFile);
   } catch (error) {
-    return toFailedRun(
-      error,
-      runName,
-      scenarioName,
-      input,
-      start,
-      resultFile,
-      logFile,
-    );
+    return toFailedRun(error, runName, scenarioName, input, start, resultFile, logFile);
   }
 };
 
@@ -220,19 +211,10 @@ const writeJson = async (filePath: string, value: unknown): Promise<void> => {
 };
 
 const formatDatePrefix = (date: Date): string => {
-  const pad = (value: number, length = 2): string =>
-    String(value).padStart(length, "0");
+  const pad = (value: number, length = 2): string => String(value).padStart(length, "0");
   return [
-    [
-      date.getFullYear(),
-      pad(date.getMonth() + 1),
-      pad(date.getDate()),
-    ].join(""),
-    [
-      pad(date.getHours()),
-      pad(date.getMinutes()),
-      pad(date.getSeconds()),
-    ].join(""),
+    [date.getFullYear(), pad(date.getMonth() + 1), pad(date.getDate())].join(""),
+    [pad(date.getHours()), pad(date.getMinutes()), pad(date.getSeconds())].join(""),
     pad(date.getMilliseconds(), 3),
   ].join("-");
 };
@@ -256,11 +238,7 @@ const formatFlow = (run: TestRun): string => {
   return parts.join(" ");
 };
 
-const appendNumber = (
-  parts: string[],
-  label: string,
-  value: unknown,
-): void => {
+const appendNumber = (parts: string[], label: string, value: unknown): void => {
   if (typeof value === "number") parts.push(`${label}=${value}`);
 };
 
@@ -268,22 +246,18 @@ const getRecommendationEngineSecretsFromEnv = (): RecommendationEngineSecrets =>
   openAiApiKey: process.env.OPENAI_API_KEY,
   kakaoRestApiKey: process.env.KAKAO_REST_API_KEY,
   tmapAppKey: process.env.TMAP_APP_KEY,
-  naverSearchClientId:
-    process.env.NAVER_SEARCH_CLIENT_ID ?? process.env.NAVER_CLIENT_ID,
+  naverSearchClientId: process.env.NAVER_SEARCH_CLIENT_ID ?? process.env.NAVER_CLIENT_ID,
   naverSearchClientSecret:
     process.env.NAVER_SEARCH_CLIENT_SECRET ?? process.env.NAVER_CLIENT_SECRET,
 });
 
 const toPublicRun = ({
-  result,
-  log,
+  result: _result,
+  log: _log,
   ...run
 }: TestRun): Omit<TestRun, "result" | "log"> => run;
 
-const getErrorResult = (
-  error: unknown,
-  input: UserInput,
-): EngineOutput => {
+const getErrorResult = (error: unknown, input: UserInput): EngineOutput => {
   if (isRecord(error) && isEngineOutput(error.testResult)) {
     return error.testResult;
   }
@@ -332,8 +306,6 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null;
 
 runCli().catch((error) => {
-  console.error(
-    error instanceof Error ? (error.stack ?? error.message) : error,
-  );
+  console.error(error instanceof Error ? (error.stack ?? error.message) : error);
   process.exitCode = 1;
 });

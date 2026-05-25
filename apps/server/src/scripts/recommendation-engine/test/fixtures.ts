@@ -1,7 +1,4 @@
-import {
-  DEFAULT_WEIGHTS,
-  type EngineConfig,
-} from "@monorepo/recommendation-engine";
+import { DEFAULT_WEIGHTS, type EngineConfig } from "@monorepo/recommendation-engine";
 import type { UserInput } from "@monorepo/recommendation-engine/v1/contracts";
 
 export const testConfig: EngineConfig = {
@@ -187,8 +184,7 @@ export const parseTestScenarioName = (name: string): TestScenarioName => {
   return name;
 };
 
-export const getTestScenarioInput = (name: TestScenarioName): UserInput =>
-  testScenarios[name];
+export const getTestScenarioInput = (name: TestScenarioName): UserInput => testScenarios[name];
 
 const isTestScenarioName = (name: string): name is TestScenarioName =>
   Object.prototype.hasOwnProperty.call(testScenarios, name);

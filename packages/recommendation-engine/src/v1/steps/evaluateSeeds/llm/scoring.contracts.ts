@@ -25,9 +25,7 @@ export const LlmCandidateEvaluationSchema = z
   })
   .strict();
 
-export type LlmCandidateEvaluation = z.infer<
-  typeof LlmCandidateEvaluationSchema
->;
+export type LlmCandidateEvaluation = z.infer<typeof LlmCandidateEvaluationSchema>;
 
 export const LlmCandidateEvaluationsResponseSchema = z
   .object({
@@ -35,6 +33,4 @@ export const LlmCandidateEvaluationsResponseSchema = z
   })
   .strict();
 
-export type LlmCandidateEvaluationsResponse = z.infer<
-  typeof LlmCandidateEvaluationsResponseSchema
->;
+export type LlmCandidateEvaluationsResponse = z.infer<typeof LlmCandidateEvaluationsResponseSchema>;

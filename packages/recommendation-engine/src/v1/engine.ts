@@ -1,4 +1,3 @@
-import type { UserInput } from "./interfaces/input.contracts.js";
 import {
   DEFAULT_CANDIDATE_POOL_MULTIPLIER,
   DEFAULT_TARGET_COUNT,
@@ -6,21 +5,18 @@ import {
 } from "./configs/constants.js";
 import type { EngineConfig } from "./configs/types.js";
 import type { RecommendationEngineSecrets } from "./credentials.js";
-import type { EngineOutput } from "./interfaces/output.contracts.js";
-import { createDiscoveryContextWithLlm } from "./steps/discoverSeeds/llm/approaches.js";
-import { discoverSeeds } from "./steps/discoverSeeds/index.js";
-import { evaluateSeeds } from "./steps/evaluateSeeds/index.js";
+import type { UserInput } from "./interfaces/input.contracts.js";
+import type { EngineOutput, RecommendationOriginContext } from "./interfaces/output.contracts.js";
+import { consoleLogger, type Logger, noopLogger } from "./observability/logger.js";
 import {
-  DiscoveryContextSchema,
   type DiscoveryContext,
-  type SearchQuery,
+  DiscoveryContextSchema,
   type EvaluateSeedsRetryReason,
+  type SearchQuery,
 } from "./steps/discoverSeeds/contracts.js";
-import {
-  consoleLogger,
-  noopLogger,
-  type Logger,
-} from "./observability/logger.js";
+import { discoverSeeds } from "./steps/discoverSeeds/index.js";
+import { createDiscoveryContextWithLlm } from "./steps/discoverSeeds/llm/approaches.js";
+import { evaluateSeeds } from "./steps/evaluateSeeds/index.js";
 
 const MAX_DISCOVERY_ATTEMPTS = 5;
 
@@ -76,6 +72,32 @@ const hydrateQueriesWithLocation = (
   }));
 };
 
+const buildRecommendationOriginContext = (userInput: UserInput): RecommendationOriginContext => {
+  const origins = userInput.location.map((location, index) => ({
+    id: toOriginId(index),
+    role: index === 0 ? ("HOST" as const) : ("MEMBER" as const),
+    label: index === 0 ? "나" : `참여자 ${index + 1}`,
+    location,
+  }));
+
+  return {
+    mode: origins.length > 1 ? "GROUP" : "SINGLE",
+    origins,
+    ...(origins.length > 0
+      ? { center: toCenterLocation(origins.map((origin) => origin.location)) }
+      : {}),
+  };
+};
+
+const toOriginId = (index: number): string => (index === 0 ? "host" : `member-${index}`);
+
+const toCenterLocation = (
+  locations: UserInput["location"][number][],
+): UserInput["location"][number] => ({
+  lat: locations.reduce((sum, location) => sum + location.lat, 0) / locations.length,
+  lng: locations.reduce((sum, location) => sum + location.lng, 0) / locations.length,
+});
+
 export type RecommendationEngineOptions = {
   loggingActivated?: boolean;
   secrets?: RecommendationEngineSecrets;
@@ -87,11 +109,7 @@ export class RecommendationEngine {
   private readonly secrets: RecommendationEngineSecrets;
   private readonly userInput: UserInput;
 
-  constructor(
-    input: UserInput,
-    config: EngineConfig,
-    options: RecommendationEngineOptions = {},
-  ) {
+  constructor(input: UserInput, config: EngineConfig, options: RecommendationEngineOptions = {}) {
     this.config = config;
     this.logger = options.loggingActivated ? consoleLogger : noopLogger;
     this.secrets = options.secrets ?? {};
@@ -112,9 +130,7 @@ export class RecommendationEngine {
     });
 
     try {
-      const finishDiscoveryContext = this.logger.startTimer(
-        "engine.discovery_context.success",
-      );
+      const finishDiscoveryContext = this.logger.startTimer("engine.discovery_context.success");
       const initialQueries = await createDiscoveryContextWithLlm(this.userInput, {
         openAiApiKey: this.secrets.openAiApiKey,
         targetSeedCount: this.config.targetCount * this.config.candidatePoolMultiplier,
@@ -142,11 +158,7 @@ export class RecommendationEngine {
       };
     }
 
-    for (
-      let currAttemptNo = 1;
-      currAttemptNo <= MAX_DISCOVERY_ATTEMPTS;
-      currAttemptNo += 1
-    ) {
+    for (let currAttemptNo = 1; currAttemptNo <= MAX_DISCOVERY_ATTEMPTS; currAttemptNo += 1) {
       const attemptLogger = this.logger.withContext({
         attemptNo: currAttemptNo,
       });
@@ -238,8 +250,7 @@ export class RecommendationEngine {
             userInput: this.userInput,
             error: {
               code: "DISCOVER_SEEDS_EXHAUSTED",
-              message:
-                "No discovery queries remain after evaluateSeeds requested more seeds",
+              message: "No discovery queries remain after evaluateSeeds requested more seeds",
             },
           };
         }
@@ -278,7 +289,10 @@ export class RecommendationEngine {
       return {
         status: "SUCCESS",
         userInput: this.userInput,
-        userOutput: { recommendations: evaluateSeedsResult.data.items },
+        userOutput: {
+          originContext: buildRecommendationOriginContext(this.userInput),
+          recommendations: evaluateSeedsResult.data.items,
+        },
       };
     }
 
@@ -296,5 +310,4 @@ export class RecommendationEngine {
       },
     };
   }
-
 }

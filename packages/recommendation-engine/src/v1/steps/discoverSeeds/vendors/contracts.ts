@@ -33,6 +33,4 @@ export const LocalSeedSearchResponseSchema = z
   })
   .strict();
 
-export type LocalSeedSearchResponse = z.infer<
-  typeof LocalSeedSearchResponseSchema
->;
+export type LocalSeedSearchResponse = z.infer<typeof LocalSeedSearchResponseSchema>;

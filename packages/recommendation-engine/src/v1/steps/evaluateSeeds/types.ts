@@ -1,13 +1,9 @@
-import type { PlaceRecommendationItem } from "../../interfaces/output.contracts.js";
 import type { RecommendationEngineSecrets } from "../../credentials.js";
+import type { PlaceRecommendationItem } from "../../interfaces/output.contracts.js";
 import type { EvaluateSeedsRetryReason } from "../discoverSeeds/contracts.js";
 import type { EvaluateSeedsOutput } from "./contracts.js";
 
-export type {
-  EvaluateSeedsEvaluation,
-  EvaluateSeedsOutput,
-  ScoreBreakdown,
-} from "./contracts.js";
+export type { EvaluateSeedsEvaluation, EvaluateSeedsOutput, ScoreBreakdown } from "./contracts.js";
 
 export type EvaluateSeedsNeedsMoreSeeds = {
   status: "NEEDS_MORE_SEEDS";
@@ -32,10 +28,7 @@ export type EvaluateSeedsProcessResult =
 export type EvaluateSeedsOptions = {
   secrets?: Pick<
     RecommendationEngineSecrets,
-    | "kakaoRestApiKey"
-    | "naverSearchClientId"
-    | "naverSearchClientSecret"
-    | "openAiApiKey"
+    "kakaoRestApiKey" | "naverSearchClientId" | "naverSearchClientSecret" | "openAiApiKey"
   >;
 };
 

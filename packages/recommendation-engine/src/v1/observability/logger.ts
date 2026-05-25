@@ -42,9 +42,7 @@ export type Logger = {
   startTimer(phase: string): (data?: Record<string, unknown>) => void;
 };
 
-const toErrorPayload = (
-  error: unknown,
-): { name: string; message: string } => {
+const toErrorPayload = (error: unknown): { name: string; message: string } => {
   if (error instanceof Error) {
     return { name: error.name, message: error.message };
   }
@@ -66,9 +64,7 @@ const buildLogger = (sink: LogSink, ctx: LoggerContext = {}): Logger => {
       ...(ctx.attemptNo !== undefined ? { attemptNo: ctx.attemptNo } : {}),
       ...(ctx.retryNo !== undefined ? { retryNo: ctx.retryNo } : {}),
       ...(durationMs !== undefined ? { durationMs } : {}),
-      ...(ctx.extra && Object.keys(ctx.extra).length > 0
-        ? { context: ctx.extra }
-        : {}),
+      ...(ctx.extra && Object.keys(ctx.extra).length > 0 ? { context: ctx.extra } : {}),
       ...(data ? { data } : {}),
       ...(error ? { error: toErrorPayload(error) } : {}),
     };
@@ -89,20 +85,11 @@ const buildLogger = (sink: LogSink, ctx: LoggerContext = {}): Logger => {
         ...ctx,
         ...(delta.attemptNo !== undefined ? { attemptNo: delta.attemptNo } : {}),
         ...(delta.retryNo !== undefined ? { retryNo: delta.retryNo } : {}),
-        ...(delta.extra
-          ? { extra: { ...(ctx.extra ?? {}), ...delta.extra } }
-          : {}),
+        ...(delta.extra ? { extra: { ...(ctx.extra ?? {}), ...delta.extra } } : {}),
       }),
     startTimer: (phase) => {
       const start = performance.now();
-      return (data) =>
-        emit(
-          "info",
-          phase,
-          data,
-          undefined,
-          Math.round(performance.now() - start),
-        );
+      return (data) => emit("info", phase, data, undefined, Math.round(performance.now() - start));
     },
   };
 };
@@ -118,8 +105,7 @@ export const consoleSink: LogSink = (event) => {
   else console.log(line);
 };
 
-export const createLogger = (sink: LogSink = noopSink): Logger =>
-  buildLogger(sink);
+export const createLogger = (sink: LogSink = noopSink): Logger => buildLogger(sink);
 
 // 자주 쓰는 두 가지 프리셋.
 export const noopLogger: Logger = createLogger(noopSink);

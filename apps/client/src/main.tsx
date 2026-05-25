@@ -1,7 +1,7 @@
+import "modern-css-reset/dist/reset.css";
+
 import React from "react";
 import ReactDOM from "react-dom/client";
-
-import "modern-css-reset/dist/reset.css";
 
 import App from "./App";
 

@@ -1,62 +1,45 @@
-import type { UserInput } from "../../interfaces/input.contracts.js";
 import type { EngineConfig } from "../../configs/types.js";
+import type { UserInput } from "../../interfaces/input.contracts.js";
 import type { PlaceRecommendationItem } from "../../interfaces/output.contracts.js";
 import type { Logger } from "../../observability/logger.js";
 import type { DiscoverSeedsOutput } from "../discoverSeeds/contracts.js";
+import { type EvaluateSeedsEvaluation, EvaluateSeedsOutputSchema } from "./contracts.js";
 import { createAgenticWebEnrichmentClient } from "./llm/enrichment.js";
 import {
-  buildCandidateScoringEvidence,
-  type CandidateScoringEvidence,
-} from "./utils/evidence.js";
-import {
-  shouldRecommendByOperationHours,
-} from "./utils/enrichment-merge.js";
-import type {
-  AgenticWebEnrichmentToolEvent,
-  CandidateEnrichment,
-  CandidateEnrichmentClient,
-  CandidateEnrichmentRequest,
-} from "./utils/enrichment-types.js";
-import { createLocalFileUrlScrapeCache } from "./utils/scrape-cache.js";
-import {
-  LlmCandidateEvaluationSchema,
   type LlmCandidateEvaluation,
+  LlmCandidateEvaluationSchema,
 } from "./llm/scoring.contracts.js";
-import type { LlmScoringClient } from "./llm/scoring.types.js";
 import { scoreCandidatesWithLlm } from "./llm/scoring.js";
-import { loadPlaywright } from "./tools/shared/browser.js";
+import type { LlmScoringClient } from "./llm/scoring.types.js";
 import {
-  resolveCandidateReferenceUrls,
   type ReferenceUrlResolution,
+  resolveCandidateReferenceUrls,
 } from "./tools/reference-urls.js";
-import type {
-  PlaywrightBrowser,
-  UrlScrapeResult,
-} from "./tools/types.js";
-import {
-  EvaluateSeedsOutputSchema,
-  type EvaluateSeedsEvaluation,
-} from "./contracts.js";
+import { loadPlaywright } from "./tools/shared/browser.js";
+import type { PlaywrightBrowser, UrlScrapeResult } from "./tools/types.js";
 import type { EvaluateSeedsOptions, EvaluateSeedsProcessResult } from "./types.js";
 import {
   collectEnrichmentBatches,
   ENRICHMENT_BATCH_SIZE,
   getMaxEvidenceCount,
 } from "./utils/enrichment-batches.js";
-import {
-  toEvaluateSeedsFailure,
-  toEvaluateSeedsLlmScoringFailure,
-} from "./utils/failure.js";
-import {
-  toEvaluateSeedsEvaluation,
-  toPlaceRecommendationItem,
-} from "./utils/output.js";
-import { buildRankedCandidates } from "./utils/ranking.js";
-
-export type {
-  CandidateScoringEvidence,
+import { shouldRecommendByOperationHours } from "./utils/enrichment-merge.js";
+import type {
+  AgenticWebEnrichmentToolEvent,
   CandidateEnrichment,
   CandidateEnrichmentClient,
+  CandidateEnrichmentRequest,
+} from "./utils/enrichment-types.js";
+import { buildCandidateScoringEvidence, type CandidateScoringEvidence } from "./utils/evidence.js";
+import { toEvaluateSeedsFailure, toEvaluateSeedsLlmScoringFailure } from "./utils/failure.js";
+import { toEvaluateSeedsEvaluation, toPlaceRecommendationItem } from "./utils/output.js";
+import { buildRankedCandidates } from "./utils/ranking.js";
+import { createLocalFileUrlScrapeCache } from "./utils/scrape-cache.js";
+
+export type {
+  CandidateEnrichment,
+  CandidateEnrichmentClient,
+  CandidateScoringEvidence,
   LlmCandidateEvaluation,
   LlmScoringClient,
 };
@@ -113,10 +96,7 @@ const enrichCandidates = async (
   return buildLiveEnrichmentClient(logger, options)(request);
 };
 
-const logAgenticToolEvent = (
-  logger: Logger,
-  event: AgenticWebEnrichmentToolEvent,
-): void => {
+const logAgenticToolEvent = (logger: Logger, event: AgenticWebEnrichmentToolEvent): void => {
   if (event.type === "search") {
     logger.info("evaluateSeeds.enrichment.tool.search", {
       candidateId: event.candidateId,
@@ -177,11 +157,7 @@ export const evaluateSeeds = async (
   // 1) Seed를 scoring/evaluation 공용 evidence 형태로 정규화한다.
   // seedKey를 candidateId로 쓰면 LLM, enrichment, 로그가 같은 후보를 안정적으로 가리킨다.
   const evidences = discoverSeedsOutput.seeds.map((seed, index) =>
-    buildCandidateScoringEvidence(
-      seed,
-      getSeedKey(discoverSeedsOutput, index),
-      userInput,
-    ),
+    buildCandidateScoringEvidence(seed, getSeedKey(discoverSeedsOutput, index), userInput),
   );
   stepLogger.info("evaluateSeeds.evidence.built", {
     evidenceCount: evidences.length,
@@ -209,9 +185,7 @@ export const evaluateSeeds = async (
   let semanticPenalizedCount = 0;
   let referenceRejectedCount = 0;
   try {
-    const finishEnrichment = stepLogger.startTimer(
-      "evaluateSeeds.enrichment.success",
-    );
+    const finishEnrichment = stepLogger.startTimer("evaluateSeeds.enrichment.success");
     stepLogger.info("evaluateSeeds.enrichment.start", {
       evidenceCount: evidences.length,
       client: "agentic",
@@ -225,8 +199,7 @@ export const evaluateSeeds = async (
       logger: stepLogger,
       enrichCandidates: (request, enrichmentLogger) =>
         enrichCandidates(request, enrichmentLogger, options),
-      resolveReferenceUrls: (evidences) =>
-        resolveReferenceUrlsForEvidences(evidences, options),
+      resolveReferenceUrls: (evidences) => resolveReferenceUrlsForEvidences(evidences, options),
     });
     enrichedEvidences = enrichmentResult.enrichedEvidences;
     operationVerifiedCount = enrichmentResult.operationVerifiedCount;
@@ -237,8 +210,7 @@ export const evaluateSeeds = async (
       evaluatedEvidenceCount: enrichmentResult.evaluatedEvidenceCount,
       skippedEvidenceCount: evidences.length - enrichmentResult.evaluatedEvidenceCount,
       verifiedOpenCount: enrichedEvidences.length,
-      rejectedCount:
-        enrichmentResult.evaluatedEvidenceCount - enrichedEvidences.length,
+      rejectedCount: enrichmentResult.evaluatedEvidenceCount - enrichedEvidences.length,
       batches: enrichmentResult.batches,
       // `.log.json` 분석용 상세 근거. `.result.json`에는 사용자-facing 결과만 남긴다.
       verifications: enrichmentResult.enrichments.map((enrichment) => ({
@@ -283,9 +255,7 @@ export const evaluateSeeds = async (
   } catch (error) {
     const failure = toEvaluateSeedsFailure(error);
     stepLogger.error("evaluateSeeds.enrichment.failure", error, {
-      errorCode: failure.ok
-        ? "UNKNOWN_EVALUATE_SEEDS_ERROR"
-        : failure.errorCode,
+      errorCode: failure.ok ? "UNKNOWN_EVALUATE_SEEDS_ERROR" : failure.errorCode,
     });
     return failure;
   }
@@ -320,9 +290,7 @@ export const evaluateSeeds = async (
   // LLM은 raw 차원 점수와 설명 근거만 만든다. 최종 total은 ranking util에서 일관되게 계산한다.
   let llmEvaluations: LlmCandidateEvaluation[];
   try {
-    const finishScoring = stepLogger.startTimer(
-      "evaluateSeeds.llm_scoring.success",
-    );
+    const finishScoring = stepLogger.startTimer("evaluateSeeds.llm_scoring.success");
     stepLogger.info("evaluateSeeds.llm_scoring.start", {
       evidenceCount: enrichedEvidences.length,
       client: "configured",
@@ -331,29 +299,21 @@ export const evaluateSeeds = async (
       evidences: enrichedEvidences,
       openAiApiKey: options.secrets?.openAiApiKey,
     });
-    llmEvaluations = raw.map((evaluation) =>
-      LlmCandidateEvaluationSchema.parse(evaluation),
-    );
+    llmEvaluations = raw.map((evaluation) => LlmCandidateEvaluationSchema.parse(evaluation));
     finishScoring({
       evaluationCount: llmEvaluations.length,
     });
   } catch (error) {
     const failure = toEvaluateSeedsLlmScoringFailure(error);
     stepLogger.error("evaluateSeeds.llm_scoring.failure", error, {
-      errorCode: failure.ok
-        ? "UNKNOWN_EVALUATE_SEEDS_ERROR"
-        : failure.errorCode,
+      errorCode: failure.ok ? "UNKNOWN_EVALUATE_SEEDS_ERROR" : failure.errorCode,
     });
     return failure;
   }
 
   // 8) deterministic ranking.
   // LLM 응답 누락 후보는 제외하고, semantic penalty와 config weights를 적용해 정렬한다.
-  const ranked = buildRankedCandidates(
-    enrichedEvidences,
-    llmEvaluations,
-    config.weights,
-  );
+  const ranked = buildRankedCandidates(enrichedEvidences, llmEvaluations, config.weights);
   stepLogger.info("evaluateSeeds.ranking.built", {
     rankedCount: ranked.length,
     droppedEvaluationCount: enrichedEvidences.length - ranked.length,
@@ -379,10 +339,10 @@ export const evaluateSeeds = async (
     topScore: top[0]?.scores.total,
   });
 
-  const items: PlaceRecommendationItem[] = top.map(toPlaceRecommendationItem);
-  const evaluations: EvaluateSeedsEvaluation[] = top.map(
-    toEvaluateSeedsEvaluation,
+  const items: PlaceRecommendationItem[] = top.map((candidate) =>
+    toPlaceRecommendationItem(candidate, userInput),
   );
+  const evaluations: EvaluateSeedsEvaluation[] = top.map(toEvaluateSeedsEvaluation);
 
   try {
     const output = EvaluateSeedsOutputSchema.parse({ items, evaluations });
@@ -395,18 +355,13 @@ export const evaluateSeeds = async (
   } catch (error) {
     const failure = toEvaluateSeedsFailure(error);
     stepLogger.error("evaluateSeeds.evaluation.failure", error, {
-      errorCode: failure.ok
-        ? "UNKNOWN_EVALUATE_SEEDS_ERROR"
-        : failure.errorCode,
+      errorCode: failure.ok ? "UNKNOWN_EVALUATE_SEEDS_ERROR" : failure.errorCode,
     });
     return failure;
   }
 };
 
-const getSeedKey = (
-  discoverSeedsOutput: DiscoverSeedsOutput,
-  index: number,
-): string => {
+const getSeedKey = (discoverSeedsOutput: DiscoverSeedsOutput, index: number): string => {
   const seedKey = discoverSeedsOutput.seedKeys[index];
   if (!seedKey) {
     throw new Error(`Missing seedKey for discovered seed index ${index}`);
@@ -428,18 +383,15 @@ const resolveReferenceUrlsForEvidences = async (
   };
 
   try {
-    return await mapWithConcurrency(
-      evidences,
-      LIVE_REFERENCE_URL_CONCURRENCY,
-      (evidence) =>
-        resolveCandidateReferenceUrls(evidence, {
-          getBrowser,
-          naverMapScrapeCache,
-          scrapeRequests,
-          kakaoRestApiKey: options.secrets?.kakaoRestApiKey,
-          timeoutMs: LIVE_SCRAPE_TIMEOUT_MS,
-          settleMs: LIVE_SCRAPE_SETTLE_MS,
-        }),
+    return await mapWithConcurrency(evidences, LIVE_REFERENCE_URL_CONCURRENCY, (evidence) =>
+      resolveCandidateReferenceUrls(evidence, {
+        getBrowser,
+        naverMapScrapeCache,
+        scrapeRequests,
+        kakaoRestApiKey: options.secrets?.kakaoRestApiKey,
+        timeoutMs: LIVE_SCRAPE_TIMEOUT_MS,
+        settleMs: LIVE_SCRAPE_SETTLE_MS,
+      }),
     );
   } finally {
     const browser = await browserPromise;

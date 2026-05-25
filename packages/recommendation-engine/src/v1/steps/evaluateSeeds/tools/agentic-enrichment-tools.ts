@@ -1,32 +1,22 @@
 import { tool } from "ai";
 
-import type { CandidateScoringEvidence } from "../utils/evidence.js";
 import { buildUnknownEnrichment } from "../utils/enrichment-merge.js";
-import type {
-  AgenticEnrichmentSource,
-  AgenticWebEnrichmentOptions,
-  CandidateEnrichment,
-} from "../utils/enrichment-types.js";
-import {
-  OperationVerifier,
-  stripSearchMarkup,
-} from "../utils/operation-hours.js";
-import { getOrFetchStaticUrl } from "./static-fetch.js";
-import { enrichWithKakaoLocal } from "./vendors/kakao-local.js";
-import {
-  enrichWithNaverSearch,
-  searchNaver,
-} from "./vendors/naver-search.js";
-import { scrapeNaverMapCandidate } from "./vendors/naver-map.js";
+import type { AgenticEnrichmentSource, CandidateEnrichment } from "../utils/enrichment-types.js";
+import type { CandidateScoringEvidence } from "../utils/evidence.js";
+import { type OperationVerifier, stripSearchMarkup } from "../utils/operation-hours.js";
 import { isUsableEvidenceUrl } from "../utils/source-url.js";
 import {
   AgenticFetchUrlInputSchema,
+  type AgenticFinalizeCandidateEvidence,
   AgenticFinalizeCandidateEvidenceSchema,
   AgenticSearchEvidenceInputSchema,
   EmptyToolInputSchema,
-  type AgenticFinalizeCandidateEvidence,
 } from "./agentic-enrichment-tools.contracts.js";
 import type { AgenticWebCandidateOptions } from "./agentic-enrichment-tools.types.js";
+import { getOrFetchStaticUrl } from "./static-fetch.js";
+import { enrichWithKakaoLocal } from "./vendors/kakao-local.js";
+import { scrapeNaverMapCandidate } from "./vendors/naver-map.js";
+import { enrichWithNaverSearch, searchNaver } from "./vendors/naver-search.js";
 
 export type { AgenticFinalizeCandidateEvidence } from "./agentic-enrichment-tools.contracts.js";
 export type { AgenticWebCandidateOptions } from "./agentic-enrichment-tools.types.js";
@@ -77,19 +67,14 @@ export const createAgenticEnrichmentTools = ({
     const toolLogger = options.logger?.withContext({
       extra: { candidateId: evidence.candidateId, source: sourceName },
     });
-    const finish = toolLogger?.startTimer(
-      `evaluateSeeds.enrichment.tool.${sourceName}.success`,
-    );
+    const finish = toolLogger?.startTimer(`evaluateSeeds.enrichment.tool.${sourceName}.success`);
     let result: CandidateEnrichment;
     let errorReason: string | undefined;
     try {
       result = await run();
     } catch (error) {
       errorReason = error instanceof Error ? error.message : String(error);
-      toolLogger?.error(
-        `evaluateSeeds.enrichment.tool.${sourceName}.failure`,
-        error,
-      );
+      toolLogger?.error(`evaluateSeeds.enrichment.tool.${sourceName}.failure`, error);
       result = buildUnknownEnrichment(
         evidence.candidateId,
         operationVerifier,
@@ -233,10 +218,9 @@ export const createAgenticEnrichmentTools = ({
         },
       }),
       finalizeCandidateEvidence: tool({
-        description:
-          "Finish after enough evidence. Pick the single most reliable selectedSource.",
+        description: "Finish after enough evidence. Pick the single most reliable selectedSource.",
         inputSchema: AgenticFinalizeCandidateEvidenceSchema,
-        execute: async (input) => {
+        execute: (input) => {
           finalized = AgenticFinalizeCandidateEvidenceSchema.parse(input);
           return { accepted: true };
         },

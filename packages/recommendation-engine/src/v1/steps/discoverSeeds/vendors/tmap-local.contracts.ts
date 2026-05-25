@@ -43,9 +43,7 @@ export const TmapLocalSearchResponseSchema = z
   })
   .passthrough();
 
-export type TmapLocalSearchResponse = z.infer<
-  typeof TmapLocalSearchResponseSchema
->;
+export type TmapLocalSearchResponse = z.infer<typeof TmapLocalSearchResponseSchema>;
 
 export const TmapPoiDetailInfoSchema = z
   .object({

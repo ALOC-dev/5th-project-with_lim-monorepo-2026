@@ -1,9 +1,9 @@
-import type { DiscoverSeedsOutput } from "./contracts.js";
 import type { RecommendationEngineSecrets } from "../../credentials.js";
+import type { DiscoverSeedsOutput } from "./contracts.js";
 
 export type {
-  DiscoveryContext,
   DiscoverSeedsOutput,
+  DiscoveryContext,
   EvaluateSeedsRetryReason,
   SearchQuery,
 } from "./contracts.js";

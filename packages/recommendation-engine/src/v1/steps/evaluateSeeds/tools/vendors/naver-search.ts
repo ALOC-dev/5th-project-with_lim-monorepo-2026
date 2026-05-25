@@ -1,28 +1,19 @@
 import ky from "ky";
 
-import type { CandidateScoringEvidence } from "../../utils/evidence.js";
 import { parseOperationInfoWithLlmFallback } from "../../llm/operation-info.js";
 import { unique } from "../../utils/enrichment-merge.js";
 import type { CandidateEnrichment } from "../../utils/enrichment-types.js";
-import {
-  OperationVerifier,
-  stripSearchMarkup,
-} from "../../utils/operation-hours.js";
+import type { CandidateScoringEvidence } from "../../utils/evidence.js";
+import { type OperationVerifier, stripSearchMarkup } from "../../utils/operation-hours.js";
 import { inferPriceRangePerPersonFromText } from "../../utils/price.js";
-import {
-  DEFAULT_EXTERNAL_API_TIMEOUT_MS,
-  NAVER_SEARCH_API_BASE_URL,
-} from "../shared/constants.js";
-import {
-  buildPlaceLookupQuery,
-  scoreTextMatch,
-} from "../shared/place-match.js";
 import { isUsableEvidenceUrl } from "../../utils/source-url.js";
+import { DEFAULT_EXTERNAL_API_TIMEOUT_MS, NAVER_SEARCH_API_BASE_URL } from "../shared/constants.js";
+import { buildPlaceLookupQuery, scoreTextMatch } from "../shared/place-match.js";
 import type { NaverSearchCredentials } from "../types.js";
 import {
-  NaverSearchResponseSchema,
   type NaverSearchItem,
   type NaverSearchResponse,
+  NaverSearchResponseSchema,
 } from "./naver-search.contracts.js";
 
 const MIN_NAVER_SEARCH_IDENTITY_SCORE = 0.75;
@@ -51,14 +42,10 @@ export const enrichWithNaverSearch = async (
   const sourceUrls = unique(
     itemsForEvidence
       .map((item) => item.link)
-      .filter(
-        (link): link is string => Boolean(link) && isUsableEvidenceUrl(link),
-      ),
+      .filter((link): link is string => Boolean(link) && isUsableEvidenceUrl(link)),
   );
   const text = itemsForEvidence
-    .map((item) =>
-      [item.title, item.description].map(stripSearchMarkup).join("\n"),
-    )
+    .map((item) => [item.title, item.description].map(stripSearchMarkup).join("\n"))
     .join("\n");
   const operationParse = await parseOperationInfoWithLlmFallback({
     text,
@@ -92,10 +79,7 @@ export const enrichWithNaverSearch = async (
       sourceAgreementCount: sourceUrls.length > 0 ? 1 : 0,
       placeMatchScore: bestIdentityScore,
     },
-    priceRangePerPerson: inferPriceRangePerPersonFromText(
-      text,
-      evidence.category,
-    ),
+    priceRangePerPerson: inferPriceRangePerPersonFromText(text, evidence.category),
     rawTextSnippet: text.slice(0, 2_000),
     sourceDetails: [
       {

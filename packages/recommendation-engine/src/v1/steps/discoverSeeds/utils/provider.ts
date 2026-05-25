@@ -1,7 +1,7 @@
 import type { SearchQuery } from "../contracts.js";
-import { searchTmapLocal } from "../vendors/tmap-local.js";
-import type { LocalSeedSearchResponse } from "../vendors/contracts.js";
 import type { DiscoverSeedsOptions } from "../types.js";
+import type { LocalSeedSearchResponse } from "../vendors/contracts.js";
+import { searchTmapLocal } from "../vendors/tmap-local.js";
 
 export const fetchProviderSeeds = async (
   queries: SearchQuery[],
@@ -25,6 +25,5 @@ const searchTmap = (
     { appKey: options.secrets?.tmapAppKey },
   );
 
-export const isPaginationExhausted = (
-  response: LocalSeedSearchResponse,
-): boolean => response.isEnd || response.seeds.length === 0;
+export const isPaginationExhausted = (response: LocalSeedSearchResponse): boolean =>
+  response.isEnd || response.seeds.length === 0;

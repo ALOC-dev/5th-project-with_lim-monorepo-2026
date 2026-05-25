@@ -1,14 +1,11 @@
 import type { UserInput } from "../../interfaces/input.contracts.js";
 import type { Logger } from "../../observability/logger.js";
-import type { LocalSeed } from "./vendors/contracts.js";
-import {
-  DiscoverSeedsOutputSchema,
-  type DiscoveryContext,
-} from "./contracts.js";
+import { DiscoverSeedsOutputSchema, type DiscoveryContext } from "./contracts.js";
 import type { DiscoverSeedsOptions, DiscoverSeedsProcessResult } from "./types.js";
 import { dedupeAndExclude } from "./utils/dedupe.js";
 import { toDiscoverSeedsFailure } from "./utils/failure.js";
 import { fetchProviderSeeds, isPaginationExhausted } from "./utils/provider.js";
+import type { LocalSeed } from "./vendors/contracts.js";
 
 export const discoverSeeds = async (
   _userInput: UserInput,
@@ -19,9 +16,7 @@ export const discoverSeeds = async (
   const stepLogger = logger.withContext({
     attemptNo: context.attemptNo,
   });
-  const finishStepTimer = stepLogger.startTimer(
-    "discoverSeeds.discover.success",
-  );
+  const finishStepTimer = stepLogger.startTimer("discoverSeeds.discover.success");
 
   try {
     const { queries } = context;
@@ -90,9 +85,7 @@ export const discoverSeeds = async (
   } catch (error) {
     const failure = toDiscoverSeedsFailure(error);
     stepLogger.error("discoverSeeds.discover.failure", error, {
-      errorCode: failure.ok
-        ? "UNKNOWN_DISCOVER_SEEDS_ERROR"
-        : failure.errorCode,
+      errorCode: failure.ok ? "UNKNOWN_DISCOVER_SEEDS_ERROR" : failure.errorCode,
     });
     return failure;
   }

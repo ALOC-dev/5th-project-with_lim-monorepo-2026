@@ -1,12 +1,7 @@
 import type { CandidateScoringEvidence } from "../../utils/evidence.js";
-import {
-  normalizeComparableText,
-  tokenizeComparableText,
-} from "./text.js";
+import { normalizeComparableText, tokenizeComparableText } from "./text.js";
 
-export const buildPlaceLookupQuery = (
-  evidence: CandidateScoringEvidence,
-): string =>
+export const buildPlaceLookupQuery = (evidence: CandidateScoringEvidence): string =>
   [evidence.name, evidence.placeInfo.roadAddress || evidence.placeInfo.address]
     .filter(Boolean)
     .join(" ");
@@ -30,8 +25,7 @@ export const scoreTextMatch = (
   const expectedTokens = tokenizeComparableText(expected);
   if (expectedTokens.length === 0) return 0;
   const actualTokens = new Set(tokenizeComparableText(actual));
-  const hitCount = expectedTokens.filter((token) => actualTokens.has(token))
-    .length;
+  const hitCount = expectedTokens.filter((token) => actualTokens.has(token)).length;
   return Math.max(
     hitCount / expectedTokens.length,
     scoreCharacterBigramMatch(normalizedActual, normalizedExpected),

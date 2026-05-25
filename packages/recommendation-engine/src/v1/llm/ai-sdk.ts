@@ -1,5 +1,6 @@
 import { createOpenAI, openai } from "@ai-sdk/openai";
-import { generateText, Output, type LanguageModel } from "ai";
+import { generateText, type LanguageModel, Output } from "ai";
+
 import type {
   GenerateRecommendationObjectOptions,
   GenerateRecommendationTextOptions,
@@ -14,8 +15,7 @@ export type { RecommendationLlmTask } from "./ai-sdk.types.js";
 export const createRecommendationOpenAiModel = (
   modelId = RECOMMENDATION_LLM_MODEL_ID,
   apiKey?: string,
-): LanguageModel =>
-  apiKey ? createOpenAI({ apiKey })(modelId) : openai(modelId);
+): LanguageModel => (apiKey ? createOpenAI({ apiKey })(modelId) : openai(modelId));
 
 export const generateRecommendationObject = async <TObject>({
   modelId,
@@ -56,10 +56,7 @@ export const generateRecommendationText = async ({
   }
 };
 
-const toRecommendationLlmError = (
-  task: RecommendationLlmTask,
-  error: unknown,
-): Error => {
+const toRecommendationLlmError = (task: RecommendationLlmTask, error: unknown): Error => {
   const reason = error instanceof Error ? error.message : String(error);
   return new Error(`${task} LLM call failed: ${reason}`);
 };

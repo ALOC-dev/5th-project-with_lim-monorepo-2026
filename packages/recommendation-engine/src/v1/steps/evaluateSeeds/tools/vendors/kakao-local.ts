@@ -1,20 +1,18 @@
-import { searchKakaoLocalRaw } from "../../../discoverSeeds/vendors/kakao-local.js";
 import type { KakaoLocalItem } from "../../../discoverSeeds/vendors/kakao-local.contracts.js";
-import type { CandidateScoringEvidence } from "../../utils/evidence.js";
+import { searchKakaoLocalRaw } from "../../../discoverSeeds/vendors/kakao-local.js";
 import { parseOperationInfoWithLlmFallback } from "../../llm/operation-info.js";
 import { buildUnknownEnrichment } from "../../utils/enrichment-merge.js";
 import type { CandidateEnrichment } from "../../utils/enrichment-types.js";
-import { OperationVerifier } from "../../utils/operation-hours.js";
+import type { CandidateScoringEvidence } from "../../utils/evidence.js";
+import { type OperationVerifier } from "../../utils/operation-hours.js";
 import { inferPriceRangePerPersonFromText } from "../../utils/price.js";
 import { getOrScrapeGenericUrl } from "../shared/generic-url-scraper.js";
-import {
-  buildPlaceLookupQuery,
-} from "../shared/place-match.js";
+import { buildPlaceLookupQuery } from "../shared/place-match.js";
 import {
   buildReferenceQueryVariants,
-  scoreStructuredReferenceIdentity,
   type ReferenceIdentityScore,
   type ReferenceUrlMatch,
+  scoreStructuredReferenceIdentity,
 } from "../shared/reference-query.js";
 import type { KakaoLocalCandidateOptions } from "../types.js";
 
@@ -34,8 +32,7 @@ export const enrichWithKakaoLocal = async (
   const fallbackMatch = fallbackResponse
     ? chooseBestKakaoLocalMatch(fallbackResponse.documents, evidence)
     : undefined;
-  const effectiveResponse =
-    fallbackResponse && fallbackMatch ? fallbackResponse : response;
+  const effectiveResponse = fallbackResponse && fallbackMatch ? fallbackResponse : response;
   const match = primaryMatch ?? fallbackMatch;
 
   if (!match) {
@@ -52,9 +49,7 @@ export const enrichWithKakaoLocal = async (
     sourceUrls[0] && options.scrapePlaceDetails
       ? await getOrScrapeGenericUrl(sourceUrls[0], options)
       : undefined;
-  const searchableText = scraped?.snapshot.frameTexts
-    .map((frame) => frame.text)
-    .join("\n");
+  const searchableText = scraped?.snapshot.frameTexts.map((frame) => frame.text).join("\n");
   const operationParse = await parseOperationInfoWithLlmFallback({
     text: searchableText,
     openAiApiKey: options.openAiApiKey,
@@ -79,14 +74,11 @@ export const enrichWithKakaoLocal = async (
     operationInfo,
     operationVerification,
     trustSignals: {
-        sourceAgreementCount: 1,
+      sourceAgreementCount: 1,
       placeMatchScore: match.identity.identityScore,
       webMentionCount: effectiveResponse.meta.total_count,
     },
-    priceRangePerPerson: inferPriceRangePerPersonFromText(
-      searchableText,
-      evidence.category,
-    ),
+    priceRangePerPerson: inferPriceRangePerPersonFromText(searchableText, evidence.category),
     rawTextSnippet: searchableText?.slice(0, 2_000),
     scrapeCache: scraped?.cache,
     sourceDetails: [
@@ -161,8 +153,7 @@ const chooseBestKakaoLocalMatch = (
     }))
     .filter(
       ({ identity }) =>
-        identity.identityScore >= minScore &&
-        (!requireAccepted || identity.accepted),
+        identity.identityScore >= minScore && (!requireAccepted || identity.accepted),
     )
     .sort((a, b) => b.identity.identityScore - a.identity.identityScore)[0];
 

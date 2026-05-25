@@ -1,23 +1,13 @@
-import {
-  generateRecommendationObject,
-  RECOMMENDATION_LLM_MODEL_ID,
-} from "../../../llm/ai-sdk.js";
-import {
-  OperationInfoSchema,
-  type DayOfWeek,
-  type OperationInfo,
-} from "../../../interfaces/output.contracts.js";
-import type { CandidateScoringEvidence } from "../utils/evidence.js";
+import { type OperationInfo, OperationInfoSchema } from "../../../interfaces/output.contracts.js";
+import { generateRecommendationObject, RECOMMENDATION_LLM_MODEL_ID } from "../../../llm/ai-sdk.js";
 import type { EnrichmentSourceName } from "../utils/enrichment-types.js";
-import {
-  parseOperationInfo,
-  toOperationSchedulesRecord,
-} from "../utils/operation-hours.js";
+import type { CandidateScoringEvidence } from "../utils/evidence.js";
 import type { OperationVerifier } from "../utils/operation-hours.js";
+import { parseOperationInfo, toOperationSchedulesRecord } from "../utils/operation-hours.js";
 import {
-  LlmOperationInfoResponseSchema,
   type LlmOperationInfo,
   type LlmOperationInfoResponse,
+  LlmOperationInfoResponseSchema,
 } from "./operation-info.contracts.js";
 import type {
   OperationInfoParseResult,
@@ -69,10 +59,7 @@ export const parseOperationInfoWithLlmFallback = async ({
     };
   }
 
-  const deterministic = parseOperationInfo(
-    text,
-    operationVerifier.requestedDayOfWeek,
-  );
+  const deterministic = parseOperationInfo(text, operationVerifier.requestedDayOfWeek);
   const deterministicVerification = deterministic
     ? operationVerifier.verify(deterministic, [])
     : undefined;
@@ -111,9 +98,7 @@ export const parseOperationInfoWithLlmFallback = async ({
     return {
       parser: "none",
       reason:
-        error instanceof Error
-          ? error.message
-          : `${sourceName} LLM operation-hour fallback failed`,
+        error instanceof Error ? error.message : `${sourceName} LLM operation-hour fallback failed`,
     };
   }
 };
@@ -143,16 +128,14 @@ const toParseResult = (
   };
 };
 
-const toOperationInfo = (
-  value: LlmOperationInfo,
-): OperationInfo =>
+const toOperationInfo = (value: LlmOperationInfo): OperationInfo =>
   OperationInfoSchema.parse({
     timezone: value.timezone,
     schedules: toOperationSchedulesRecord(
       value.schedules.map((schedule) => {
         if (schedule.status === "CLOSED") {
           return {
-            daysOfWeek: schedule.daysOfWeek as DayOfWeek[],
+            daysOfWeek: schedule.daysOfWeek,
             status: "CLOSED",
           };
         }
@@ -162,23 +145,18 @@ const toOperationInfo = (
         }
 
         return {
-          daysOfWeek: schedule.daysOfWeek as DayOfWeek[],
+          daysOfWeek: schedule.daysOfWeek,
           status: "OPEN",
           open: schedule.open,
           close: schedule.close,
           breakTimes: schedule.breakTimes ?? [],
-          ...(schedule.lastOrderTime
-            ? { lastOrderTime: schedule.lastOrderTime }
-            : {}),
+          ...(schedule.lastOrderTime ? { lastOrderTime: schedule.lastOrderTime } : {}),
         };
       }),
     ),
   });
 
-const shouldTryLlmFallback = (
-  text: string,
-  evidence: CandidateScoringEvidence,
-): boolean => {
+const shouldTryLlmFallback = (text: string, evidence: CandidateScoringEvidence): boolean => {
   if (!hasOperationSignal(text)) return false;
   return hasCandidateIdentitySignal(text, evidence);
 };
@@ -212,18 +190,14 @@ const buildOperationInfoPrompt = (
     "```",
   ].join("\n");
 
-const normalizeForSignal = (value: string): string =>
-  value.replace(/\s+/gu, "").toLowerCase();
+const normalizeForSignal = (value: string): string => value.replace(/\s+/gu, "").toLowerCase();
 
 const hasOperationSignal = (text: string): boolean =>
   /영업\s*시간|영업시간|운영\s*시간|운영시간|영업\s*중|휴무|연중무휴|라스트\s*오더|브레이크|매일|평일|주중|주말|월요일|화요일|수요일|목요일|금요일|토요일|일요일/u.test(
     text,
   ) && /(?:[01]?\d|2[0-4]):[0-5]\d/u.test(text);
 
-const hasCandidateIdentitySignal = (
-  text: string,
-  evidence: CandidateScoringEvidence,
-): boolean => {
+const hasCandidateIdentitySignal = (text: string, evidence: CandidateScoringEvidence): boolean => {
   const normalized = normalizeForSignal(text);
   const candidateName = normalizeForSignal(evidence.name);
   if (candidateName && normalized.includes(candidateName)) return true;
@@ -233,16 +207,11 @@ const hasCandidateIdentitySignal = (
   const addressTokens = tokenizeForSignal(
     [evidence.placeInfo.roadAddress, evidence.placeInfo.address].join(" "),
   );
-  const nameHitCount = nameTokens.filter((token) => textTokens.has(token))
-    .length;
-  const addressHitCount = addressTokens.filter((token) => textTokens.has(token))
-    .length;
+  const nameHitCount = nameTokens.filter((token) => textTokens.has(token)).length;
+  const addressHitCount = addressTokens.filter((token) => textTokens.has(token)).length;
   if (nameTokens.length === 0) return false;
 
-  return (
-    nameHitCount / nameTokens.length >= 0.5 ||
-    (nameHitCount > 0 && addressHitCount > 0)
-  );
+  return nameHitCount / nameTokens.length >= 0.5 || (nameHitCount > 0 && addressHitCount > 0);
 };
 
 const tokenizeForSignal = (value: string): string[] =>

@@ -1,21 +1,19 @@
 import ky from "ky";
+
 import {
   type LocalSeed,
   type LocalSeedSearchResponse,
   LocalSeedSearchResponseSchema,
 } from "./contracts.js";
 import { normalizeLocalSeedSearchParams } from "./search-params.js";
-import type {
-  LocalSeedSearchParams,
-  NormalizedLocalSeedSearchParams,
-} from "./types.js";
 import {
-  TmapLocalSearchResponseSchema,
-  TmapPoiDetailResponseSchema,
   type TmapLocalSearchResponse,
+  TmapLocalSearchResponseSchema,
   type TmapPoi,
   type TmapPoiDetailResponse,
+  TmapPoiDetailResponseSchema,
 } from "./tmap-local.contracts.js";
+import type { LocalSeedSearchParams, NormalizedLocalSeedSearchParams } from "./types.js";
 
 export type { TmapLocalSearchResponse, TmapPoi, TmapPoiDetailResponse };
 export type TmapLocalCredentials = {
@@ -107,12 +105,10 @@ export const searchTmapLocal = async (
   });
 };
 
-export const getTmapPoiDetail = async ({
-  poiInfo,
-  findOption = "id",
-  navSeq,
-}: TmapPoiDetailParams,
-credentials?: TmapLocalCredentials): Promise<TmapPoiDetailResponse> => {
+export const getTmapPoiDetail = async (
+  { poiInfo, findOption = "id", navSeq }: TmapPoiDetailParams,
+  credentials?: TmapLocalCredentials,
+): Promise<TmapPoiDetailResponse> => {
   const { appKey } = requireTmapCredentials(credentials);
 
   const searchParams: Record<string, string | number> = {

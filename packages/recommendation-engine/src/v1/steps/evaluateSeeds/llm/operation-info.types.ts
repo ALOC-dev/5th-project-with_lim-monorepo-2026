@@ -1,8 +1,6 @@
-import type {
-  OperationInfo,
-} from "../../../interfaces/output.contracts.js";
-import type { CandidateScoringEvidence } from "../utils/evidence.js";
+import type { OperationInfo } from "../../../interfaces/output.contracts.js";
 import type { EnrichmentSourceName } from "../utils/enrichment-types.js";
+import type { CandidateScoringEvidence } from "../utils/evidence.js";
 import type { OperationVerifier } from "../utils/operation-hours.js";
 
 export type OperationInfoParseResult = {

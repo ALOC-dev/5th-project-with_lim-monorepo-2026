@@ -1,12 +1,14 @@
 import { hasToolCall, stepCountIs } from "ai";
 
 import type { UserInput } from "../../../interfaces/input.contracts.js";
-import {
-  generateRecommendationText,
-  RECOMMENDATION_LLM_MODEL_ID,
-} from "../../../llm/ai-sdk.js";
+import { generateRecommendationText, RECOMMENDATION_LLM_MODEL_ID } from "../../../llm/ai-sdk.js";
 import type { Logger } from "../../../observability/logger.js";
-import type { CandidateScoringEvidence } from "../utils/evidence.js";
+import {
+  type AgenticFinalizeCandidateEvidence,
+  createAgenticEnrichmentTools,
+} from "../tools/agentic-enrichment-tools.js";
+import { loadPlaywright } from "../tools/shared/browser.js";
+import type { PlaywrightBrowser, UrlScrapeResult } from "../tools/types.js";
 import { buildUnknownEnrichment, unique } from "../utils/enrichment-merge.js";
 import type {
   AgenticEnrichmentSource,
@@ -15,16 +17,11 @@ import type {
   CandidateEnrichment,
   CandidateEnrichmentClient,
 } from "../utils/enrichment-types.js";
+import type { CandidateScoringEvidence } from "../utils/evidence.js";
 import { OperationVerifier } from "../utils/operation-hours.js";
-import { parseOperationInfoWithLlmFallback } from "./operation-info.js";
 import { inferPriceRangePerPersonFromText } from "../utils/price.js";
 import type { UrlScrapeCache } from "../utils/scrape-cache.js";
-import { loadPlaywright } from "../tools/shared/browser.js";
-import type { PlaywrightBrowser, UrlScrapeResult } from "../tools/types.js";
-import {
-  createAgenticEnrichmentTools,
-  type AgenticFinalizeCandidateEvidence,
-} from "../tools/agentic-enrichment-tools.js";
+import { parseOperationInfoWithLlmFallback } from "./operation-info.js";
 
 const DEFAULT_SCRAPER_TIMEOUT_MS = 15_000;
 const DEFAULT_SETTLE_MS = 2_000;
@@ -157,32 +154,27 @@ export const createAgenticWebEnrichmentClient = ({
           const abortController = new AbortController();
           const timeout = setTimeout(() => abortController.abort(), timeoutMs);
           try {
-            return await enrichWithAgenticWeb(
-              userInput,
-              evidence,
-              operationVerifier,
-              {
-                modelId,
-                openAiApiKey,
-                kakaoRestApiKey,
-                clientId,
-                clientSecret,
-                maxFetchesPerCandidate,
-                maxToolSteps,
-                timeoutMs,
-                scrapeTimeoutMs,
-                scrapeSettleMs,
-                kakaoScrapePlaceDetails,
-                fetchCache,
-                kakaoScrapeCache,
-                naverMapScrapeCache,
-                scrapeRequests: new Map(),
-                getBrowser,
-                onToolEvent,
-                logger,
-                abortSignal: abortController.signal,
-              },
-            );
+            return await enrichWithAgenticWeb(userInput, evidence, operationVerifier, {
+              modelId,
+              openAiApiKey,
+              kakaoRestApiKey,
+              clientId,
+              clientSecret,
+              maxFetchesPerCandidate,
+              maxToolSteps,
+              timeoutMs,
+              scrapeTimeoutMs,
+              scrapeSettleMs,
+              kakaoScrapePlaceDetails,
+              fetchCache,
+              kakaoScrapeCache,
+              naverMapScrapeCache,
+              scrapeRequests: new Map(),
+              getBrowser,
+              onToolEvent,
+              logger,
+              abortSignal: abortController.signal,
+            });
           } catch (error) {
             return buildUnknownEnrichment(
               evidence.candidateId,
@@ -214,18 +206,15 @@ const mapWithConcurrency = async <TItem, TResult>(
       ? 1
       : Math.max(1, Math.min(items.length, Math.floor(concurrency)));
 
-  const workers = Array.from(
-    { length: workerCount },
-    async () => {
-      while (nextIndex < items.length) {
-        const index = nextIndex;
-        nextIndex += 1;
-        const item = items[index];
-        if (item === undefined) continue;
-        results[index] = await mapper(item, index);
-      }
-    },
-  );
+  const workers = Array.from({ length: workerCount }, async () => {
+    while (nextIndex < items.length) {
+      const index = nextIndex;
+      nextIndex += 1;
+      const item = items[index];
+      if (item === undefined) continue;
+      results[index] = await mapper(item, index);
+    }
+  });
 
   await Promise.all(workers);
   return results;
@@ -292,10 +281,7 @@ const enrichWithAgenticWeb = async (
       modelId: options.modelId,
       openAiApiKey: options.openAiApiKey,
       tools,
-      stopWhen: [
-        hasToolCall("finalizeCandidateEvidence"),
-        stepCountIs(options.maxToolSteps),
-      ],
+      stopWhen: [hasToolCall("finalizeCandidateEvidence"), stepCountIs(options.maxToolSteps)],
       maxOutputTokens: 700,
       timeout: { totalMs: options.timeoutMs, stepMs: options.timeoutMs },
       abortSignal: options.abortSignal,
@@ -303,11 +289,7 @@ const enrichWithAgenticWeb = async (
         maxFetchesPerCandidate: options.maxFetchesPerCandidate,
         maxToolSteps: options.maxToolSteps,
       }),
-      prompt: buildAgenticEnrichmentPrompt(
-        userInput,
-        evidence,
-        operationVerifier,
-      ),
+      prompt: buildAgenticEnrichmentPrompt(userInput, evidence, operationVerifier),
     }),
     options.timeoutMs,
     `Agentic web enrichment timed out after ${options.timeoutMs}ms`,
@@ -375,10 +357,7 @@ const buildFinalEnrichmentFromAgentic = async (
       confidence: operationVerification.confidence,
     });
 
-    const supportingSourceDetails = getSupportingSourceDetails(
-      memo,
-      finalized.selectedSource,
-    );
+    const supportingSourceDetails = getSupportingSourceDetails(memo, finalized.selectedSource);
 
     return {
       candidateId: evidence.candidateId,
@@ -392,8 +371,7 @@ const buildFinalEnrichmentFromAgentic = async (
       ),
       trustSignals: {
         webMentionCount: finalized.webMentionCount,
-        sourceAgreementCount:
-          finalized.sourceAgreementCount ?? (sourceUrls.length > 0 ? 1 : 0),
+        sourceAgreementCount: finalized.sourceAgreementCount ?? (sourceUrls.length > 0 ? 1 : 0),
         placeMatchScore: finalized.identityMatchScore,
       },
       rawTextSnippet: finalized.rawTextSnippet.slice(0, 2_000),
@@ -527,8 +505,7 @@ const getBestMemoEntry = (
 };
 
 const isOpenEnrichment = (enrichment: CandidateEnrichment): boolean =>
-  enrichment.operationVerification.status === "OPEN" &&
-  enrichment.operationInfo !== undefined;
+  enrichment.operationVerification.status === "OPEN" && enrichment.operationInfo !== undefined;
 
 const isClosedEnrichment = (enrichment: CandidateEnrichment): boolean =>
   enrichment.operationVerification.status === "CLOSED";

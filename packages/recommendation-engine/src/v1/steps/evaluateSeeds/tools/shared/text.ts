@@ -1,7 +1,6 @@
 import { stripSearchMarkup } from "../../utils/operation-hours.js";
 
-export const normalizeText = (value: string): string =>
-  value.toLowerCase().replace(/\s+/gu, "");
+export const normalizeText = (value: string): string => value.toLowerCase().replace(/\s+/gu, "");
 
 export const normalizeComparableText = (value: string): string =>
   stripSearchMarkup(value)
@@ -15,8 +14,7 @@ export const tokenizeComparableText = (value: string): string[] =>
     .map((token) => token.trim())
     .filter((token) => token.length >= 2);
 
-export const clamp01 = (value: number): number =>
-  Math.min(Math.max(value, 0), 1);
+export const clamp01 = (value: number): number => Math.min(Math.max(value, 0), 1);
 
 export const stripHtml = (value: string): string =>
   value.replace(/<script[\s\S]*?<\/script>/giu, " ").replace(/<[^>]+>/gu, " ");

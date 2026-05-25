@@ -1,8 +1,5 @@
 import type { UserInput } from "../../../interfaces/input.contracts.js";
-import {
-  generateRecommendationObject,
-  RECOMMENDATION_LLM_MODEL_ID,
-} from "../../../llm/ai-sdk.js";
+import { generateRecommendationObject, RECOMMENDATION_LLM_MODEL_ID } from "../../../llm/ai-sdk.js";
 import type { SearchQuery } from "../contracts.js";
 import {
   LlmDiscoveryContextResponseSchema,
@@ -73,5 +70,36 @@ export const createDiscoveryContextWithLlm = async (
     }),
   });
 
-  return queries;
+  return normalizeQueryCounts(queries, options.targetSeedCount);
+};
+
+const normalizeQueryCounts = (queries: SearchQuery[], targetSeedCount: number): SearchQuery[] => {
+  const total = queries.reduce((sum, query) => sum + query.count, 0);
+  if (total === targetSeedCount) return queries;
+
+  const normalized = queries.map((query) => ({ ...query }));
+  if (total < targetSeedCount) {
+    const firstQuery = normalized[0];
+    if (!firstQuery) return normalized;
+    normalized[0] = {
+      ...firstQuery,
+      count: firstQuery.count + targetSeedCount - total,
+    };
+    return normalized;
+  }
+
+  let remainingReduction = total - targetSeedCount;
+  for (let index = normalized.length - 1; index >= 0 && remainingReduction > 0; index -= 1) {
+    const query = normalized[index];
+    if (!query) continue;
+
+    const reduction = Math.min(query.count - 1, remainingReduction);
+    normalized[index] = {
+      ...query,
+      count: query.count - reduction,
+    };
+    remainingReduction -= reduction;
+  }
+
+  return normalized;
 };

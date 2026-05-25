@@ -27,10 +27,7 @@ export type AgenticFinalizeCandidateEvidence = z.infer<
 export const EmptyToolInputSchema = z.object({});
 
 export const AgenticSearchEvidenceInputSchema = z.object({
-  query: z
-    .string()
-    .min(2)
-    .describe("Korean search query including place name and 영업시간."),
+  query: z.string().min(2).describe("Korean search query including place name and 영업시간."),
 });
 
 export const AgenticFetchUrlInputSchema = z.object({

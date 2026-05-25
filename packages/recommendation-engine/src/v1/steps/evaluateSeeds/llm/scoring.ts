@@ -1,23 +1,15 @@
-import {
-  generateRecommendationObject,
-  RECOMMENDATION_LLM_MODEL_ID,
-} from "../../../llm/ai-sdk.js";
+import { generateRecommendationObject, RECOMMENDATION_LLM_MODEL_ID } from "../../../llm/ai-sdk.js";
 import type { CandidateScoringEvidence } from "../utils/evidence.js";
 import {
-  LlmCandidateEvaluationsResponseSchema,
   type LlmCandidateEvaluation,
   type LlmCandidateEvaluationsResponse,
+  LlmCandidateEvaluationsResponseSchema,
 } from "./scoring.contracts.js";
 import type { LlmScoringClient } from "./scoring.types.js";
 
-export {
-  LlmCandidateEvaluationSchema,
-} from "./scoring.contracts.js";
 export type { LlmCandidateEvaluation } from "./scoring.contracts.js";
-export type {
-  LlmScoringClient,
-  LlmScoringRequest,
-} from "./scoring.types.js";
+export { LlmCandidateEvaluationSchema } from "./scoring.contracts.js";
+export type { LlmScoringClient, LlmScoringRequest } from "./scoring.types.js";
 
 const SCORING_MODEL_ID = RECOMMENDATION_LLM_MODEL_ID;
 const LIVE_SCORING_MAX_CONCURRENCY = 4;
@@ -42,9 +34,7 @@ const SCORING_SYSTEM_PROMPT = `너는 지역 추천 엔진의 후보 평가기�
 - semanticFit.status가 PENALIZE면 해당 negativeSignals를 반드시 반영하고 inputMatch를 낮춘다.
 - 출력은 반드시 JSON schema만 따른다. 마크다운이나 설명 문장은 붙이지 않는다.`;
 
-const buildScoringUserPrompt = (
-  evidences: CandidateScoringEvidence[],
-): string =>
+const buildScoringUserPrompt = (evidences: CandidateScoringEvidence[]): string =>
   [
     "다음 후보들을 평가해줘.",
     "```json",
@@ -68,10 +58,7 @@ export const createOpenAiLlmScoringClient =
 
 const openAiLlmScoringClient = createOpenAiLlmScoringClient();
 
-export const scoreCandidatesWithLlm: LlmScoringClient = async ({
-  evidences,
-  openAiApiKey,
-}) => {
+export const scoreCandidatesWithLlm: LlmScoringClient = async ({ evidences, openAiApiKey }) => {
   if (evidences.length <= 1) {
     return openAiLlmScoringClient({ evidences, openAiApiKey });
   }
@@ -79,8 +66,7 @@ export const scoreCandidatesWithLlm: LlmScoringClient = async ({
   const evaluations = await mapWithConcurrency(
     evidences,
     LIVE_SCORING_MAX_CONCURRENCY,
-    async (evidence) =>
-      openAiLlmScoringClient({ evidences: [evidence], openAiApiKey }),
+    async (evidence) => openAiLlmScoringClient({ evidences: [evidence], openAiApiKey }),
   );
   return evaluations.flat();
 };
@@ -89,9 +75,7 @@ const validateEvaluationCoverage = (
   response: LlmCandidateEvaluationsResponse,
   evidences: CandidateScoringEvidence[],
 ): LlmCandidateEvaluation[] => {
-  const expectedCandidateIds = new Set(
-    evidences.map((evidence) => evidence.candidateId),
-  );
+  const expectedCandidateIds = new Set(evidences.map((evidence) => evidence.candidateId));
   const seenCandidateIds = new Set<string>();
 
   for (const evaluation of response.evaluations) {
@@ -108,9 +92,7 @@ const validateEvaluationCoverage = (
     (candidateId) => !seenCandidateIds.has(candidateId),
   );
   if (missingCandidateIds.length > 0) {
-    throw new Error(
-      `missing candidate evaluations: ${missingCandidateIds.join(", ")}`,
-    );
+    throw new Error(`missing candidate evaluations: ${missingCandidateIds.join(", ")}`);
   }
 
   return response.evaluations;
@@ -140,10 +122,7 @@ const mapWithConcurrency = async <TItem, TResult>(
   return results;
 };
 
-const normalizeConcurrency = (
-  requestedConcurrency: number,
-  itemCount: number,
-): number => {
+const normalizeConcurrency = (requestedConcurrency: number, itemCount: number): number => {
   if (itemCount <= 0) return 1;
   if (!Number.isFinite(requestedConcurrency)) return 1;
   return Math.max(1, Math.min(itemCount, Math.floor(requestedConcurrency)));

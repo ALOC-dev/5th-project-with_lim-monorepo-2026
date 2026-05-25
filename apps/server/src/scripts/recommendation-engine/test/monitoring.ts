@@ -1,8 +1,4 @@
-import {
-  createLogger,
-  type LogEvent,
-  type Logger,
-} from "@monorepo/recommendation-engine";
+import { createLogger, type LogEvent, type Logger } from "@monorepo/recommendation-engine";
 
 type CandidateTrace = {
   attemptNo?: number;
@@ -68,6 +64,14 @@ class TestMonitor {
 export const testMonitor = new TestMonitor();
 export const testLogger = testMonitor.logger;
 
+const pushUnknownArrayItems = (target: unknown[], value: unknown) => {
+  if (!Array.isArray(value)) {
+    return;
+  }
+
+  target.push(...(value as unknown[]));
+};
+
 const summarizeTrace = (events: TraceEvent[]): TestTraceSummary => {
   const phases: Record<string, number> = {};
   const generatedCandidates: CandidateTrace[] = [];
@@ -85,17 +89,12 @@ const summarizeTrace = (events: TraceEvent[]): TestTraceSummary => {
     }
 
     if (event.phase === "evaluateSeeds.enrichment.success") {
-      const verifications = event.data?.verifications;
-      if (Array.isArray(verifications)) {
-        enrichmentVerifications.push(...verifications);
-      }
-      const rejected = event.data?.rejected;
-      if (Array.isArray(rejected)) rejectedCandidates.push(...rejected);
+      pushUnknownArrayItems(enrichmentVerifications, event.data?.verifications);
+      pushUnknownArrayItems(rejectedCandidates, event.data?.rejected);
     }
 
     if (event.phase === "evaluateSeeds.semantic_gate.filtered") {
-      const rejected = event.data?.rejected;
-      if (Array.isArray(rejected)) rejectedCandidates.push(...rejected);
+      pushUnknownArrayItems(rejectedCandidates, event.data?.rejected);
     }
 
     if (event.phase === "evaluateSeeds.ranking.selected") {
@@ -146,9 +145,7 @@ const extractCandidates = (event: TraceEvent): CandidateTrace[] => {
   return seeds.filter(isRecord).map((seed, index) => ({
     attemptNo: event.attemptNo,
     candidateId:
-      Array.isArray(seedKeys) && isString(seedKeys[index])
-        ? seedKeys[index]
-        : `seed-${index}`,
+      Array.isArray(seedKeys) && isString(seedKeys[index]) ? seedKeys[index] : `seed-${index}`,
     name: isString(seed.name) ? seed.name : undefined,
     category: isString(seed.category) ? seed.category : undefined,
     roadAddress: isString(seed.roadAddress) ? seed.roadAddress : undefined,
@@ -169,8 +166,7 @@ const toFailureTrace = (event: TraceEvent): FailureTrace => ({
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null;
 
-const isString = (value: unknown): value is string =>
-  typeof value === "string";
+const isString = (value: unknown): value is string => typeof value === "string";
 
 const toLiveTraceLine = (event: LogEvent): Record<string, unknown> => ({
   ts: event.ts,

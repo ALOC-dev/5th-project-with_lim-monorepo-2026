@@ -1,13 +1,8 @@
+import type { EnrichmentSourceDetail } from "../utils/enrichment-types.js";
 import type { CandidateScoringEvidence } from "../utils/evidence.js";
-import type {
-  EnrichmentSourceDetail,
-} from "../utils/enrichment-types.js";
 import type { UrlScrapeCache } from "../utils/scrape-cache.js";
-import type {
-  PlaywrightBrowser,
-  UrlScrapeResult,
-} from "./types.js";
 import type { ReferenceUrlMatch } from "./shared/reference-query.js";
+import type { PlaywrightBrowser, UrlScrapeResult } from "./types.js";
 import { resolveKakaoMapReferenceUrl } from "./vendors/kakao-local.js";
 import { resolveNaverMapReferenceUrl } from "./vendors/naver-map.js";
 
@@ -115,17 +110,13 @@ export const resolveCandidateReferenceUrls = async (
   };
 };
 
-const findExistingKakaoMapUrl = (
-  evidence: CandidateScoringEvidence,
-): string | undefined =>
+const findExistingKakaoMapUrl = (evidence: CandidateScoringEvidence): string | undefined =>
   findSourceDetailUrl(evidence, "kakao-local", isKakaoPlaceUrl) ??
   (evidence.raw.seed.provider === "kakao" && evidence.raw.seed.placeUrl
     ? evidence.raw.seed.placeUrl
     : undefined);
 
-const findExistingNaverMapUrl = (
-  evidence: CandidateScoringEvidence,
-): string | undefined =>
+const findExistingNaverMapUrl = (evidence: CandidateScoringEvidence): string | undefined =>
   findSourceDetailUrl(evidence, "naver-map", isNaverMapVerifiedSearchUrl);
 
 const findSourceDetailUrl = (
@@ -162,9 +153,7 @@ const toExistingSourceLog = (url: string): ReferenceUrlSourceLog => ({
   url,
 });
 
-const toResolvedSourceLog = (
-  match: ReferenceUrlMatch | undefined,
-): ReferenceUrlSourceLog => {
+const toResolvedSourceLog = (match: ReferenceUrlMatch | undefined): ReferenceUrlSourceLog => {
   if (!match) {
     throw new Error("Missing resolved reference URL match");
   }

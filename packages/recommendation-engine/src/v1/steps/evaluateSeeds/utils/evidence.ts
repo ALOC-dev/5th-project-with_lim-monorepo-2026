@@ -62,8 +62,7 @@ export const buildCandidateScoringEvidence = (
 ): CandidateScoringEvidence => {
   const tags = splitCategoryTags(seed.category);
   const [mainCategory = "장소", subCategory = mainCategory] = tags;
-  const distanceMeters =
-    seed.distanceMeters ?? toDistanceFromUserLocation(seed, userInput);
+  const distanceMeters = seed.distanceMeters ?? toDistanceFromUserLocation(seed, userInput);
 
   return {
     candidateId: seedKey,
@@ -105,10 +104,7 @@ const splitCategoryTags = (category: string): string[] =>
     .map((value) => value.trim())
     .filter(Boolean);
 
-const toDistanceFromUserLocation = (
-  seed: LocalSeed,
-  userInput: UserInput,
-): number | undefined => {
+const toDistanceFromUserLocation = (seed: LocalSeed, userInput: UserInput): number | undefined => {
   const [origin] = userInput.location;
   if (!origin) return undefined;
 
@@ -116,9 +112,7 @@ const toDistanceFromUserLocation = (
   const dLng = toRadians(seed.longitude - origin.lng);
   const a =
     Math.sin(dLat / 2) ** 2 +
-    Math.cos(toRadians(origin.lat)) *
-      Math.cos(toRadians(seed.latitude)) *
-      Math.sin(dLng / 2) ** 2;
+    Math.cos(toRadians(origin.lat)) * Math.cos(toRadians(seed.latitude)) * Math.sin(dLng / 2) ** 2;
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
   return EARTH_RADIUS_METERS * c;

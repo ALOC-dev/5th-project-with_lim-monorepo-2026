@@ -1,6 +1,4 @@
-import type {
-  AgenticWebEnrichmentOptions,
-} from "../utils/enrichment-types.js";
+import type { AgenticWebEnrichmentOptions } from "../utils/enrichment-types.js";
 import type { UrlScrapeCache } from "../utils/scrape-cache.js";
 import type { PlaywrightBrowser, UrlScrapeResult } from "./types.js";
 

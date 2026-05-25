@@ -1,8 +1,5 @@
 import type { UrlScrapeCacheMetadata } from "../utils/enrichment-types.js";
-import type {
-  ScrapedUrlSnapshot,
-  UrlScrapeCache,
-} from "../utils/scrape-cache.js";
+import type { ScrapedUrlSnapshot, UrlScrapeCache } from "../utils/scrape-cache.js";
 
 export type PlaywrightPage = {
   goto(url: string, options?: Record<string, unknown>): Promise<unknown>;

@@ -1,12 +1,9 @@
-import type { CandidateScoringEvidence } from "../../utils/evidence.js";
 import { parseOperationInfoWithLlmFallback } from "../../llm/operation-info.js";
 import type { CandidateEnrichment } from "../../utils/enrichment-types.js";
-import { OperationVerifier } from "../../utils/operation-hours.js";
+import type { CandidateScoringEvidence } from "../../utils/evidence.js";
+import { type OperationVerifier } from "../../utils/operation-hours.js";
 import { inferPriceRangePerPersonFromText } from "../../utils/price.js";
-import type {
-  ScrapedUrlFrameText,
-  ScrapedUrlSnapshot,
-} from "../../utils/scrape-cache.js";
+import type { ScrapedUrlFrameText, ScrapedUrlSnapshot } from "../../utils/scrape-cache.js";
 import {
   collectFrameTextsForUrl,
   expandBusinessHoursIfAvailable,
@@ -19,15 +16,11 @@ import {
 } from "../shared/constants.js";
 import {
   buildReferenceQueryVariants,
-  scoreTextReferenceIdentity,
   type ReferenceUrlMatch,
+  scoreTextReferenceIdentity,
 } from "../shared/reference-query.js";
 import { normalizeText } from "../shared/text.js";
-import type {
-  PlaywrightPage,
-  ScrapeNaverMapCandidateOptions,
-  UrlScrapeResult,
-} from "../types.js";
+import type { PlaywrightPage, ScrapeNaverMapCandidateOptions, UrlScrapeResult } from "../types.js";
 
 export const scrapeNaverMapCandidate = async (
   evidence: CandidateScoringEvidence,
@@ -37,11 +30,7 @@ export const scrapeNaverMapCandidate = async (
   const query = buildNaverMapSearchQuery(evidence);
   const searchUrl = `${NAVER_MAP_SEARCH_BASE_URL}/${encodeURIComponent(query)}`;
 
-  const { snapshot, cache } = await getOrScrapeNaverMapUrl(
-    searchUrl,
-    evidence,
-    options,
-  );
+  const { snapshot, cache } = await getOrScrapeNaverMapUrl(searchUrl, evidence, options);
   const searchableText = chooseCandidateText(snapshot.frameTexts, evidence);
   const operationParse = await parseOperationInfoWithLlmFallback({
     text: searchableText,
@@ -66,10 +55,7 @@ export const scrapeNaverMapCandidate = async (
     sourceUrls,
     operationInfo,
     operationVerification,
-    priceRangePerPerson: inferPriceRangePerPersonFromText(
-      searchableText,
-      evidence.category,
-    ),
+    priceRangePerPerson: inferPriceRangePerPersonFromText(searchableText, evidence.category),
     rawTextSnippet: searchableText.slice(0, 2_000),
     scrapeCache: cache,
     sourceDetails: [
@@ -79,8 +65,7 @@ export const scrapeNaverMapCandidate = async (
         reason: operationVerification.reason,
         sourceUrls,
         confidence: operationVerification.confidence,
-        identityMatchScore: scoreNaverMapTextIdentity(searchableText, evidence)
-          .identityScore,
+        identityMatchScore: scoreNaverMapTextIdentity(searchableText, evidence).identityScore,
         operationParser: operationParse.parser,
         operationParseReason: operationParse.reason,
         sourceTextKind: "scraped_page",
@@ -97,11 +82,7 @@ export const resolveNaverMapReferenceUrl = async (
 ): Promise<ReferenceUrlMatch | undefined> => {
   for (const query of buildReferenceQueryVariants(evidence)) {
     const searchUrl = `${NAVER_MAP_SEARCH_BASE_URL}/${encodeURIComponent(query.query)}`;
-    const { snapshot } = await getOrScrapeNaverMapUrl(
-      searchUrl,
-      evidence,
-      options,
-    );
+    const { snapshot } = await getOrScrapeNaverMapUrl(searchUrl, evidence, options);
     const searchableText = chooseCandidateText(snapshot.frameTexts, evidence);
     const identity = scoreNaverMapTextIdentity(searchableText, evidence);
     if (hasUsefulDetailText(searchableText, evidence) && identity.accepted) {
@@ -220,16 +201,13 @@ const openCandidateDetailIfAvailable = async (
     try {
       const clicked = await withTimeout(
         frame.evaluate((candidateName) => {
-          const normalize = (value: string): string =>
-            value.toLowerCase().replace(/\s+/gu, "");
+          const normalize = (value: string): string => value.toLowerCase().replace(/\s+/gu, "");
           const expected = normalize(candidateName);
           const elements = Array.from(
             document.querySelectorAll<HTMLElement>("a,button,[role='button']"),
           );
           const target = elements.find((element) =>
-            normalize(element.innerText || element.textContent || "").includes(
-              expected,
-            ),
+            normalize(element.innerText || element.textContent || "").includes(expected),
           );
           if (!target) return false;
           target.click();
@@ -262,16 +240,11 @@ const waitForNaverDetailText = async (
   }
 };
 
-const hasUsefulDetailText = (
-  text: string,
-  evidence: CandidateScoringEvidence,
-): boolean => {
+const hasUsefulDetailText = (text: string, evidence: CandidateScoringEvidence): boolean => {
   const identity = scoreNaverMapTextIdentity(text, evidence);
   if (!identity.accepted) return false;
   return (
-    /영업\s*중|곧\s*영업\s*종료|영업\s*종료|오늘\s*휴무|현재\s*휴무/u.test(
-      text,
-    ) ||
+    /영업\s*중|곧\s*영업\s*종료|영업\s*종료|오늘\s*휴무|현재\s*휴무/u.test(text) ||
     text.includes("영업시간") ||
     text.includes("방문자 리뷰") ||
     text.includes("블로그 리뷰") ||
@@ -280,14 +253,10 @@ const hasUsefulDetailText = (
   );
 };
 
-const scoreNaverMapTextIdentity = (
-  text: string,
-  evidence: CandidateScoringEvidence,
-) => scoreTextReferenceIdentity(text, evidence);
+const scoreNaverMapTextIdentity = (text: string, evidence: CandidateScoringEvidence) =>
+  scoreTextReferenceIdentity(text, evidence);
 
-const collectFrameTexts = async (
-  page: PlaywrightPage,
-): Promise<ScrapedUrlFrameText[]> => {
+const collectFrameTexts = async (page: PlaywrightPage): Promise<ScrapedUrlFrameText[]> => {
   return collectFrameTextsForUrl(page, NAVER_MAP_SEARCH_BASE_URL);
 };
 
@@ -296,9 +265,7 @@ const chooseCandidateText = (
   evidence: CandidateScoringEvidence,
 ): string => {
   const name = normalizeText(evidence.name);
-  const address = normalizeText(
-    evidence.placeInfo.roadAddress || evidence.placeInfo.address,
-  );
+  const address = normalizeText(evidence.placeInfo.roadAddress || evidence.placeInfo.address);
 
   const scored = frameTexts
     .map((item) => {

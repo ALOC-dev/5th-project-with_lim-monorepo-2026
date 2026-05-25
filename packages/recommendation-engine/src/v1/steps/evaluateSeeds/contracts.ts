@@ -38,9 +38,7 @@ export const EvaluateSeedsEvaluationSchema = z
     rationaleFacts: z.array(z.string().min(1)),
   })
   .strict();
-export type EvaluateSeedsEvaluation = z.infer<
-  typeof EvaluateSeedsEvaluationSchema
->;
+export type EvaluateSeedsEvaluation = z.infer<typeof EvaluateSeedsEvaluationSchema>;
 
 export const EvaluateSeedsOutputSchema = z
   .object({

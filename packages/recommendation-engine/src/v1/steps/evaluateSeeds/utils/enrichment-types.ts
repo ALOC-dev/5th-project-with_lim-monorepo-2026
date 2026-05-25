@@ -75,11 +75,7 @@ export type CandidateEnrichmentClient = (
   request: CandidateEnrichmentRequest,
 ) => Promise<CandidateEnrichment[]>;
 
-export type AgenticEnrichmentSource =
-  | "agentic"
-  | "kakao-local"
-  | "naver-search"
-  | "naver-map";
+export type AgenticEnrichmentSource = "agentic" | "kakao-local" | "naver-search" | "naver-map";
 
 export type AgenticWebEnrichmentToolEvent =
   | {

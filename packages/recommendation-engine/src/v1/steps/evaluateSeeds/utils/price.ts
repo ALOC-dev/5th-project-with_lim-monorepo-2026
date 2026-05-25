@@ -12,18 +12,10 @@ export const inferPriceRangePerPersonFromText = (
   if (!text) return undefined;
   // 메뉴판 텍스트에는 주먹밥/음료 같은 부가 메뉴가 섞인다.
   // category별 최소 의미 가격을 두어 대표 식사 가격 범위를 더 보수적으로 추정한다.
-  const minMeaningfulPrice = category
-    ? getMinimumMeaningfulPrice(category)
-    : MIN_MEANINGFUL_PRICE;
+  const minMeaningfulPrice = category ? getMinimumMeaningfulPrice(category) : MIN_MEANINGFUL_PRICE;
 
-  const prices = [
-    ...extractWonPrices(text),
-    ...extractManwonPrices(text),
-  ]
-    .filter(
-      (price) =>
-        price >= minMeaningfulPrice && price <= MAX_MEANINGFUL_PRICE,
-    )
+  const prices = [...extractWonPrices(text), ...extractManwonPrices(text)]
+    .filter((price) => price >= minMeaningfulPrice && price <= MAX_MEANINGFUL_PRICE)
     .sort((a, b) => a - b);
 
   const uniquePrices = Array.from(new Set(prices));
@@ -41,11 +33,8 @@ export const inferPriceRangePerPersonFromText = (
 
 // 실제 source에서 가격을 찾은 경우만 우선한다.
 // 없으면 user budget을 echo하지 않고 category fallback을 사용한다.
-export const getRecommendationPriceRange = (
-  evidence: CandidateScoringEvidence,
-): PriceRange =>
-  evidence.placeInfo.priceRangePerPerson ??
-  estimatePriceRangeFromCategory(evidence.category);
+export const getRecommendationPriceRange = (evidence: CandidateScoringEvidence): PriceRange =>
+  evidence.placeInfo.priceRangePerPerson ?? estimatePriceRangeFromCategory(evidence.category);
 
 const estimatePriceRangeFromCategory = ({
   mainCategory,
@@ -61,12 +50,8 @@ const estimatePriceRangeFromCategory = ({
   return [10_000, 30_000];
 };
 
-const getMinimumMeaningfulPrice = (
-  category: CandidateScoringEvidence["category"],
-): number => {
-  const text = [category.mainCategory, category.subCategory, ...category.tags].join(
-    " ",
-  );
+const getMinimumMeaningfulPrice = (category: CandidateScoringEvidence["category"]): number => {
+  const text = [category.mainCategory, category.subCategory, ...category.tags].join(" ");
   if (/(곱창|막창|대창|고깃집|갈비|구이|파스타|이탈리안|양식|스테이크)/u.test(text)) {
     return 10_000;
   }

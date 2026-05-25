@@ -16,12 +16,7 @@ export type LocationList = z.infer<typeof LocationListSchema>;
 export const LocationInputSchema = LocationListSchema;
 export type LocationInput = z.infer<typeof LocationInputSchema>;
 
-export const PartyTypeSchema = z.enum([
-  "FAMILY",
-  "FRIENDS",
-  "LOVERS",
-  "COLLEAGUES",
-]);
+export const PartyTypeSchema = z.enum(["FAMILY", "FRIENDS", "LOVERS", "COLLEAGUES"]);
 export type PartyType = z.infer<typeof PartyTypeSchema>;
 
 export const BudgetRangeSchema = z

@@ -1,7 +1,4 @@
-import type {
-  LocalSeedSearchParams,
-  NormalizedLocalSeedSearchParams,
-} from "./types.js";
+import type { LocalSeedSearchParams, NormalizedLocalSeedSearchParams } from "./types.js";
 
 const DEFAULT_PAGE = 1;
 const DEFAULT_COUNT = 20;

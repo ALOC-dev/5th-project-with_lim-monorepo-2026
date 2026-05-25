@@ -38,8 +38,7 @@ const SEMANTIC_RULES: SemanticRule[] = [
   {
     intent: "CAFE",
     requestKeywords: /카페|커피|디저트|브런치|베이커리|티룸|차\b|tea|coffee|cafe/iu,
-    allowedWhenRequestMentions:
-      /타로|사주|운세|점술|신점|철학관|궁합|운명|작명|상담/iu,
+    allowedWhenRequestMentions: /타로|사주|운세|점술|신점|철학관|궁합|운명|작명|상담/iu,
     hardRejectSignals: [
       {
         label: "타로/운세 서비스업 신호",
@@ -47,8 +46,7 @@ const SEMANTIC_RULES: SemanticRule[] = [
       },
       {
         label: "비식음료 상담 서비스 신호",
-        pattern:
-          /심리상담|상담센터|테라피|마사지|왁싱|네일|피부관리|공방|스튜디오/iu,
+        pattern: /심리상담|상담센터|테라피|마사지|왁싱|네일|피부관리|공방|스튜디오/iu,
       },
     ],
     softPenaltySignals: [
@@ -60,10 +58,8 @@ const SEMANTIC_RULES: SemanticRule[] = [
   },
   {
     intent: "FOOD",
-    requestKeywords:
-      /맛집|식당|음식|곱창|고기|파스타|한식|중식|일식|양식|브런치|비건|점심|저녁/iu,
-    allowedWhenRequestMentions:
-      /술집|맥주|펍|호프|바\b|bar\b|포차|와인|칵테일|이자카야/iu,
+    requestKeywords: /맛집|식당|음식|곱창|고기|파스타|한식|중식|일식|양식|브런치|비건|점심|저녁/iu,
+    allowedWhenRequestMentions: /술집|맥주|펍|호프|바\b|bar\b|포차|와인|칵테일|이자카야/iu,
     hardRejectSignals: [
       {
         label: "주류 중심 업장 신호",
@@ -79,9 +75,7 @@ const SEMANTIC_RULES: SemanticRule[] = [
   },
 ];
 
-export const assessSemanticFit = (
-  evidence: CandidateScoringEvidence,
-): SemanticFitAssessment => {
+export const assessSemanticFit = (evidence: CandidateScoringEvidence): SemanticFitAssessment => {
   const request = normalizeText(evidence.userFit.naturalLanguageRequest);
   const requestedIntent = inferRequestedIntent(request);
   const basePositiveSignals = getPositiveSignals(evidence);
@@ -90,9 +84,7 @@ export const assessSemanticFit = (
     positiveSignals: basePositiveSignals,
   };
 
-  const rule = SEMANTIC_RULES.find((candidate) =>
-    candidate.requestKeywords.test(request),
-  );
+  const rule = SEMANTIC_RULES.find((candidate) => candidate.requestKeywords.test(request));
   if (!rule) {
     return {
       ...base,
@@ -106,56 +98,41 @@ export const assessSemanticFit = (
 
   const candidateText = normalizeText(toCandidateSemanticText(evidence));
   const negativeSignals = rule.hardRejectSignals
-    .filter((signal) =>
-      signal.pattern.test(toHardRejectText(candidateText, signal.label)),
-    )
+    .filter((signal) => signal.pattern.test(toHardRejectText(candidateText, signal.label)))
     .map((signal) => signal.label);
   const softPenaltySignals = rule.softPenaltySignals
     .filter((signal) => signal.pattern.test(candidateText))
     .map((signal) => signal.label);
 
-  if (
-    negativeSignals.length > 0 &&
-    !rule.allowedWhenRequestMentions.test(request)
-  ) {
+  if (negativeSignals.length > 0 && !rule.allowedWhenRequestMentions.test(request)) {
     return {
       ...base,
       status: "PENALIZE",
       score: 0.1,
       severity: "STRONG",
-      reason:
-        `${rule.intent} 요청이지만 후보가 ${negativeSignals.join(", ")}를 ` +
-        "강하게 포함함",
+      reason: `${rule.intent} 요청이지만 후보가 ${negativeSignals.join(", ")}를 ` + "강하게 포함함",
       negativeSignals,
     };
   }
 
-  if (
-    negativeSignals.length > 0 &&
-    rule.allowedWhenRequestMentions.test(request)
-  ) {
+  if (negativeSignals.length > 0 && rule.allowedWhenRequestMentions.test(request)) {
     return {
       ...base,
       status: "PASS",
       score: 1,
       severity: "NONE",
-      reason:
-        "사용자 요청이 서비스형 카페 신호를 명시해 의미 충돌로 보지 않음",
+      reason: "사용자 요청이 서비스형 카페 신호를 명시해 의미 충돌로 보지 않음",
       negativeSignals: [],
     };
   }
 
-  if (
-    softPenaltySignals.length > 0 &&
-    !rule.allowedWhenRequestMentions.test(request)
-  ) {
+  if (softPenaltySignals.length > 0 && !rule.allowedWhenRequestMentions.test(request)) {
     return {
       ...base,
       status: "PENALIZE",
       score: 0.45,
       severity: "SOFT",
-      reason:
-        `일반 ${rule.intent} 요청이지만 후보가 ${softPenaltySignals.join(", ")}를 포함함`,
+      reason: `일반 ${rule.intent} 요청이지만 후보가 ${softPenaltySignals.join(", ")}를 포함함`,
       negativeSignals: softPenaltySignals,
     };
   }
@@ -213,9 +190,7 @@ const toCandidateSemanticText = (evidence: CandidateScoringEvidence): string =>
     evidence.placeInfo.address,
     evidence.placeInfo.roadAddress,
     evidence.enrichment?.rawTextSnippet,
-    ...(evidence.enrichment?.sourceDetails ?? []).map(
-      (detail) => detail.rawTextSnippet,
-    ),
+    ...(evidence.enrichment?.sourceDetails ?? []).map((detail) => detail.rawTextSnippet),
   ]
     .filter((value): value is string => typeof value === "string")
     .join(" ");
@@ -228,19 +203,10 @@ const normalizeText = (value: string): string =>
     .trim()
     .toLowerCase();
 
-const toHardRejectText = (
-  candidateText: string,
-  signalLabel: string,
-): string => {
+const toHardRejectText = (candidateText: string, signalLabel: string): string => {
   if (signalLabel !== "타로/운세 서비스업 신호") return candidateText;
 
   return candidateText
-    .replace(
-      /타로\s*(?:밀크\s*티|밀크티|버블\s*티|버블티|티|라떼|스무디|음료|펄)/giu,
-      " ",
-    )
-    .replace(
-      /(?:밀크\s*티|밀크티|버블\s*티|버블티|티|라떼|스무디|음료|펄)\s*타로/giu,
-      " ",
-    );
+    .replace(/타로\s*(?:밀크\s*티|밀크티|버블\s*티|버블티|티|라떼|스무디|음료|펄)/giu, " ")
+    .replace(/(?:밀크\s*티|밀크티|버블\s*티|버블티|티|라떼|스무디|음료|펄)\s*타로/giu, " ");
 };

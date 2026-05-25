@@ -1,23 +1,14 @@
 import type { EngineConfig } from "../../../configs/types.js";
 import type { UserInput } from "../../../interfaces/input.contracts.js";
 import type { Logger } from "../../../observability/logger.js";
-import {
-  toReferenceUrlLog,
-  type ReferenceUrlResolution,
-} from "../tools/reference-urls.js";
+import { type ReferenceUrlResolution, toReferenceUrlLog } from "../tools/reference-urls.js";
 import {
   mergeEvidenceWithEnrichment,
   shouldRecommendByOperationHours,
 } from "./enrichment-merge.js";
-import type {
-  CandidateEnrichment,
-  CandidateEnrichmentRequest,
-} from "./enrichment-types.js";
+import type { CandidateEnrichment, CandidateEnrichmentRequest } from "./enrichment-types.js";
 import type { CandidateScoringEvidence } from "./evidence.js";
-import {
-  assessSemanticFit,
-  getSemanticScoreAdjustment,
-} from "./semantic-fit.js";
+import { assessSemanticFit, getSemanticScoreAdjustment } from "./semantic-fit.js";
 
 export const ENRICHMENT_BATCH_SIZE = 10;
 
@@ -101,10 +92,7 @@ export const collectEnrichmentBatches = async ({
     offset < maxEvidenceCount && selectedEvidences.length < scoringPoolSize;
     offset += ENRICHMENT_BATCH_SIZE, batchNo += 1
   ) {
-    const batchEvidences = evidences.slice(
-      offset,
-      offset + ENRICHMENT_BATCH_SIZE,
-    );
+    const batchEvidences = evidences.slice(offset, offset + ENRICHMENT_BATCH_SIZE);
     evaluatedEvidenceCount += batchEvidences.length;
     logger.info("evaluateSeeds.enrichment.batch.start", {
       batchNo,
@@ -121,10 +109,7 @@ export const collectEnrichmentBatches = async ({
     );
     allEnrichments.push(...batchEnrichments);
     const enrichmentByCandidateId = new Map(
-      batchEnrichments.map((enrichment) => [
-        enrichment.candidateId,
-        enrichment,
-      ]),
+      batchEnrichments.map((enrichment) => [enrichment.candidateId, enrichment]),
     );
 
     const operationVerifiedEvidences = batchEvidences.flatMap((evidence) => {
@@ -151,9 +136,10 @@ export const collectEnrichmentBatches = async ({
     }));
     const semanticRejected: SemanticAssessment[] = [];
     allSemanticRejected.push(...semanticRejected);
-    const semanticPassed = semanticAssessments.map(
-      ({ evidence, semanticFit }) => ({ ...evidence, semanticFit }),
-    );
+    const semanticPassed = semanticAssessments.map(({ evidence, semanticFit }) => ({
+      ...evidence,
+      semanticFit,
+    }));
     const semanticPenalized = semanticAssessments.filter(
       ({ semanticFit }) => semanticFit.status === "PENALIZE",
     );
@@ -185,9 +171,7 @@ export const collectEnrichmentBatches = async ({
       })),
     });
 
-    const finishReferenceUrls = logger.startTimer(
-      "evaluateSeeds.reference_urls.success",
-    );
+    const finishReferenceUrls = logger.startTimer("evaluateSeeds.reference_urls.success");
     logger.info("evaluateSeeds.reference_urls.start", {
       batchNo,
       evidenceCount: semanticPassed.length,
@@ -245,26 +229,17 @@ export const collectEnrichmentBatches = async ({
   };
 };
 
-export const getMaxEvidenceCount = (
-  evidenceCount: number,
-  config: EngineConfig,
-): number =>
+export const getMaxEvidenceCount = (evidenceCount: number, config: EngineConfig): number =>
   Math.min(
     evidenceCount,
-    Math.max(
-      ENRICHMENT_BATCH_SIZE,
-      config.targetCount * config.candidatePoolMultiplier,
-    ),
+    Math.max(ENRICHMENT_BATCH_SIZE, config.targetCount * config.candidatePoolMultiplier),
   );
 
 const getScoringPoolSize = (config: EngineConfig): number =>
   config.scoringPoolSize ??
   Math.max(
     config.targetCount,
-    Math.min(
-      config.targetCount * 2,
-      config.targetCount * config.candidatePoolMultiplier,
-    ),
+    Math.min(config.targetCount * 2, config.targetCount * config.candidatePoolMultiplier),
   );
 
 const hasReferenceUrls = (

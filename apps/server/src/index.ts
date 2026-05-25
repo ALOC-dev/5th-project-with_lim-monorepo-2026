@@ -1,6 +1,6 @@
-import express from "express";
-import cors from "cors";
 import { createApiResponse, formatServiceName } from "@monorepo/api-contracts";
+import cors from "cors";
+import express from "express";
 
 const app = express();
 app.use(cors());

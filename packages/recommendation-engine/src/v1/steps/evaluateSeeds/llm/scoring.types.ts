@@ -6,6 +6,4 @@ export type LlmScoringRequest = {
   openAiApiKey?: string;
 };
 
-export type LlmScoringClient = (
-  request: LlmScoringRequest,
-) => Promise<LlmCandidateEvaluation[]>;
+export type LlmScoringClient = (request: LlmScoringRequest) => Promise<LlmCandidateEvaluation[]>;

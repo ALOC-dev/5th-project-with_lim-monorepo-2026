@@ -1,20 +1,13 @@
 import { createRequire } from "node:module";
 
-import type {
-  ScrapedUrlFrameText,
-  ScrapedUrlSnapshot,
-} from "../../utils/scrape-cache.js";
+import type { ScrapedUrlFrameText, ScrapedUrlSnapshot } from "../../utils/scrape-cache.js";
+import type { KakaoLocalCandidateOptions, PlaywrightModule, PlaywrightPage } from "../types.js";
 import {
   BROWSER_FRAME_EVALUATE_TIMEOUT_MS,
   BROWSER_PAGE_CONTENT_TIMEOUT_MS,
   DESKTOP_BROWSER_USER_AGENT,
 } from "./constants.js";
 import { stripHtml } from "./text.js";
-import type {
-  KakaoLocalCandidateOptions,
-  PlaywrightModule,
-  PlaywrightPage,
-} from "../types.js";
 
 const require = createRequire(import.meta.url);
 
@@ -30,10 +23,7 @@ export const loadPlaywright = (): PlaywrightModule => {
 
 export const scrapeGenericUrl = async (
   url: string,
-  options: Pick<
-    KakaoLocalCandidateOptions,
-    "getBrowser" | "timeoutMs" | "settleMs"
-  >,
+  options: Pick<KakaoLocalCandidateOptions, "getBrowser" | "timeoutMs" | "settleMs">,
 ): Promise<ScrapedUrlSnapshot> => {
   const browser = await options.getBrowser();
   const page = await browser.newPage({

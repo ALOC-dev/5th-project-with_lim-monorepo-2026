@@ -39,9 +39,7 @@ export const createLocalFileUrlScrapeCache = ({
 }: LocalFileUrlScrapeCacheOptions = {}): UrlScrapeCache => {
   const namespaceDir = path.join(cacheDir, namespace);
 
-  const get = async (
-    url: string,
-  ): Promise<UrlScrapeCacheEntry | undefined> => {
+  const get = async (url: string): Promise<UrlScrapeCacheEntry | undefined> => {
     const canonicalUrl = canonicalizeUrl(url);
     const key = getCacheKey(namespace, canonicalUrl);
     const filePath = getCacheFilePath(namespaceDir, key);
@@ -59,9 +57,7 @@ export const createLocalFileUrlScrapeCache = ({
     }
   };
 
-  const set = async (
-    snapshot: ScrapedUrlSnapshot,
-  ): Promise<UrlScrapeCacheEntry> => {
+  const set = async (snapshot: ScrapedUrlSnapshot): Promise<UrlScrapeCacheEntry> => {
     const canonicalUrl = canonicalizeUrl(snapshot.url);
     const key = getCacheKey(namespace, canonicalUrl);
     const filePath = getCacheFilePath(namespaceDir, key);
@@ -75,11 +71,7 @@ export const createLocalFileUrlScrapeCache = ({
       url: canonicalUrl,
     };
     const tmpPath = `${filePath}.${process.pid}.${randomUUID()}.tmp`;
-    await fs.writeFile(
-      tmpPath,
-      `${JSON.stringify(normalizedSnapshot, null, 2)}\n`,
-      "utf8",
-    );
+    await fs.writeFile(tmpPath, `${JSON.stringify(normalizedSnapshot, null, 2)}\n`, "utf8");
 
     try {
       await fs.link(tmpPath, filePath);
@@ -102,12 +94,7 @@ export const createLocalFileUrlScrapeCache = ({
 };
 
 const getDefaultCacheDir = (): string =>
-  path.resolve(
-    path.dirname(fileURLToPath(import.meta.url)),
-    "../../..",
-    ".cache",
-    "scrapes",
-  );
+  path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..", ".cache", "scrapes");
 
 const canonicalizeUrl = (url: string): string => new URL(url).toString();
 
@@ -129,8 +116,8 @@ const parseSnapshot = (value: unknown): ScrapedUrlSnapshot | undefined => {
       (item) =>
         item &&
         typeof item === "object" &&
-        typeof (item as ScrapedUrlFrameText).url === "string" &&
-        typeof (item as ScrapedUrlFrameText).text === "string",
+        typeof item.url === "string" &&
+        typeof item.text === "string",
     )
   ) {
     return undefined;

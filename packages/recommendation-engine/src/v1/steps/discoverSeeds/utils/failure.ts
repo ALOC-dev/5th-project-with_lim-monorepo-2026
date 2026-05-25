@@ -1,8 +1,6 @@
 import type { DiscoverSeedsProcessResult } from "../types.js";
 
-export const toDiscoverSeedsFailure = (
-  error: unknown,
-): DiscoverSeedsProcessResult => {
+export const toDiscoverSeedsFailure = (error: unknown): DiscoverSeedsProcessResult => {
   const message = error instanceof Error ? error.message : String(error);
 
   if (message.includes("TMAP_APP_KEY") || message.includes("Request failed")) {

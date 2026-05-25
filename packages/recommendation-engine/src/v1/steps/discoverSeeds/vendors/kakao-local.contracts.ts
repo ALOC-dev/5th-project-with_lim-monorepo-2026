@@ -43,6 +43,4 @@ export const KakaoLocalSearchResponseSchema = z
   })
   .strict();
 
-export type KakaoLocalSearchResponse = z.infer<
-  typeof KakaoLocalSearchResponseSchema
->;
+export type KakaoLocalSearchResponse = z.infer<typeof KakaoLocalSearchResponseSchema>;

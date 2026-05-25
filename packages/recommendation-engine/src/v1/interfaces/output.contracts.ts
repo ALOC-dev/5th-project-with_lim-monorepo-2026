@@ -1,9 +1,6 @@
 import { z } from "zod";
 
-import {
-  LocationItemSchema,
-  PriceRangeSchema,
-} from "./common.contracts.js";
+import { LocationItemSchema, PriceRangeSchema } from "./common.contracts.js";
 import { UserInputSchema } from "./input.contracts.js";
 
 const time24hRegex = /^([01]\d|2[0-3]):[0-5]\d$/;
@@ -11,6 +8,7 @@ const trimmedUrlSchema = z.string().trim().pipe(z.url());
 const compactLabelSchema = z.string().trim().min(1).max(20);
 const contentSummarySchema = z.string().trim().min(1).max(140);
 const recommendationReasonSchema = z.string().trim().min(1).max(90);
+const nonNegativeNumberSchema = z.number().gte(0);
 
 export const OutputLocationItemSchema = LocationItemSchema.extend({
   placeName: z.string().trim().min(1), // 장소 명칭
@@ -101,10 +99,51 @@ export const ReferenceUrlsSchema = z
   })
   .strict();
 
+export const RecommendationAvailabilitySchema = z
+  .object({
+    status: z.enum(["OPEN", "CLOSED", "UNKNOWN"]),
+    requestedDateISO: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    requestedTime24h: z.string().regex(time24hRegex),
+    stayDurationMinutes: z.number().int().positive(),
+    reason: z.string().trim().min(1),
+  })
+  .strict();
+export type RecommendationAvailability = z.infer<typeof RecommendationAvailabilitySchema>;
+
+export const RecommendationAccessibilityPerOriginSchema = z
+  .object({
+    originId: z.string().trim().min(1),
+    distanceMeters: nonNegativeNumberSchema,
+    estimatedTravelMinutes: z.number().int().positive().optional(),
+  })
+  .strict();
+
+export const RecommendationAccessibilitySchema = z
+  .object({
+    score: z.number().min(0).max(100),
+    distanceMeters: nonNegativeNumberSchema.optional(),
+    estimatedTravelMinutes: z.number().int().positive().optional(),
+    perOrigin: z.array(RecommendationAccessibilityPerOriginSchema),
+  })
+  .strict();
+export type RecommendationAccessibility = z.infer<typeof RecommendationAccessibilitySchema>;
+
+export const RecommendationScoreBreakdownSchema = z
+  .object({
+    inputMatch: z.number().min(0).max(100),
+    trust: z.number().min(0).max(100),
+    accessibility: z.number().min(0).max(100),
+    diversity: z.number().min(0).max(100),
+    total: z.number().min(0).max(100),
+  })
+  .strict();
+export type RecommendationScoreBreakdown = z.infer<typeof RecommendationScoreBreakdownSchema>;
+
 export const PlaceRecommendationItemSchema = z
   .object({
     id: z.string().trim().min(1), // 장소 식별자 (내부 ID)
     name: z.string().trim().min(1), // 상호명
+    phoneNumber: z.string().trim().min(1).nullable(), // 전화번호. 출처에서 없으면 null
     tags: z.array(compactLabelSchema).min(1).max(5), // 태그 1~5개
     contentSummary: contentSummarySchema, // 주력 컨텐츠 요약
 
@@ -112,22 +151,43 @@ export const PlaceRecommendationItemSchema = z
     subCategory: z.string().trim().min(1), // 2차 카테고리 (예: "한식", "이탈리안", "커피숍", "바")
 
     operationInfo: OperationInfoSchema,
+    availabilityAtRequestedTime: RecommendationAvailabilitySchema,
     referenceUrls: ReferenceUrlsSchema,
+    accessibility: RecommendationAccessibilitySchema,
 
     location: OutputLocationItemSchema,
     priceRangePerPerson: PriceRangeSchema, // 예상 인당 가격 범위 (원 단위)
 
     score: z.number().int().min(0).max(100), // 추천 점수 (0~100)
+    scoreBreakdown: RecommendationScoreBreakdownSchema,
     reasons: z.array(recommendationReasonSchema).min(1).max(3), // 추천 근거
   })
   .strict();
 
-export type PlaceRecommendationItem = z.infer<
-  typeof PlaceRecommendationItemSchema
->;
+export type PlaceRecommendationItem = z.infer<typeof PlaceRecommendationItemSchema>;
+
+export const RecommendationOriginSchema = z
+  .object({
+    id: z.string().trim().min(1),
+    role: z.enum(["HOST", "MEMBER"]),
+    label: z.string().trim().min(1),
+    location: LocationItemSchema,
+  })
+  .strict();
+export type RecommendationOrigin = z.infer<typeof RecommendationOriginSchema>;
+
+export const RecommendationOriginContextSchema = z
+  .object({
+    mode: z.enum(["SINGLE", "GROUP"]),
+    origins: z.array(RecommendationOriginSchema),
+    center: LocationItemSchema.optional(),
+  })
+  .strict();
+export type RecommendationOriginContext = z.infer<typeof RecommendationOriginContextSchema>;
 
 export const UserOutputSchema = z
   .object({
+    originContext: RecommendationOriginContextSchema,
     recommendations: z.array(PlaceRecommendationItemSchema),
   })
   .strict();

@@ -1,14 +1,8 @@
 import ky from "ky";
 
 import { stripSearchMarkup } from "../utils/operation-hours.js";
-import type {
-  ScrapedUrlSnapshot,
-  UrlScrapeCache,
-} from "../utils/scrape-cache.js";
-import {
-  DEFAULT_EXTERNAL_API_TIMEOUT_MS,
-  DESKTOP_BROWSER_USER_AGENT,
-} from "./shared/constants.js";
+import type { ScrapedUrlSnapshot, UrlScrapeCache } from "../utils/scrape-cache.js";
+import { DEFAULT_EXTERNAL_API_TIMEOUT_MS, DESKTOP_BROWSER_USER_AGENT } from "./shared/constants.js";
 import { stripHtml } from "./shared/text.js";
 import type { UrlScrapeResult } from "./types.js";
 

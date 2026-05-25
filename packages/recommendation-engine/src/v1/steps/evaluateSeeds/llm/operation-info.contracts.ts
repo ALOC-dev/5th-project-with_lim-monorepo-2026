@@ -89,6 +89,4 @@ export const LlmOperationInfoResponseSchema = z
     }
   });
 
-export type LlmOperationInfoResponse = z.infer<
-  typeof LlmOperationInfoResponseSchema
->;
+export type LlmOperationInfoResponse = z.infer<typeof LlmOperationInfoResponseSchema>;

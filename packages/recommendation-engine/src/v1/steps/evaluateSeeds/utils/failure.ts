@@ -1,8 +1,6 @@
 import type { EvaluateSeedsProcessResult } from "../types.js";
 
-export const toEvaluateSeedsFailure = (
-  error: unknown,
-): EvaluateSeedsProcessResult => {
+export const toEvaluateSeedsFailure = (error: unknown): EvaluateSeedsProcessResult => {
   const message = error instanceof Error ? error.message : String(error);
 
   if (isSchemaParseError(message)) {
@@ -22,9 +20,7 @@ export const toEvaluateSeedsFailure = (
   };
 };
 
-export const toEvaluateSeedsLlmScoringFailure = (
-  error: unknown,
-): EvaluateSeedsProcessResult => {
+export const toEvaluateSeedsLlmScoringFailure = (error: unknown): EvaluateSeedsProcessResult => {
   const message = error instanceof Error ? error.message : String(error);
 
   if (isSchemaParseError(message)) {
@@ -45,6 +41,4 @@ export const toEvaluateSeedsLlmScoringFailure = (
 };
 
 const isSchemaParseError = (message: string): boolean =>
-  message.includes("Invalid input") ||
-  message.includes("zod") ||
-  message.includes("parse");
+  message.includes("Invalid input") || message.includes("zod") || message.includes("parse");

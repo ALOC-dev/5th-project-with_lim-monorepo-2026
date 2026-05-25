@@ -1,6 +1,6 @@
 import {
-  EngineOutputSchema,
   type EngineOutput,
+  EngineOutputSchema,
 } from "@monorepo/recommendation-engine/v1/contracts";
 
 const rawMockEngineOutput = {
@@ -20,18 +20,36 @@ const rawMockEngineOutput = {
     numberOfPeople: 3,
     partyType: "FRIENDS",
     budgetPerPerson: [20000, 40000],
-    userNaturalLanguageRequest:
-      "대화하기 좋은 분위기의 저녁 식사 장소를 추천해줘.",
+    userNaturalLanguageRequest: "대화하기 좋은 분위기의 저녁 식사 장소를 추천해줘.",
   },
   meta: {
     source: "frontend-mock",
     generatedAt: "2026-04-30T12:00:00.000Z",
   },
   userOutput: {
+    originContext: {
+      mode: "SINGLE",
+      origins: [
+        {
+          id: "host",
+          role: "HOST",
+          label: "나",
+          location: {
+            lat: 37.5665,
+            lng: 126.978,
+          },
+        },
+      ],
+      center: {
+        lat: 37.5665,
+        lng: 126.978,
+      },
+    },
     recommendations: [
       {
         id: "place-001",
         name: "도시정원 다이닝",
+        phoneNumber: "02-0000-0001",
         tags: ["분위기", "친구모임", "예약가능", "와인", "저녁"],
         contentSummary:
           "스테이크와 파스타 중심의 저녁 코스가 강점이며, 조용한 좌석 구성이 좋아 대화에 적합합니다.",
@@ -92,11 +110,28 @@ const rawMockEngineOutput = {
             },
           },
         },
+        availabilityAtRequestedTime: {
+          status: "OPEN",
+          requestedDateISO: "2026-05-02",
+          requestedTime24h: "19:00",
+          stayDurationMinutes: 150,
+          reason: "Verified open for SATURDAY 19:00",
+        },
         referenceUrls: {
           kakaoMap: "https://map.kakao.com",
           naverMap: "https://map.naver.com",
           instagram: "https://www.instagram.com",
           others: ["https://example.com/place-001"],
+        },
+        accessibility: {
+          score: 91,
+          distanceMeters: 320,
+          perOrigin: [
+            {
+              originId: "host",
+              distanceMeters: 320,
+            },
+          ],
         },
         location: {
           lat: 37.5658,
@@ -106,6 +141,13 @@ const rawMockEngineOutput = {
         },
         priceRangePerPerson: [28000, 42000],
         score: 92,
+        scoreBreakdown: {
+          inputMatch: 94,
+          trust: 90,
+          accessibility: 91,
+          diversity: 88,
+          total: 92,
+        },
         reasons: [
           "대화하기 좋은 조용한 테이블 간격",
           "예산 범위와 메뉴 구성이 잘 맞음",
@@ -115,6 +157,7 @@ const rawMockEngineOutput = {
       {
         id: "place-002",
         name: "한강뷰 비스트로",
+        phoneNumber: "02-0000-0002",
         tags: ["뷰맛집", "데이트", "브런치", "주차가능"],
         contentSummary:
           "한강 전망 좌석과 시그니처 플래터가 인기이며, 긴 체류에도 편한 좌석 환경을 제공합니다.",
@@ -174,10 +217,27 @@ const rawMockEngineOutput = {
             },
           },
         },
+        availabilityAtRequestedTime: {
+          status: "OPEN",
+          requestedDateISO: "2026-05-02",
+          requestedTime24h: "19:00",
+          stayDurationMinutes: 150,
+          reason: "Verified open for SATURDAY 19:00",
+        },
         referenceUrls: {
           kakaoMap: "https://map.kakao.com",
           naverMap: "https://map.naver.com",
           others: ["https://example.com/place-002"],
+        },
+        accessibility: {
+          score: 84,
+          distanceMeters: 7200,
+          perOrigin: [
+            {
+              originId: "host",
+              distanceMeters: 7200,
+            },
+          ],
         },
         location: {
           lat: 37.5241,
@@ -187,6 +247,13 @@ const rawMockEngineOutput = {
         },
         priceRangePerPerson: [24000, 36000],
         score: 88,
+        scoreBreakdown: {
+          inputMatch: 90,
+          trust: 88,
+          accessibility: 84,
+          diversity: 87,
+          total: 88,
+        },
         reasons: [
           "요청한 분위기 조건과 잘 맞는 뷰/인테리어",
           "모임 인원 수용 가능한 좌석과 예약 동선",
@@ -196,6 +263,7 @@ const rawMockEngineOutput = {
       {
         id: "place-003",
         name: "골목책방 카페",
+        phoneNumber: "02-0000-0003",
         tags: ["카페", "디저트", "조용함"],
         contentSummary:
           "핸드드립 커피와 시즌 디저트가 주력이며, 늦은 저녁까지 차분한 분위기를 유지합니다.",
@@ -251,10 +319,27 @@ const rawMockEngineOutput = {
             },
           },
         },
+        availabilityAtRequestedTime: {
+          status: "OPEN",
+          requestedDateISO: "2026-05-02",
+          requestedTime24h: "19:00",
+          stayDurationMinutes: 150,
+          reason: "Verified open for SATURDAY 19:00",
+        },
         referenceUrls: {
           kakaoMap: "https://map.kakao.com",
           naverMap: "https://map.naver.com",
           instagram: "https://www.instagram.com",
+        },
+        accessibility: {
+          score: 79,
+          distanceMeters: 4400,
+          perOrigin: [
+            {
+              originId: "host",
+              distanceMeters: 4400,
+            },
+          ],
         },
         location: {
           lat: 37.5595,
@@ -264,6 +349,13 @@ const rawMockEngineOutput = {
         },
         priceRangePerPerson: [9000, 16000],
         score: 81,
+        scoreBreakdown: {
+          inputMatch: 82,
+          trust: 78,
+          accessibility: 79,
+          diversity: 85,
+          total: 81,
+        },
         reasons: [
           "2차 장소로 이동하기 좋은 접근성",
           "체류 시간 대비 좌석 편안함이 높음",

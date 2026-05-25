@@ -1,16 +1,13 @@
 import type { UserInput } from "../../../interfaces/input.contracts.js";
 import {
-  OperationInfoSchema,
-  dayOfWeekValues,
   type BreakTime,
-  type DayOfWeek,
   type DailyOperationInfo,
+  type DayOfWeek,
+  dayOfWeekValues,
   type OperationInfo,
+  OperationInfoSchema,
 } from "../../../interfaces/output.contracts.js";
-import type {
-  OperationVerification,
-  OperationVerificationStatus,
-} from "./enrichment-types.js";
+import type { OperationVerification, OperationVerificationStatus } from "./enrichment-types.js";
 
 const DAY_LABEL_TO_DAY: Record<string, DayOfWeek> = {
   월: "MONDAY",
@@ -60,11 +57,7 @@ const parseCurrentOperationStatus = (
     return [{ daysOfWeek: [requestedDay], status: "CLOSED" }];
   }
 
-  if (
-    /영업\s*종료\s*(?<open>(?:[01]?\d|2[0-3]):[0-5]\d)에\s*영업\s*시작/u.test(
-      normalized,
-    )
-  ) {
+  if (/영업\s*종료\s*(?<open>(?:[01]?\d|2[0-3]):[0-5]\d)에\s*영업\s*시작/u.test(normalized)) {
     return [{ daysOfWeek: [requestedDay], status: "CLOSED" }];
   }
 
@@ -127,9 +120,7 @@ const parseOperationSchedules = (text: string): ParsedOperationSchedule[] => {
   return mergeCompatibleSchedules(schedules);
 };
 
-const parseDayScopedSchedules = (
-  line: string,
-): ParsedOperationSchedule[] => {
+const parseDayScopedSchedules = (line: string): ParsedOperationSchedule[] => {
   // 한 줄에 여러 요일 scope가 붙어 있을 때 scope 단위로 잘라 각 segment만 해석한다.
   // 이렇게 하지 않으면 "월-금 11:00 / 토 휴무" 같은 줄에서 휴무가 전체 요일에 번질 수 있다.
   const matches = [...line.matchAll(DAY_SCOPE_PATTERN)].filter(
@@ -219,9 +210,7 @@ const expandDayRange = (startLabel: string, endLabel: string): DayOfWeek[] => {
   ).filter((day): day is DayOfWeek => day !== undefined);
 };
 
-const parseOpenClose = (
-  line: string,
-): { open: string; close: string } | undefined => {
+const parseOpenClose = (line: string): { open: string; close: string } | undefined => {
   const match = line.match(
     /(?<open>(?:[01]?\d|2[0-3]):[0-5]\d)\s*(?:-|~|부터|–|—)\s*(?<close>(?:(?:[01]?\d|2[0-3]):[0-5]\d|24:00))/u,
   );
@@ -280,12 +269,7 @@ export const mergeCompatibleSchedules = (
       const existingScopeSize = scopeSizeByDay.get(day);
       if (
         !existing ||
-        shouldReplaceSchedule(
-          existing,
-          next,
-          existingScopeSize,
-          schedule.daysOfWeek.length,
-        )
+        shouldReplaceSchedule(existing, next, existingScopeSize, schedule.daysOfWeek.length)
       ) {
         byDay.set(day, next);
         scopeSizeByDay.set(day, schedule.daysOfWeek.length);
@@ -334,9 +318,7 @@ export const toOperationSchedulesRecord = (
         open: schedule.open,
         close: schedule.close,
         breakTimes: schedule.breakTimes,
-        ...(schedule.lastOrderTime
-          ? { lastOrderTime: schedule.lastOrderTime }
-          : {}),
+        ...(schedule.lastOrderTime ? { lastOrderTime: schedule.lastOrderTime } : {}),
       };
     }
   }
@@ -359,10 +341,7 @@ export class OperationVerifier {
     return this.requestedDay;
   }
 
-  verify(
-    operationInfo: OperationInfo,
-    sourceUrls: string[],
-  ): OperationVerification {
+  verify(operationInfo: OperationInfo, sourceUrls: string[]): OperationVerification {
     // 요청 일자/도착 시간/체류 시간을 모두 만족해야 OPEN이다.
     // 단순히 "현재 영업 중"이 아니라 사용자가 머무는 전체 window를 검증한다.
     const schedule = operationInfo.schedules[this.requestedDay];
@@ -385,14 +364,8 @@ export class OperationVerifier {
     const open = toMinutes(schedule.open);
     const close = normalizeCloseMinutes(open, toMinutes(schedule.close));
     const overlapsBreak = schedule.breakTimes.some((breakTime) => {
-      const breakStart = normalizeTimeForWindow(
-        open,
-        toMinutes(breakTime.start),
-      );
-      const breakEnd = normalizeTimeForWindow(
-        breakStart,
-        toMinutes(breakTime.end),
-      );
+      const breakStart = normalizeTimeForWindow(open, toMinutes(breakTime.start));
+      const breakEnd = normalizeTimeForWindow(breakStart, toMinutes(breakTime.end));
       return this.requestedStart < breakEnd && this.requestedEnd > breakStart;
     });
     const lastOrder = schedule.lastOrderTime
@@ -500,19 +473,18 @@ export const toTime24h = (value: string): string => {
   return `${String(hourNumber).padStart(2, "0")}:${String(minuteNumber).padStart(2, "0")}`;
 };
 
-const toCloseTime24h = (value: string): string =>
-  value === "24:00" ? "00:00" : toTime24h(value);
+const toCloseTime24h = (value: string): string => (value === "24:00" ? "00:00" : toTime24h(value));
 
 const normalizeOperationText = (value: string): string =>
-  normalizeKoreanHourExpressions(
-    normalizeEnglishMeridiemExpressions(stripSearchMarkup(value)),
-  );
+  normalizeKoreanHourExpressions(normalizeEnglishMeridiemExpressions(stripSearchMarkup(value)));
 
 const normalizeOperationLine = (line: string): string =>
   line
     .replace(/[–—]/gu, "-")
-    .replace(/(\d{1,2})\s*시\s*(\d{1,2})?\s*분?/gu, (_, hour, minute) =>
-      `${String(hour).padStart(2, "0")}:${String(minute ?? "00").padStart(2, "0")}`,
+    .replace(
+      /(\d{1,2})\s*시\s*(\d{1,2})?\s*분?/gu,
+      (_, hour, minute) =>
+        `${String(hour).padStart(2, "0")}:${String(minute ?? "00").padStart(2, "0")}`,
     );
 
 const normalizeKoreanHourExpressions = (value: string): string =>

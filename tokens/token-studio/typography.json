@@ -1,0 +1,182 @@
+{
+  "typography": {
+    "title": {
+      "xl": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "Noto Sans KR",
+          "fontWeight": "Bold",
+          "fontSize": "32px",
+          "lineHeight": "40px",
+          "letterSpacing": "0%"
+        }
+      },
+      "lg": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "Noto Sans KR",
+          "fontWeight": "Bold",
+          "fontSize": "28px",
+          "lineHeight": "36px",
+          "letterSpacing": "0%"
+        }
+      },
+      "md": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "Noto Sans KR",
+          "fontWeight": "Bold",
+          "fontSize": "24px",
+          "lineHeight": "32px",
+          "letterSpacing": "0%"
+        }
+      },
+      "sm": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "Noto Sans KR",
+          "fontWeight": "Bold",
+          "fontSize": "20px",
+          "lineHeight": "28px",
+          "letterSpacing": "0%"
+        }
+      },
+      "xs": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "Noto Sans KR",
+          "fontWeight": "Bold",
+          "fontSize": "18px",
+          "lineHeight": "26px",
+          "letterSpacing": "0%"
+        }
+      }
+    },
+    "body": {
+      "lg": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "Noto Sans KR",
+          "fontWeight": "Regular",
+          "fontSize": "18px",
+          "lineHeight": "28px",
+          "letterSpacing": "0%"
+        }
+      },
+      "md": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "Noto Sans KR",
+          "fontWeight": "Regular",
+          "fontSize": "16px",
+          "lineHeight": "24px",
+          "letterSpacing": "0%"
+        }
+      },
+      "sm": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "Noto Sans KR",
+          "fontWeight": "Regular",
+          "fontSize": "14px",
+          "lineHeight": "22px",
+          "letterSpacing": "0%"
+        }
+      },
+      "xs": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "Noto Sans KR",
+          "fontWeight": "Regular",
+          "fontSize": "13px",
+          "lineHeight": "20px",
+          "letterSpacing": "0%"
+        }
+      }
+    },
+    "label": {
+      "lg": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "Noto Sans KR",
+          "fontWeight": "Medium",
+          "fontSize": "16px",
+          "lineHeight": "22px",
+          "letterSpacing": "0%"
+        }
+      },
+      "md": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "Noto Sans KR",
+          "fontWeight": "Medium",
+          "fontSize": "14px",
+          "lineHeight": "20px",
+          "letterSpacing": "0%"
+        }
+      },
+      "sm": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "Noto Sans KR",
+          "fontWeight": "Medium",
+          "fontSize": "13px",
+          "lineHeight": "18px",
+          "letterSpacing": "0%"
+        }
+      },
+      "xs": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "Noto Sans KR",
+          "fontWeight": "Medium",
+          "fontSize": "12px",
+          "lineHeight": "16px",
+          "letterSpacing": "0%"
+        }
+      }
+    },
+    "utility": {
+      "screenTitle": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "Noto Sans KR",
+          "fontWeight": "Medium",
+          "fontSize": "16px",
+          "lineHeight": "22px",
+          "letterSpacing": "0%"
+        }
+      },
+      "cta": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "Noto Sans KR",
+          "fontWeight": "Bold",
+          "fontSize": "14px",
+          "lineHeight": "20px",
+          "letterSpacing": "0%"
+        }
+      },
+      "meta": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "Inter",
+          "fontWeight": "Medium",
+          "fontSize": "13px",
+          "lineHeight": "18px",
+          "letterSpacing": "0%"
+        }
+      },
+      "caption": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "Inter",
+          "fontWeight": "Bold",
+          "fontSize": "12px",
+          "lineHeight": "16px",
+          "letterSpacing": "0%"
+        }
+      }
+    }
+  }
+}

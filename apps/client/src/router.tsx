@@ -1,4 +1,4 @@
-import { Navigate, createBrowserRouter } from "react-router-dom";
+import { createBrowserRouter, Navigate } from "react-router-dom";
 
 import RecommendationFormPage from "./page/RecommendationForm/page";
 import RecommendationMemberPage from "./page/RecommendationMember/page";

@@ -11,9 +11,7 @@ export const EvaluateSeedsRetryReasonSchema = z.enum([
   "REFERENCE_URL_REJECTED_HEAVY",
 ]);
 
-export type EvaluateSeedsRetryReason = z.infer<
-  typeof EvaluateSeedsRetryReasonSchema
->;
+export type EvaluateSeedsRetryReason = z.infer<typeof EvaluateSeedsRetryReasonSchema>;
 
 export const SearchQuerySchema = z
   .object({
@@ -50,10 +48,7 @@ export const DiscoveryContextSchema = z
       return;
     }
 
-    const totalRequested = context.queries.reduce(
-      (total, query) => total + query.count,
-      0,
-    );
+    const totalRequested = context.queries.reduce((total, query) => total + query.count, 0);
     if (context.attemptNo === 1 && totalRequested !== context.targetSeedCount) {
       issues.addIssue({
         code: z.ZodIssueCode.custom,
