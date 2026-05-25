@@ -4,9 +4,11 @@ dist
 .pnpm-store
 .cache
 .env
-server/src/recommendation-engine/v1/scripts/smoke-results/
-server/src/recommendation-engine/v1/scripts/smoke-result.json
-server/src/recommendation-engine/v1/scripts/smoke-trace.jsonl
-server/src/recommendation-engine/v1/scripts/.log/
-server/src/recommendation-engine/eojin/llm/tools/*-local/result.json
-server/src/recommendation-engine/eojin/llm/tools/*-local/detail-result.json
+apps/server/src/scripts/recommendation-engine/smoke-results/
+apps/server/src/scripts/recommendation-engine/smoke-result.json
+apps/server/src/scripts/recommendation-engine/smoke-trace.jsonl
+apps/server/src/scripts/recommendation-engine/.log/
+apps/server/src/recommendation-engine/eojin/llm/tools/*-local/result.json
+apps/server/src/recommendation-engine/eojin/llm/tools/*-local/detail-result.json
+packages/recommendation-engine/src/v1/scripts/.log/
+packages/recommendation-engine/src/v1/.cache/
