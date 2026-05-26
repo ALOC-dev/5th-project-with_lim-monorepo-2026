@@ -95,9 +95,9 @@ curl http://localhost:3000/health
 
 영역 구분:
 
-- `F`: Frontend
-- `B`: Backend
-- `C`: Common / Core
+- `FE`: Frontend
+- `BE`: Backend
+- `COMMON`: Common / Core
 
 예시:
 
