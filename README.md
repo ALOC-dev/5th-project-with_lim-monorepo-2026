@@ -102,9 +102,12 @@ curl http://localhost:3000/health
 예시:
 
 ```txt
-F-1
-B-2
-C-3
+FE-1
+BE-1
+BE-2
+COMMON-1
+COMMON-2
+COMMON-3
 ```
 
 작업 내용은 이슈 제목과 PR 제목에 명확하게 작성합니다.
@@ -123,6 +126,7 @@ type: 변경 내용 요약
 - `fix`: 버그 수정
 - `docs`: 문서 수정
 - `refactor`: 기능 변화 없는 코드 정리
+- `rename`: 변수명, 파일명 수정
 - `chore`: 설정, 패키지, 빌드 등 기타 작업
 
 예시:

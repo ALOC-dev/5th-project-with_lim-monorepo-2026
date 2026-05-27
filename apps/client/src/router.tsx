@@ -1,10 +1,10 @@
 import { createBrowserRouter, Navigate } from "react-router-dom";
 
-import HealthCheckPage from "./page/HealthCheck/page";
-import RecommendationFormPage from "./page/RecommendationForm/page";
-import RecommendationMemberPage from "./page/RecommendationMember/page";
-import RecommendationPendingPage from "./page/RecommendationPending/page";
-import RecommendationResultPage from "./page/RecommendationResult/page";
+import HealthCheckPage from "./pages/HealthCheck/page";
+import RecommendationFormPage from "./pages/RecommendationForm/page";
+import RecommendationMemberPage from "./pages/RecommendationMember/page";
+import RecommendationPendingPage from "./pages/RecommendationPending/page";
+import RecommendationResultPage from "./pages/RecommendationResult/page";
 
 const NotFoundPage = () => <div>NotFoundPage</div>;
 
