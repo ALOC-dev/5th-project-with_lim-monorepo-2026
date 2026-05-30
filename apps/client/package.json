@@ -18,6 +18,7 @@
     "@emotion/styled": "^11.14.0",
     "@monorepo/recommendation-engine": "workspace:*",
     "modern-css-reset": "^1.4.0",
+    "rc-slider": "^11.1.9",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^7.15.1"

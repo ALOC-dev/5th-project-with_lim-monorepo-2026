@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { tokens } from "../../design-system/tokens.generated";
 import { typography } from "../../design-system/typography.generated";
+import { Dropdown, DropdownOption } from "../../components/Dropdown";
 
 type HealthData = {
   service: string;
@@ -19,7 +20,14 @@ type HealthState =
 
 const HEALTH_ENDPOINT = "http://localhost:3000/health";
 
+const OPTIONS: DropdownOption[] = [
+  { label: "Option 1", value: "opt1" },
+  { label: "Option 2", value: "opt2" },
+  { label: "Option 3", value: "opt3" },
+];
+
 const HealthCheckPage = () => {
+  const [selectedValue, setSelectedValue] = useState<string>();
   const [health, setHealth] = useState<HealthState>({
     status: "idle",
     response: null,
@@ -73,6 +81,16 @@ const HealthCheckPage = () => {
         <S.Description>GET {HEALTH_ENDPOINT}</S.Description>
 
         <S.Body>
+          <S.Row>
+            <span>Test Dropdown</span>
+            <Dropdown
+              options={OPTIONS}
+              value={selectedValue}
+              onChange={setSelectedValue}
+              placeholder="Select option"
+            />
+          </S.Row>
+          
           {health.status === "success" && health.response.success ? (
             <>
               <S.Row>
