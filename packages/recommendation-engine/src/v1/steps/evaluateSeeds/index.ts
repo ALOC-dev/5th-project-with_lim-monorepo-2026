@@ -59,8 +59,8 @@ const LIVE_MAX_CANDIDATES = ENRICHMENT_BATCH_SIZE;
 const LIVE_MAX_CONCURRENCY = 4;
 const LIVE_MAX_FETCHES_PER_CANDIDATE = 2;
 const LIVE_MAX_TOOL_STEPS = 10;
-const LIVE_TIMEOUT_MS = 60_000;
-const LIVE_SCRAPE_TIMEOUT_MS = 8_000;
+const LIVE_TIMEOUT_MS = 120_000;
+const LIVE_SCRAPE_TIMEOUT_MS = 20_000;
 const LIVE_SCRAPE_SETTLE_MS = 750;
 const LIVE_REFERENCE_URL_CONCURRENCY = 4;
 
@@ -185,6 +185,7 @@ export const evaluateSeeds = async (
   let semanticPenalizedCount = 0;
   let referenceRejectedCount = 0;
   try {
+    options.onProgress?.('enriching');
     const finishEnrichment = stepLogger.startTimer("evaluateSeeds.enrichment.success");
     stepLogger.info("evaluateSeeds.enrichment.start", {
       evidenceCount: evidences.length,
@@ -290,6 +291,7 @@ export const evaluateSeeds = async (
   // LLM은 raw 차원 점수와 설명 근거만 만든다. 최종 total은 ranking util에서 일관되게 계산한다.
   let llmEvaluations: LlmCandidateEvaluation[];
   try {
+    options.onProgress?.('scoring');
     const finishScoring = stepLogger.startTimer("evaluateSeeds.llm_scoring.success");
     stepLogger.info("evaluateSeeds.llm_scoring.start", {
       evidenceCount: enrichedEvidences.length,

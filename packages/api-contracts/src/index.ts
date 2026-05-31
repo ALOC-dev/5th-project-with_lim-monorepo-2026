@@ -11,3 +11,10 @@ export const createApiError = (error: string): ApiResponse<never> => ({
 });
 
 export const formatServiceName = (name: string): string => name.trim().toUpperCase();
+
+export type RecommendationProgressStep = 'input_validated' | 'discovering' | 'evaluating' | 'enriching' | 'scoring';
+
+export type RecommendationSseEvent = 
+  | { type: 'progress'; step: RecommendationProgressStep }
+  | { type: 'result'; data: unknown }
+  | { type: 'error'; message: string };
