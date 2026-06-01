@@ -7,8 +7,8 @@ import { resolveKakaoMapReferenceUrl } from "./vendors/kakao-local.js";
 import { resolveNaverMapReferenceUrl } from "./vendors/naver-map.js";
 
 type CandidateReferenceUrls = {
-  kakaoMap: string;
-  naverMap: string;
+  kakaoMap?: string;
+  naverMap?: string;
 };
 
 export type ReferenceUrlResolution = {
@@ -69,7 +69,7 @@ export const resolveCandidateReferenceUrls = async (
   const kakaoMap = existingKakaoMap ?? kakaoMapMatch?.url;
   const naverMap = existingNaverMap ?? naverMapMatch?.url;
 
-  if (!kakaoMap || !naverMap) {
+  if (!kakaoMap && !naverMap) {
     return {
       evidence,
       rejectedReason: [
@@ -96,16 +96,30 @@ export const resolveCandidateReferenceUrls = async (
   return {
     evidence: {
       ...evidence,
-      referenceUrls: { kakaoMap, naverMap },
+      referenceUrls: {
+        ...(kakaoMap ? { kakaoMap } : {}),
+        ...(naverMap ? { naverMap } : {}),
+      },
     },
-    referenceUrls: { kakaoMap, naverMap },
+    referenceUrls: {
+      ...(kakaoMap ? { kakaoMap } : {}),
+      ...(naverMap ? { naverMap } : {}),
+    },
     source: {
-      kakaoMap: existingKakaoMap
-        ? toExistingSourceLog(existingKakaoMap)
-        : toResolvedSourceLog(kakaoMapMatch),
-      naverMap: existingNaverMap
-        ? toExistingSourceLog(existingNaverMap)
-        : toResolvedSourceLog(naverMapMatch),
+      ...(kakaoMap
+        ? {
+            kakaoMap: existingKakaoMap
+              ? toExistingSourceLog(existingKakaoMap)
+              : toResolvedSourceLog(kakaoMapMatch),
+          }
+        : {}),
+      ...(naverMap
+        ? {
+            naverMap: existingNaverMap
+              ? toExistingSourceLog(existingNaverMap)
+              : toResolvedSourceLog(naverMapMatch),
+          }
+        : {}),
     },
   };
 };

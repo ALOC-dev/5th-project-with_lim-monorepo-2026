@@ -169,6 +169,23 @@ export const testScenarios = {
     budgetPerPerson: [10000, 25000],
     userNaturalLanguageRequest: "판교 직장인 점심",
   },
+  hoegi_test: {
+    schedule: {
+      dateISO: "2026-05-19",
+      time24h: "18:00",
+      stayDurationMinutes: 120,
+    },
+    location: [
+      {
+        lat: 37.5897,
+        lng: 127.0579,
+      },
+    ],
+    numberOfPeople: 3,
+    partyType: "FRIENDS",
+    budgetPerPerson: [10000, 35000],
+    userNaturalLanguageRequest: "회기역 이자카야",
+  },
 } satisfies Record<string, UserInput>;
 
 export type TestScenarioName = keyof typeof testScenarios;
