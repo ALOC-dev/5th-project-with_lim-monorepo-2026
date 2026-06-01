@@ -14,11 +14,9 @@ const writeGenerated = async (fileName, content) => {
   await writeFile(path.join(OUTPUT_DIR, fileName), `${GENERATED_HEADER}${content}`);
 };
 
-const isObject = (value) =>
-  Boolean(value) && typeof value === "object" && !Array.isArray(value);
+const isObject = (value) => Boolean(value) && typeof value === "object" && !Array.isArray(value);
 
-const isAlias = (value) =>
-  typeof value === "string" && /^\{[a-zA-Z0-9_.-]+\}$/.test(value);
+const isAlias = (value) => typeof value === "string" && /^\{[a-zA-Z0-9_.-]+\}$/.test(value);
 
 const getDeep = (target, pathSegments) => {
   let current = target;
@@ -52,10 +50,7 @@ const resolveAliases = (root, value, stack = []) => {
 
   if (isObject(value)) {
     return Object.fromEntries(
-      Object.entries(value).map(([key, child]) => [
-        key,
-        resolveAliases(root, child, stack),
-      ]),
+      Object.entries(value).map(([key, child]) => [key, resolveAliases(root, child, stack)]),
     );
   }
 
@@ -76,13 +71,7 @@ const assertHexTree = (node, pathSegments = []) => {
 };
 
 const assertTypographyTree = (node, pathSegments = []) => {
-  const requiredKeys = [
-    "fontFamily",
-    "fontSize",
-    "lineHeight",
-    "fontWeight",
-    "letterSpacing",
-  ];
+  const requiredKeys = ["fontFamily", "fontSize", "lineHeight", "fontWeight", "letterSpacing"];
 
   if (requiredKeys.every((key) => Object.hasOwn(node, key))) {
     for (const key of requiredKeys) {
@@ -104,8 +93,8 @@ const assertTypographyTree = (node, pathSegments = []) => {
 const createTypographyCss = (node) => {
   if (
     isObject(node) &&
-    ["fontFamily", "fontSize", "lineHeight", "fontWeight", "letterSpacing"].every(
-      (key) => Object.hasOwn(node, key),
+    ["fontFamily", "fontSize", "lineHeight", "fontWeight", "letterSpacing"].every((key) =>
+      Object.hasOwn(node, key),
     )
   ) {
     return [
@@ -131,10 +120,7 @@ const main = async () => {
   assertHexTree(tokens.color, ["color"]);
   assertTypographyTree(tokens.typography, ["typography"]);
 
-  await writeGenerated(
-    "tokens.generated.ts",
-    `export const tokens = ${toTs(tokens)} as const;\n`,
-  );
+  await writeGenerated("tokens.generated.ts", `export const tokens = ${toTs(tokens)} as const;\n`);
 
   await writeGenerated(
     "typography.generated.ts",

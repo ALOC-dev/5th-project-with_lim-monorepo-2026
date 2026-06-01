@@ -48,13 +48,12 @@ const HealthCheckPage = () => {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void requestHealth();
   }, [requestHealth]);
 
   const isHealthy =
-    health.status === "success" &&
-    health.response.success &&
-    health.response.data.status === "ok";
+    health.status === "success" && health.response.success && health.response.data.status === "ok";
 
   return (
     <S.Wrapper>
@@ -62,11 +61,7 @@ const HealthCheckPage = () => {
         <S.Header>
           <S.Title>Server Health</S.Title>
           <S.StatusBadge $healthy={isHealthy}>
-            {health.status === "loading"
-              ? "checking"
-              : isHealthy
-                ? "ok"
-                : "offline"}
+            {health.status === "loading" ? "checking" : isHealthy ? "ok" : "offline"}
           </S.StatusBadge>
         </S.Header>
 
