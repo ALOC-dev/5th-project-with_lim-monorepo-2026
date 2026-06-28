@@ -100,6 +100,7 @@ const toCenterLocation = (
 
 export type RecommendationEngineOptions = {
   loggingActivated?: boolean;
+  logger?: Logger;
   secrets?: RecommendationEngineSecrets;
 };
 
@@ -111,7 +112,7 @@ export class RecommendationEngine {
 
   constructor(input: UserInput, config: EngineConfig, options: RecommendationEngineOptions = {}) {
     this.config = config;
-    this.logger = options.loggingActivated ? consoleLogger : noopLogger;
+    this.logger = options.logger ?? (options.loggingActivated ? consoleLogger : noopLogger);
     this.secrets = options.secrets ?? {};
     this.userInput = input;
   }

@@ -72,6 +72,16 @@ export const discoverSeeds = async (
       seedKeyCount: output.seedKeys.length,
       excludedSeedKeysAppliedCount: output.excludedSeedKeysApplied.length,
       nextQueryCount: output.nextQueries.length,
+      output: {
+        seeds: output.seeds.map((seed, index) => ({
+          seedKey: output.seedKeys[index],
+          name: seed.name,
+          category: seed.category,
+          roadAddress: seed.roadAddress,
+          address: seed.address,
+        })),
+        seedKeys: output.seedKeys,
+      },
     });
 
     finishStepTimer({
