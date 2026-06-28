@@ -15,9 +15,6 @@ export const useOverlay = ({
 }) => {
   const [presence, setPresence] = useState<OverlayPresence>(() => {
     if (initialOpen) {
-      if (presenceAnimationDurationMs === 0) {
-        return "opened";
-      }
       return "opening";
     }
     return "closed";
@@ -27,15 +24,22 @@ export const useOverlay = ({
   const close = useCallback(() => setPresence("closing"), []);
 
   useEffect(() => {
-    if (presence !== "opening" && presence !== "closing") return;
-
-    const nextPresence = presence === "opening" ? "opened" : "closed";
-
-    const timerId = window.setTimeout(() => {
-      setPresence(nextPresence);
-    }, presenceAnimationDurationMs);
-
-    return () => window.clearTimeout(timerId);
+    switch (presence) {
+      case "opening": {
+        const timerId = window.setTimeout(() => {
+          setPresence("opened");
+        }, presenceAnimationDurationMs);
+        return () => window.clearTimeout(timerId);
+      }
+      case "closing": {
+        const timerId = window.setTimeout(() => {
+          setPresence("closed");
+        }, presenceAnimationDurationMs);
+        return () => window.clearTimeout(timerId);
+      }
+      default:
+        break;
+    }
   }, [presence, presenceAnimationDurationMs]);
 
   return {
