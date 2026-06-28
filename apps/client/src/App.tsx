@@ -1,12 +1,12 @@
 import { ThemeProvider } from "@emotion/react";
 import styled from "@emotion/styled";
-import { useState } from 'react';
+import { useState } from "react";
 
 import { Button } from "./components/Button";
 import { Dropdown, type DropdownOption } from "./components/Dropdown";
 import { Input } from "./components/Input";
 import { RangeSlider } from "./components/Rangeslider";
-import { theme } from "./design-system/theme.generated"; 
+import { theme } from "./design-system/theme.generated";
 import { TextArea } from "./page/components/TextArea";
 
 const S = {
@@ -45,16 +45,14 @@ const S = {
     gap: 20px;
     padding: 0 28px 20px 28px;
   `,
-
 };
 
 export const App = () => {
-
-  const [selectedValue, setSelectedValue] = useState<string>('');
+  const [selectedValue, setSelectedValue] = useState<string>("");
   const options: DropdownOption[] = [
-    { label : '1', value: 'one'},
-    { label : '2', value: 'two'},
-    { label : '3', value: 'three'},
+    { label: "1", value: "one" },
+    { label: "2", value: "two" },
+    { label: "3", value: "three" },
   ];
 
   return (
@@ -63,29 +61,18 @@ export const App = () => {
         <S.FormContainer>
           <S.FormContent />
 
-
           <S.BottomSection>
-            <Input 
-              onChange={(e) => console.log(e.target.value)}
-            />
-            <Dropdown 
+            <Input onChange={(e) => console.log(e.target.value)} />
+            <Dropdown
               options={options}
               value={selectedValue}
               onChange={setSelectedValue}
               placeholder="인원 선택"
               width="125px"
             />
-            <RangeSlider
-              min={0}
-              max={10000}
-              defaultValue={[3000, 7000]}
-            />
+            <RangeSlider min={0} max={10000} defaultValue={[3000, 7000]} />
             <TextArea />
-            <Button 
-              tone="primary" 
-              width="full" 
-              onClick={() => alert("")}
-            >
+            <Button tone="primary" width="full" onClick={() => alert("")}>
               추천 받기
             </Button>
           </S.BottomSection>
