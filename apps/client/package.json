@@ -19,6 +19,7 @@
     "@monorepo/recommendation-engine": "workspace:*",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "react-kakao-maps-sdk": "^1.2.1",
     "react-router-dom": "^7.15.1"
   },
   "devDependencies": {

@@ -2,18 +2,23 @@ import { css, Global } from "@emotion/react";
 
 import { tokens } from "../design-system/tokens.generated";
 
-const globalStyle = css`
+const globalResetStyle = css`
   *,
   *::before,
   *::after {
     box-sizing: border-box;
   }
 
+  :root {
+    /* 페이지 배경의 단일 소스. 값은 PageRoot가 선언적으로 갱신한다. */
+    --page-background: ${tokens.color.primary[50]};
+  }
+
   html,
   body,
   #root {
     min-height: 100%;
-    background-color: ${tokens.color.primary[50]};
+    background-color: var(--page-background);
   }
 
   html {
@@ -21,16 +26,24 @@ const globalStyle = css`
   }
 
   body {
+    position: relative;
     min-height: 100dvh;
     margin: 0;
     overflow-x: hidden;
     text-rendering: optimizeSpeed;
     line-height: 1.5;
+
+    display: flex;
+    flex-direction: column;
   }
 
   #root {
+    flex: 1;
     min-height: 100dvh;
-    position: relative;
+
+    overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
   }
 
   h1,
@@ -69,7 +82,15 @@ const globalStyle = css`
   }
 
   button {
+    appearance: none;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: inherit;
     cursor: pointer;
+    text-align: inherit;
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -84,6 +105,6 @@ const globalStyle = css`
   }
 `;
 
-const GlobalStyle = () => <Global styles={globalStyle} />;
+const GlobalStyle = () => <Global styles={globalResetStyle} />;
 
 export default GlobalStyle;
