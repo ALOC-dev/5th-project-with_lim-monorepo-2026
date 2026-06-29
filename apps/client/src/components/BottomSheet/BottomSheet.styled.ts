@@ -26,7 +26,7 @@ const bottomSheetExit = keyframes`
 `;
 
 export const S = {
-  Wrapper: styled.div<{ $presenceAnimationDurationMs: number }>`
+  Wrapper: styled.div`
     overflow-y: scroll;
     overscroll-behavior-y: none;
 
@@ -40,27 +40,25 @@ export const S = {
     transform: translateY(100%);
     opacity: 0;
     transition:
-      transform ${({ $presenceAnimationDurationMs }) => $presenceAnimationDurationMs}ms ease,
-      opacity ${({ $presenceAnimationDurationMs }) => $presenceAnimationDurationMs}ms ease;
+      transform var(--overlay-animation-duration) ease,
+      opacity var(--overlay-animation-duration) ease;
 
-    &[data-state="opening"] {
+    [data-state="opening"] & {
       transform: translateY(0);
       opacity: 1;
-      animation: ${bottomSheetEnter} ${({ $presenceAnimationDurationMs }) => $presenceAnimationDurationMs}ms
-        ease both;
+      animation: ${bottomSheetEnter} var(--overlay-animation-duration) ease both;
     }
 
-    &[data-state="opened"] {
+    [data-state="opened"] & {
       transform: translateY(0);
       opacity: 1;
     }
 
-    &[data-state="closing"] {
+    [data-state="closing"] & {
       pointer-events: none;
       transform: translateY(100%);
       opacity: 0;
-      animation: ${bottomSheetExit} ${({ $presenceAnimationDurationMs }) => $presenceAnimationDurationMs}ms
-        ease both;
+      animation: ${bottomSheetExit} var(--overlay-animation-duration) ease both;
     }
   `,
   InnerPadding: styled.div`
