@@ -1,7 +1,7 @@
 import { type ChangeEvent, type Dispatch, type SetStateAction, useState } from "react";
 
 import BottomSheet from "../../../../components/BottomSheet/BottomSheet";
-import { Input } from "../../../../components/Input";
+import { SearchInput } from "../../../../components/SearchInput";
 import { S } from "./LocationSelectionBottomSheet.styled";
 import MapModeContent from "./MapModeContent";
 import SearchModeContent from "./SearchModeContent";
@@ -33,20 +33,17 @@ const LocationSelectionBottomSheet = ({
   const [mode, setMode] = useState<LocationSelectionMode>("map");
   const [searchQuery, setSearchQuery] = useState("");
 
-  const handleSearchQueryChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const nextSearchQuery = event.target.value;
-    setSearchQuery(nextSearchQuery);
-    setMode(nextSearchQuery.trim().length > 0 ? "search" : "map");
-  };
-
   return (
     <BottomSheet id={id} isOpen={isOpen} close={close}>
       <S.Wrapper>
-        <Input
+        <SearchInput
+          isSearchMode={mode === "search"}
+          backHandler={() => setMode("map")}
           onFocus={() => setMode("search")}
-          width="100%"
+          placeholder="지역, 지하철역, 장소 검색"
+          clearHandler={() => setSearchQuery("")}
           value={searchQuery}
-          onChange={handleSearchQueryChange}
+          onChange={(e) => setSearchQuery(e.target.value)}
         />
         {mode === "map" ? (
           <MapModeContent location={location} setLocation={setLocation} onComplete={close} />
