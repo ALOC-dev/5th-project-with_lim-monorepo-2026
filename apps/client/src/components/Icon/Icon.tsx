@@ -30,10 +30,10 @@ const iconRenderers = {
     </g>
   ),
   "map-pin": () => (
-    <>
-      <circle cx={12} cy={11} fill="currentColor" r={8} />
-      <circle cx={12} cy={11} fill="#fff" r={3} />
-    </>
+    <g fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}>
+      <path d="M20 10.5c0 4.8-8 10.5-8 10.5s-8-5.7-8-10.5a8 8 0 0 1 16 0" />
+      <circle cx={12} cy={10.5} r={2.5} />
+    </g>
   ),
   "back-arrow": () => (
     <path

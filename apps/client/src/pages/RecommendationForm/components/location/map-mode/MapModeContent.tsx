@@ -1,22 +1,24 @@
-import { type Dispatch, type SetStateAction, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Map, MapMarker } from "react-kakao-maps-sdk";
 
-import { Button } from "../../../../components/Button";
-import type { Location } from "./LocationSelectionBottomSheet";
+import { Button } from "../../../../../components/Button";
+import {
+  useRecommendationFormInput,
+  useRecommendationFormUi,
+} from "../../../RecommendationForm.context";
+import {
+  resolveSelectedLocation,
+  type ReverseGeocodeCoordinates,
+} from "../../../apis/reverseGeocode";
 import { S } from "./MapModeContent.styled";
-import { resolveSelectedLocation, type ReverseGeocodeCoordinates } from "./reverseGeocode";
-
-type MapModeContentProps = {
-  readonly location: Location;
-  readonly setLocation: Dispatch<SetStateAction<Location>>;
-  readonly onComplete: () => void;
-};
 
 type AddressRequestStatus = "loading" | "resolved" | "failed";
 
 const CENTER_CHANGE_THRESHOLD = 0.000001;
 
-const MapModeContent = ({ location, setLocation, onComplete }: MapModeContentProps) => {
+const MapModeContent = () => {
+  const { location, setLocation } = useRecommendationFormInput();
+  const { closeSheet } = useRecommendationFormUi();
   const [addressRequestStatus, setAddressRequestStatus] =
     useState<AddressRequestStatus>("resolved");
   const latestReverseGeocodeRequestIdRef = useRef(0);
@@ -125,7 +127,7 @@ const MapModeContent = ({ location, setLocation, onComplete }: MapModeContentPro
 
   const handleCompleteSelection = () => {
     if (canCompleteSelection) {
-      onComplete();
+      closeSheet();
     }
   };
 
