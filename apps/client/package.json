@@ -16,7 +16,10 @@
   "dependencies": {
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.0",
+    "@monorepo/api-contracts": "workspace:*",
     "@monorepo/recommendation-engine": "workspace:*",
+    "@tanstack/react-query": "^5.101.2",
+    "ky": "^2.0.2",
     "modern-css-reset": "^1.4.0",
     "rc-slider": "^11.1.9",
     "react": "^18.3.1",
