@@ -31,6 +31,7 @@ const globalResetStyle = css`
     margin: 0;
     overflow-x: hidden;
     text-rendering: optimizeSpeed;
+    /* Global reset baseline only. Component text must use design-system typography tokens. */
     line-height: 1.5;
 
     display: flex;

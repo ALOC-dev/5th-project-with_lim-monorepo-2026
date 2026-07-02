@@ -57,9 +57,18 @@ importers:
       '@emotion/styled':
         specifier: ^11.14.0
         version: 11.14.1(@emotion/react@11.14.0(@types/react@18.3.28)(react@18.3.1))(@types/react@18.3.28)(react@18.3.1)
+      '@monorepo/api-contracts':
+        specifier: workspace:*
+        version: link:../../packages/api-contracts
       '@monorepo/recommendation-engine':
         specifier: workspace:*
         version: link:../../packages/recommendation-engine
+      '@tanstack/react-query':
+        specifier: ^5.101.2
+        version: 5.101.2(react@18.3.1)
+      ky:
+        specifier: ^2.0.2
+        version: 2.0.2
       modern-css-reset:
         specifier: ^1.4.0
         version: 1.4.0
@@ -78,6 +87,9 @@ importers:
       react-router-dom:
         specifier: ^7.15.1
         version: 7.15.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      zod:
+        specifier: ^4.4.1
+        version: 4.4.1
     devDependencies:
       '@emotion/babel-plugin':
         specifier: ^11.13.5
@@ -846,6 +858,14 @@ packages:
 
   '@swc/plugin-emotion@14.14.0':
     resolution: {integrity: sha512-E62+zotGgiF+EIHjyHHgS1cFfLKy/dIuDVMy8S9aucu9qxwObg4qkrZIYjGsW/rIwVU4nnMU72QJRNM3LHBB5g==}
+
+  '@tanstack/query-core@5.101.2':
+    resolution: {integrity: sha512-hH5MLoJhF7KaIGd7q3xTXGXvslI+GYlM1Z/35aSHHWaCJWB7XvTSHYuV3eM7tw+aE0mT/xMro4M4Q9rCGHT0lw==}
+
+  '@tanstack/react-query@5.101.2':
+    resolution: {integrity: sha512-seDkr6kzGzX1okaaTtZPtgA688CDPlXUz1C6xSg0ESqn04Vuc8tlrYms1s3de+znBqhPVxFRfpAfUf+6XvfPWg==}
+    peerDependencies:
+      react: ^18 || ^19
 
   '@types/babel__core@7.20.5':
     resolution: {integrity: sha512-qoQprZvz5wQFJwMDqeseRXWv3rqMvhgpbXFfVyWhbx9X47POIA6i/+dXefEmZKoAgOaTdaIgNSMqMIU61yRyzA==}
@@ -2849,6 +2869,13 @@ snapshots:
   '@swc/plugin-emotion@14.14.0':
     dependencies:
       '@swc/counter': 0.1.3
+
+  '@tanstack/query-core@5.101.2': {}
+
+  '@tanstack/react-query@5.101.2(react@18.3.1)':
+    dependencies:
+      '@tanstack/query-core': 5.101.2
+      react: 18.3.1
 
   '@types/babel__core@7.20.5':
     dependencies:

@@ -29,7 +29,7 @@ const modalExit = keyframes`
 `;
 
 export const S = {
-  Dialog: styled.section<{ $presenceAnimationDurationMs: number }>`
+  Dialog: styled.section`
     position: fixed;
     top: 50%;
     inset-inline: 20px;
@@ -47,25 +47,23 @@ export const S = {
 
     opacity: 0;
     transition:
-      opacity ${({ $presenceAnimationDurationMs }) => $presenceAnimationDurationMs}ms ease,
-      transform ${({ $presenceAnimationDurationMs }) => $presenceAnimationDurationMs}ms ease;
+      opacity var(--overlay-animation-duration) ease,
+      transform var(--overlay-animation-duration) ease;
 
-    &[data-state="opening"] {
+    [data-state="opening"] & {
       opacity: 1;
-      animation: ${modalEnter}
-        ${({ $presenceAnimationDurationMs }) => $presenceAnimationDurationMs}ms ease both;
+      animation: ${modalEnter} var(--overlay-animation-duration) ease both;
     }
 
-    &[data-state="opened"] {
+    [data-state="opened"] & {
       opacity: 1;
       transform: translateY(-50%);
     }
 
-    &[data-state="closing"] {
+    [data-state="closing"] & {
       pointer-events: none;
       opacity: 0;
-      animation: ${modalExit}
-        ${({ $presenceAnimationDurationMs }) => $presenceAnimationDurationMs}ms ease both;
+      animation: ${modalExit} var(--overlay-animation-duration) ease both;
     }
   `,
   Texts: styled.div`

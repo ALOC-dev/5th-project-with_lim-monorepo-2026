@@ -1,10 +1,10 @@
 import { keyframes } from "@emotion/react";
 import styled from "@emotion/styled";
-import type { MouseEvent } from "react";
+import type { MouseEvent, ReactNode } from "react";
 import { useLayoutEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 
-import type { OverlayPresence } from "./useOverlay";
+import { type OverlayPresence, useOverlayPresence } from "./useOverlayPresence";
 
 const OVERLAY_ROOT_ID = "overlay-root";
 
@@ -30,15 +30,12 @@ const backdropExit = keyframes`
   }
 `;
 
-export type BackdropTone = "dim" | "transparent";
-
-export type OverlayProps = {
-  id: string;
-  zIndex?: number;
-  backdropTone?: BackdropTone;
-  presence: OverlayPresence;
-  presenceAnimationDurationMs: number & { __brand: "ms" };
-  backdropHandler?: () => void;
+type OverlayShellProps = {
+  readonly id: string;
+  readonly presence: OverlayPresence;
+  readonly backdropHandler: () => void;
+  readonly animationDurationMs: number;
+  readonly children: ReactNode;
 };
 
 /**
@@ -47,13 +44,11 @@ export type OverlayProps = {
  */
 const OverlayShell = ({
   id,
-  zIndex,
-  backdropTone = "dim",
-  children,
   presence,
-  presenceAnimationDurationMs,
+  children,
+  animationDurationMs,
   backdropHandler,
-}: OverlayProps & { children: React.ReactNode }) => {
+}: OverlayShellProps) => {
   const portalContainer = useMemo(() => {
     const container = document.createElement("div");
     container.id = id;
@@ -73,22 +68,16 @@ const OverlayShell = ({
 
   if (presence === "closed") return null;
 
-  const onPointerDown = (e: MouseEvent<HTMLDivElement>) => {
+  const onClick = (e: MouseEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
     if (e.target !== e.currentTarget) return;
 
-    backdropHandler?.();
+    backdropHandler();
   };
 
   const eleToRender = (
-    <S.Root
-      $presenceAnimationDurationMs={presenceAnimationDurationMs}
-      data-state={presence}
-      $zIndex={zIndex}
-      $backdropTone={backdropTone}
-      onPointerDown={onPointerDown}
-    >
+    <S.Root $animationDurationMs={animationDurationMs} data-state={presence} onClick={onClick}>
       {children}
     </S.Root>
   );
@@ -100,9 +89,7 @@ export default OverlayShell;
 
 const S = {
   Root: styled.div<{
-    $zIndex?: number;
-    $backdropTone: BackdropTone;
-    $presenceAnimationDurationMs?: number;
+    $animationDurationMs: number;
   }>`
     flex: 1;
 
@@ -110,22 +97,20 @@ const S = {
     inset: 0;
 
     /* TODO: theme으로 관리하기 */
-    --overlay-backdrop-open-background-color: ${({ $backdropTone }) =>
-      $backdropTone === "dim" ? "rgba(0, 0, 0, 0.5)" : "transparent"};
+    --overlay-backdrop-open-background-color: rgba(0, 0, 0, 0.5);
+    --overlay-animation-duration: ${({ $animationDurationMs }) => `${$animationDurationMs}ms`};
 
-    z-index: ${({ $zIndex }) => $zIndex ?? DEFAULT_Z_INDEX};
+    z-index: ${DEFAULT_Z_INDEX};
 
     overflow-y: auto;
     overscroll-behavior-y: none;
 
     background-color: transparent;
-    transition: background-color
-      ${({ $presenceAnimationDurationMs }) => $presenceAnimationDurationMs}ms ease;
+    transition: background-color var(--overlay-animation-duration) ease;
 
     &[data-state="opening"] {
       background-color: var(--overlay-backdrop-open-background-color);
-      animation: ${backdropEnter}
-        ${({ $presenceAnimationDurationMs }) => $presenceAnimationDurationMs}ms ease both;
+      animation: ${backdropEnter} var(--overlay-animation-duration) ease both;
     }
 
     &[data-state="opened"] {
@@ -134,8 +119,7 @@ const S = {
 
     &[data-state="closing"] {
       background-color: transparent;
-      animation: ${backdropExit}
-        ${({ $presenceAnimationDurationMs }) => $presenceAnimationDurationMs}ms ease both;
+      animation: ${backdropExit} var(--overlay-animation-duration) ease both;
     }
   `,
 };

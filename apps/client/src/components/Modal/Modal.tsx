@@ -1,49 +1,52 @@
 import type { ReactNode } from "react";
 
-import OverlayShell, { type OverlayProps } from "../OverlayShell/OverlayShell";
+import OverlayShell from "../OverlayShell/OverlayShell";
+import { useOverlayPresence } from "../OverlayShell/useOverlayPresence";
 import { S } from "./Modal.styled";
 
 export type ModalAction = {
-  label: string;
-  onClick: () => void;
-  disabled?: boolean;
+  readonly label: string;
+  readonly onClick: () => void;
+  readonly disabled?: boolean;
 };
 
 type ModalProps = {
-  title: string;
-  description?: string;
-  primaryAction: ModalAction;
-  secondaryAction?: ModalAction;
-  children?: ReactNode;
-} & OverlayProps;
+  readonly id: string;
+  readonly isOpen: boolean;
+  readonly close: () => void;
+  readonly title: string;
+  readonly description?: string;
+  readonly primaryAction: ModalAction;
+  readonly secondaryAction?: ModalAction;
+  readonly children?: ReactNode;
+};
+
+const MODAL_ANIMATION_DURATION_MS = 200;
 
 const Modal = ({
   id,
-  presence,
+  isOpen,
   title,
   description,
   primaryAction,
   secondaryAction,
-  zIndex,
-  backdropTone = "dim",
   children,
-  presenceAnimationDurationMs,
-  backdropHandler,
+  close,
 }: ModalProps) => {
-  if (presence === "closed") return null;
+  const presence = useOverlayPresence({
+    isOpen,
+    animationDurationMs: MODAL_ANIMATION_DURATION_MS,
+  });
 
   return (
     <OverlayShell
       id={id}
-      zIndex={zIndex}
-      backdropTone={backdropTone}
+      backdropHandler={close}
+      animationDurationMs={MODAL_ANIMATION_DURATION_MS}
       presence={presence}
-      presenceAnimationDurationMs={presenceAnimationDurationMs}
-      backdropHandler={backdropHandler}
     >
       <S.Dialog
         data-state={presence}
-        $presenceAnimationDurationMs={presenceAnimationDurationMs}
         role="dialog"
         aria-modal="true"
         aria-labelledby={`${id}-title`}
