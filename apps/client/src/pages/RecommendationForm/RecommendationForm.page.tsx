@@ -4,6 +4,7 @@ import { useCallback, useMemo, useState } from "react";
 
 import PageRoot from "../../components/PageRoot/PageRoot";
 import { tokens } from "../../design-system/tokens.generated";
+import DateSelectionBottomSheet from "./components/date/DateSelectionBottomSheet";
 import LocationSelectionBottomSheet from "./components/location/LocationSelectionBottomSheet";
 import {
   RecommendationFormInputContext,
@@ -13,6 +14,7 @@ import {
   RecommendationFormUiContext,
   type RecommendationFormUiContextType,
 } from "./RecommendationForm.context";
+import { toDateISO } from "./utils/calendarDayViewModel";
 
 const getInitialLocation = (): RecommendationFormLocation => ({
   lat: 37.5665,
@@ -22,18 +24,23 @@ const getInitialLocation = (): RecommendationFormLocation => ({
 
 const RecommendationFlowProvider = ({ children }: { readonly children: ReactNode }) => {
   const [location, setLocation] = useState(getInitialLocation);
-  const [schedule, setSchedule] = useState<RecommendationFormInputContextType["schedule"]>(null);
+  const [date, setDate] = useState<RecommendationFormInputContextType["date"]>(null);
+  const [time24h, setTime24h] = useState<RecommendationFormInputContextType["time24h"]>(null);
+  const [stayDurationMinutes, setStayDurationMinutes] =
+    useState<RecommendationFormInputContextType["stayDurationMinutes"]>(null);
   const [numberOfPeople, setNumberOfPeople] =
     useState<RecommendationFormInputContextType["numberOfPeople"]>(null);
   const [partyType, setPartyType] = useState<RecommendationFormInputContextType["partyType"]>(null);
   const [budgetPerPerson, setBudgetPerPerson] =
     useState<RecommendationFormInputContextType["budgetPerPerson"]>(null);
   const [userNaturalLanguageRequest, setUserNaturalLanguageRequest] = useState("");
-  const [activeSheet, setActiveSheet] = useState<RecommendationFormSheet | null>("location");
+  const [activeSheet, setActiveSheet] = useState<RecommendationFormSheet | null>("date");
 
   const resetForm = useCallback(() => {
     setLocation(getInitialLocation());
-    setSchedule(null);
+    setDate(null);
+    setTime24h(null);
+    setStayDurationMinutes(null);
     setNumberOfPeople(null);
     setPartyType(null);
     setBudgetPerPerson(null);
@@ -42,12 +49,23 @@ const RecommendationFlowProvider = ({ children }: { readonly children: ReactNode
   }, []);
 
   const buildUserInput = useCallback<RecommendationFormInputContextType["buildUserInput"]>(() => {
-    if (!schedule || numberOfPeople === null || !partyType || !budgetPerPerson) {
+    if (
+      date === null ||
+      time24h === null ||
+      stayDurationMinutes === null ||
+      numberOfPeople === null ||
+      !partyType ||
+      !budgetPerPerson
+    ) {
       return null;
     }
 
     const parseResult = UserInputSchema.safeParse({
-      schedule,
+      schedule: {
+        dateISO: toDateISO(date),
+        time24h,
+        stayDurationMinutes,
+      },
       location: [
         {
           lat: location.lat,
@@ -63,24 +81,30 @@ const RecommendationFlowProvider = ({ children }: { readonly children: ReactNode
     return parseResult.success ? parseResult.data : null;
   }, [
     budgetPerPerson,
+    date,
     location.lat,
     location.lng,
     numberOfPeople,
     partyType,
-    schedule,
+    stayDurationMinutes,
+    time24h,
     userNaturalLanguageRequest,
   ]);
 
   const inputContextValue = useMemo<RecommendationFormInputContextType>(
     () => ({
       location,
-      schedule,
+      date,
+      time24h,
+      stayDurationMinutes,
       numberOfPeople,
       partyType,
       budgetPerPerson,
       userNaturalLanguageRequest,
       setLocation,
-      setSchedule,
+      setDate,
+      setTime24h,
+      setStayDurationMinutes,
       setNumberOfPeople,
       setPartyType,
       setBudgetPerPerson,
@@ -91,11 +115,13 @@ const RecommendationFlowProvider = ({ children }: { readonly children: ReactNode
     [
       budgetPerPerson,
       buildUserInput,
+      date,
       location,
       numberOfPeople,
       partyType,
       resetForm,
-      schedule,
+      stayDurationMinutes,
+      time24h,
       userNaturalLanguageRequest,
     ],
   );
@@ -137,6 +163,7 @@ const RecommendationFormPage = () => {
     <RecommendationFlowProvider>
       <PageRoot backgroundColor={tokens.color.primary[500]}>
         <LocationSelectionBottomSheet />
+        <DateSelectionBottomSheet />
       </PageRoot>
     </RecommendationFlowProvider>
   );

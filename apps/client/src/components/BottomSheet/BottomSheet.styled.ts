@@ -26,7 +26,9 @@ const bottomSheetExit = keyframes`
 `;
 
 export const S = {
-  Wrapper: styled.div`
+  Wrapper: styled.div<{
+    readonly $height: string;
+  }>`
     display: flex;
     flex-direction: column;
 
@@ -34,7 +36,10 @@ export const S = {
     bottom: 0;
     left: 0;
     right: 0;
-    background-color: ${tokens.color.neutral[0]};
+    height: ${({ $height }) => $height};
+    max-height: calc(100dvh - 24px);
+    overflow: hidden;
+    background-color: ${tokens.color.neutral[50]};
     border-radius: 16px 16px 0 0;
 
     transform: translateY(100%);
@@ -66,7 +71,7 @@ export const S = {
     min-height: 0;
     flex: 1;
     flex-direction: column;
-    padding: 16px 28px;
+    padding: 32px 24px 20px;
   `,
   HandleWrapper: styled.div`
     display: flex;

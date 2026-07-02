@@ -1,6 +1,15 @@
 import type { SVGProps } from "react";
 
-export const iconNames = ["search", "close", "link", "map-pin", "back-arrow", "circle-x"] as const;
+export const iconNames = [
+  "search",
+  "close",
+  "link",
+  "map-pin",
+  "back-arrow",
+  "circle-x",
+  "chevron-left",
+  "chevron-right",
+] as const;
 
 export type IconName = (typeof iconNames)[number];
 
