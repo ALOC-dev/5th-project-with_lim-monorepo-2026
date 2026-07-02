@@ -1,24 +1,16 @@
 import styled from "@emotion/styled";
+import type { ApiResponse, HealthData } from "@monorepo/api-contracts";
 import { useCallback, useEffect, useState } from "react";
 
+import { getHealth, HEALTH_ENDPOINT_PATH } from "../../apis/server";
+import { Dropdown, type DropdownOption } from "../../components/Dropdown";
 import { tokens } from "../../design-system/tokens.generated";
 import { typography } from "../../design-system/typography.generated";
-import { Dropdown, DropdownOption } from "../../components/Dropdown";
-
-type HealthData = {
-  service: string;
-  status: string;
-  timestamp: string;
-};
-
-type ApiResponse<T> = { success: true; data: T } | { success: false; error: string };
 
 type HealthState =
   | { status: "idle" | "loading"; response: null; error: null }
   | { status: "success"; response: ApiResponse<HealthData>; error: null }
   | { status: "error"; response: null; error: string };
-
-const HEALTH_ENDPOINT = "http://localhost:3000/health";
 
 const OPTIONS: DropdownOption[] = [
   { label: "Option 1", value: "opt1" },
@@ -38,13 +30,7 @@ const HealthCheckPage = () => {
     setHealth({ status: "loading", response: null, error: null });
 
     try {
-      const response = await fetch(HEALTH_ENDPOINT);
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-
-      const data = (await response.json()) as ApiResponse<HealthData>;
+      const data = await getHealth();
       setHealth({ status: "success", response: data, error: null });
     } catch (error) {
       setHealth({
@@ -73,7 +59,7 @@ const HealthCheckPage = () => {
           </S.StatusBadge>
         </S.Header>
 
-        <S.Description>GET {HEALTH_ENDPOINT}</S.Description>
+        <S.Description>GET /{HEALTH_ENDPOINT_PATH}</S.Description>
 
         <S.Body>
           <S.Row>
@@ -85,7 +71,7 @@ const HealthCheckPage = () => {
               placeholder="Select option"
             />
           </S.Row>
-          
+
           {health.status === "success" && health.response.success ? (
             <>
               <S.Row>
@@ -185,7 +171,7 @@ const S = {
       color: ${tokens.color.neutral[900]};
       text-align: right;
       overflow-wrap: anywhere;
-      font-weight: 500;
+      ${typography.label.md}
     }
   `,
   MutedText: styled.p`

@@ -33,7 +33,7 @@ const backdropExit = keyframes`
 type OverlayShellProps = {
   readonly id: string;
   readonly presence: OverlayPresence;
-  readonly close: () => void;
+  readonly backdropHandler: () => void;
   readonly animationDurationMs: number;
   readonly children: ReactNode;
 };
@@ -47,7 +47,7 @@ const OverlayShell = ({
   presence,
   children,
   animationDurationMs,
-  close,
+  backdropHandler,
 }: OverlayShellProps) => {
   const portalContainer = useMemo(() => {
     const container = document.createElement("div");
@@ -73,7 +73,7 @@ const OverlayShell = ({
     e.stopPropagation();
     if (e.target !== e.currentTarget) return;
 
-    close();
+    backdropHandler();
   };
 
   const eleToRender = (

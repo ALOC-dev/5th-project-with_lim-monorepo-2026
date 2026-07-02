@@ -3,9 +3,9 @@ import SearchHistory from "./history/SearchHistory";
 import SearchQueryResult from "./query-result/SearchQueryResult";
 
 const SearchModeContent = () => {
-  const { searchQuery } = useLocationSelection();
+  const { query } = useLocationSelection();
 
-  const filled = searchQuery.trim().length > 0;
+  const filled = query.trim().length > 0;
 
   if (!filled) {
     return <SearchHistory />;

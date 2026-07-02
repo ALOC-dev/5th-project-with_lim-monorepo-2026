@@ -1,7 +1,7 @@
-import styled from '@emotion/styled';
-import { type InputHTMLAttributes } from 'react';
+import styled from "@emotion/styled";
+import { type InputHTMLAttributes } from "react";
 
-import { theme } from '../design-system/theme.generated';
+import { theme } from "../design-system/theme.generated";
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   width?: string;
@@ -9,19 +9,18 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 
 const S = {
   StyledInput: styled.input<{ width?: string }>`
-    width: ${({ width }) => width || '125px'};
+    width: ${({ width }) => width || "125px"};
     height: 48px;
     padding: 0 14px;
-    
 
     background-color: ${theme.tokens.color.neutral[0]};
-    border: 1px solid #E6DFD8; 
+    border: 1px solid #e6dfd8;
     border-radius: 8px;
-    
-  
-    font-size: 14px;
+
     color: ${theme.tokens.color.neutral[900]};
-    
+
+    ${theme.tokens.typography.body.sm}
+
     outline: none;
     transition: all 0.2s ease;
 

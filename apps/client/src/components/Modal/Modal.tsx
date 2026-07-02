@@ -41,7 +41,7 @@ const Modal = ({
   return (
     <OverlayShell
       id={id}
-      close={close}
+      backdropHandler={close}
       animationDurationMs={MODAL_ANIMATION_DURATION_MS}
       presence={presence}
     >

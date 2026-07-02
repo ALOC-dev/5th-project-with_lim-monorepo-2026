@@ -1,15 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { Map, MapMarker } from "react-kakao-maps-sdk";
 
+import { resolveSelectedLocation, type ReverseGeocodeCoordinates } from "../../../../../apis/kakao";
 import { Button } from "../../../../../components/Button";
 import {
   useRecommendationFormInput,
   useRecommendationFormUi,
 } from "../../../RecommendationForm.context";
-import {
-  resolveSelectedLocation,
-  type ReverseGeocodeCoordinates,
-} from "../../../apis/reverseGeocode";
 import { S } from "./MapModeContent.styled";
 
 type AddressRequestStatus = "loading" | "resolved" | "failed";
@@ -132,7 +129,7 @@ const MapModeContent = () => {
   };
 
   return (
-    <>
+    <S.Wrapper>
       <S.MapFrame>
         <Map
           style={{ width: "100%", height: "100%" }}
@@ -144,7 +141,7 @@ const MapModeContent = () => {
         </Map>
         <S.CenterMarker aria-hidden />
       </S.MapFrame>
-      <div style={{ height: 48 }}>
+      <div>
         {locationLabel.kind === "resolved" ? (
           <div>{formatLocationLabel(locationLabel)}</div>
         ) : (
@@ -154,7 +151,7 @@ const MapModeContent = () => {
       <Button width="full" disabled={!canCompleteSelection} onClick={handleCompleteSelection}>
         선택 완료
       </Button>
-    </>
+    </S.Wrapper>
   );
 };
 

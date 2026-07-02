@@ -27,8 +27,8 @@ const bottomSheetExit = keyframes`
 
 export const S = {
   Wrapper: styled.div`
-    overflow-y: scroll;
-    overscroll-behavior-y: none;
+    display: flex;
+    flex-direction: column;
 
     position: fixed;
     bottom: 0;
@@ -62,6 +62,10 @@ export const S = {
     }
   `,
   InnerPadding: styled.div`
+    display: flex;
+    min-height: 0;
+    flex: 1;
+    flex-direction: column;
     padding: 16px 28px;
   `,
   HandleWrapper: styled.div`

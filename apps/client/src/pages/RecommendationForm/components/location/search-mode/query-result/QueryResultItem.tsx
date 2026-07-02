@@ -1,6 +1,7 @@
 import styled from "@emotion/styled";
 
 import { theme } from "../../../../../../design-system/theme.generated";
+import { useLocationSearchHistory } from "../../../../hooks/useLocationSearchHistory";
 import { useRecommendationFormInput } from "../../../../RecommendationForm.context";
 import type { Location } from "../../LocationSelection.context";
 import { useLocationSelection } from "../../LocationSelection.context";
@@ -25,11 +26,16 @@ const getLocationDisplay = (location: Location) => {
 
 const QueryResultItem = ({ location }: QueryResultItemProps) => {
   const { setLocation } = useRecommendationFormInput();
-  const { openMapMode, setSearchQuery } = useLocationSelection();
+  const { openMapMode, setQuery } = useLocationSelection();
+  const { insertItem } = useLocationSearchHistory();
   const { mainText, subText } = getLocationDisplay(location);
   const selectLocation = () => {
+    insertItem({
+      type: "location",
+      location,
+    });
     setLocation(location);
-    setSearchQuery("");
+    setQuery("");
     openMapMode();
   };
 
@@ -85,11 +91,13 @@ const S = {
     overflow: hidden;
 
     color: ${theme.tokens.color.secondary[500]};
-    font-family: "Noto Sans KR", sans-serif;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+
+    /* Figma secondary text spec(10px/16px/400) has no matching design-system typography token yet. */
+    font-family: "Noto Sans KR", system-ui, sans-serif;
     font-size: 10px;
     font-weight: 400;
     line-height: 16px;
-    white-space: nowrap;
-    text-overflow: ellipsis;
   `,
 };

@@ -1,9 +1,16 @@
 import styled from "@emotion/styled";
 
 export const S = {
+  Wrapper: styled.div`
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    flex: 1;
+  `,
   MapFrame: styled.div`
     position: relative;
     width: 100%;
+    min-height: 0;
     flex: 1;
   `,
   CenterMarker: styled.div`

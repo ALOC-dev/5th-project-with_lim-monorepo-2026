@@ -9,13 +9,22 @@ export type BottomSheetProps = {
   readonly id: string;
   readonly isOpen: boolean;
   readonly close: () => void;
+  readonly closeOnBackdropClick?: boolean;
   readonly children: ReactNode;
+  readonly handleType: "drag" | "none";
 };
 
 const BOTTOM_SHEET_ANIMATION_DURATION_MS = 200;
 const THRESHOLD_TO_CLOSE = 20; // 드래그 후 닫히는 기준점 (px)
 
-const BottomSheet = ({ id, isOpen, children, close }: BottomSheetProps) => {
+const BottomSheet = ({
+  id,
+  isOpen,
+  children,
+  close,
+  closeOnBackdropClick = false,
+  handleType,
+}: BottomSheetProps) => {
   const presence = useOverlayPresence({
     isOpen,
     animationDurationMs: BOTTOM_SHEET_ANIMATION_DURATION_MS,
@@ -70,18 +79,20 @@ const BottomSheet = ({ id, isOpen, children, close }: BottomSheetProps) => {
     <OverlayShell
       id={id}
       presence={presence}
-      close={close}
+      backdropHandler={closeOnBackdropClick ? close : () => {}}
       animationDurationMs={BOTTOM_SHEET_ANIMATION_DURATION_MS}
     >
       <S.Wrapper ref={elementRef} data-state={presence}>
-        <S.HandleWrapper
-          onPointerDown={onHandlePointerDown}
-          onPointerMove={onHandlePointerMove}
-          onPointerUp={finishHandleDrag}
-          onPointerCancel={cancelHandleDrag}
-        >
-          <S.Handle />
-        </S.HandleWrapper>
+        {handleType === "drag" && (
+          <S.HandleWrapper
+            onPointerDown={onHandlePointerDown}
+            onPointerMove={onHandlePointerMove}
+            onPointerUp={finishHandleDrag}
+            onPointerCancel={cancelHandleDrag}
+          >
+            <S.Handle />
+          </S.HandleWrapper>
+        )}
         <S.InnerPadding>{children}</S.InnerPadding>
       </S.Wrapper>
     </OverlayShell>

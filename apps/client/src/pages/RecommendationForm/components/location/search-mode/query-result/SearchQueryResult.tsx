@@ -1,42 +1,26 @@
-import type { Location } from "../../LocationSelection.context";
+import { useLocationSearchQuery } from "../../../../hooks/useLocationSearchQuery";
 import QueryResultItem from "./QueryResultItem";
 import { S } from "./SearchQueryResult.styled";
 
-const mockQueryResultLocations = [
-  {
-    lat: 37.5547,
-    lng: 126.9706,
-    placeName: "서울역",
-    roadNameAddress: "서울 중구 한강대로 405",
-  },
-  {
-    lat: 37.5541,
-    lng: 126.9716,
-    placeName: "서울역 KTX",
-    roadNameAddress: "서울 용산구 한강대로 378",
-  },
-  {
-    lat: 37.5552,
-    lng: 126.973,
-    placeName: "서울스퀘어",
-    roadNameAddress: "서울 중구 한강대로 416",
-  },
-  {
-    lat: 37.5663,
-    lng: 126.9779,
-    roadNameAddress: "서울 중구 세종대로 110",
-  },
-] as const satisfies readonly Location[];
-
 const SearchQueryResult = () => {
+  const { locations, status } = useLocationSearchQuery();
+
   return (
     <S.Wrapper>
       <S.Label>검색 결과</S.Label>
-      <S.List>
-        {mockQueryResultLocations.map((location) => (
-          <QueryResultItem key={location.roadNameAddress} location={location} />
-        ))}
-      </S.List>
+      {status === "loading" ? <S.StatusText>검색 중</S.StatusText> : null}
+      {status === "empty" ? <S.StatusText>검색 결과가 없어요</S.StatusText> : null}
+      {status === "failed" ? <S.StatusText>장소를 검색할 수 없어요</S.StatusText> : null}
+      {status === "success" ? (
+        <S.List>
+          {locations.map((location) => (
+            <QueryResultItem
+              key={`${location.lat}:${location.lng}:${location.roadNameAddress}`}
+              location={location}
+            />
+          ))}
+        </S.List>
+      ) : null}
     </S.Wrapper>
   );
 };

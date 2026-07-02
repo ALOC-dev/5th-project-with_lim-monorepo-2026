@@ -2,22 +2,14 @@ import styled from "@emotion/styled";
 
 import { Icon } from "../../../../../../components/Icon";
 import { theme } from "../../../../../../design-system/theme.generated";
+import { useLocationSearchHistory } from "../../../../hooks/useLocationSearchHistory";
 import { useRecommendationFormInput } from "../../../../RecommendationForm.context";
+import type { LocationSearchHistoryItem } from "../../../../utils/locationSearchHistory";
 import type { Location } from "../../LocationSelection.context";
 import { useLocationSelection } from "../../LocationSelection.context";
 
-export type HistoryItemData =
-  | {
-      readonly type: "query";
-      readonly query: string;
-    }
-  | {
-      readonly type: "location";
-      readonly location: Location;
-    };
-
 type HistoryItemProps = {
-  readonly item: HistoryItemData;
+  readonly item: LocationSearchHistoryItem;
 };
 
 const getLocationDisplay = (location: Location) => {
@@ -40,26 +32,41 @@ const assertNever = (value: never): never => {
 
 const HistoryItem = ({ item }: HistoryItemProps) => {
   const { setLocation } = useRecommendationFormInput();
-  const { openMapMode, setSearchQuery } = useLocationSelection();
+  const { openMapMode, setQuery } = useLocationSelection();
+  const { deleteItem, promoteItem } = useLocationSearchHistory();
   const selectQuery = (query: string) => {
-    setSearchQuery(query);
+    promoteItem(item);
+    setQuery(query);
   };
   const selectLocation = (location: Location) => {
+    promoteItem(item);
     setLocation(location);
-    setSearchQuery("");
+    setQuery("");
     openMapMode();
+  };
+  const deleteHistoryItem = () => {
+    deleteItem(item);
   };
 
   switch (item.type) {
     case "query": {
       return (
-        <S.Root $height={44} onClick={() => selectQuery(item.query)} type="button">
-          <S.TextGroup>
-            <S.MainText>{item.query}</S.MainText>
-          </S.TextGroup>
-          <S.IconSlot>
-            <Icon name="search" size={20} />
-          </S.IconSlot>
+        <S.Root $height={44}>
+          <S.SelectButton onClick={() => selectQuery(item.query)} type="button">
+            <S.TextGroup>
+              <S.MainText>{item.query}</S.MainText>
+            </S.TextGroup>
+            <S.IconSlot aria-hidden>
+              <Icon name="search" size={20} />
+            </S.IconSlot>
+          </S.SelectButton>
+          <S.DeleteButton
+            aria-label={`${item.query} 기록 삭제`}
+            onClick={deleteHistoryItem}
+            type="button"
+          >
+            <Icon name="circle-x" size={18} />
+          </S.DeleteButton>
         </S.Root>
       );
     }
@@ -67,18 +74,23 @@ const HistoryItem = ({ item }: HistoryItemProps) => {
       const { mainText, subText } = getLocationDisplay(item.location);
 
       return (
-        <S.Root
-          $height={subText ? 56 : 44}
-          onClick={() => selectLocation(item.location)}
-          type="button"
-        >
-          <S.TextGroup>
-            <S.MainText>{mainText}</S.MainText>
-            {subText ? <S.SubText>{subText}</S.SubText> : null}
-          </S.TextGroup>
-          <S.IconSlot>
-            <Icon name="map-pin" size={20} />
-          </S.IconSlot>
+        <S.Root $height={subText ? 56 : 44}>
+          <S.SelectButton onClick={() => selectLocation(item.location)} type="button">
+            <S.TextGroup>
+              <S.MainText>{mainText}</S.MainText>
+              {subText ? <S.SubText>{subText}</S.SubText> : null}
+            </S.TextGroup>
+            <S.IconSlot aria-hidden>
+              <Icon name="map-pin" size={20} />
+            </S.IconSlot>
+          </S.SelectButton>
+          <S.DeleteButton
+            aria-label={`${mainText} 기록 삭제`}
+            onClick={deleteHistoryItem}
+            type="button"
+          >
+            <Icon name="circle-x" size={18} />
+          </S.DeleteButton>
         </S.Root>
       );
     }
@@ -90,24 +102,36 @@ const HistoryItem = ({ item }: HistoryItemProps) => {
 export default HistoryItem;
 
 const S = {
-  Root: styled.button<{ readonly $height: 44 | 56 }>`
+  Root: styled.div<{ readonly $height: 44 | 56 }>`
     box-sizing: border-box;
     display: flex;
     align-items: center;
     justify-content: space-between;
     width: 100%;
     height: ${({ $height }) => $height}px;
-    padding: 0 14px;
+    overflow: hidden;
 
-    text-align: left;
     background-color: ${theme.tokens.color.neutral[0]};
     border: 1px solid ${theme.tokens.color.neutral[200]};
     border-radius: 8px;
-    cursor: pointer;
 
     &:active {
       border-color: ${theme.tokens.color.primary[500]};
     }
+  `,
+  SelectButton: styled.button`
+    display: flex;
+    min-width: 0;
+    flex: 1;
+    align-items: center;
+    justify-content: space-between;
+    height: 100%;
+    padding: 0 14px;
+
+    text-align: left;
+    background: transparent;
+    border: 0;
+    cursor: pointer;
   `,
   TextGroup: styled.div`
     display: flex;
@@ -130,12 +154,14 @@ const S = {
     overflow: hidden;
 
     color: ${theme.tokens.color.secondary[500]};
-    font-family: "Noto Sans KR", sans-serif;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+
+    /* Figma secondary text spec(10px/16px/400) has no matching design-system typography token yet. */
+    font-family: "Noto Sans KR", system-ui, sans-serif;
     font-size: 10px;
     font-weight: 400;
     line-height: 16px;
-    white-space: nowrap;
-    text-overflow: ellipsis;
   `,
   IconSlot: styled.span`
     display: flex;
@@ -145,5 +171,19 @@ const S = {
     margin-left: 12px;
 
     color: ${theme.tokens.color.neutral[700]};
+  `,
+  DeleteButton: styled.button`
+    display: flex;
+    flex: 0 0 42px;
+    align-items: center;
+    justify-content: center;
+    width: 42px;
+    height: 100%;
+    padding: 0;
+
+    color: ${theme.tokens.color.neutral[700]};
+    background: transparent;
+    border: 0;
+    cursor: pointer;
   `,
 };
