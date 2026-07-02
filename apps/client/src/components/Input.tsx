@@ -9,7 +9,7 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 
 const S = {
   StyledInput: styled.input<{ width?: string }>`
-    width: ${({ width }) => width || "125px"};
+    width: ${({ width }) => width || "100%"};
     height: 48px;
     padding: 0 14px;
 

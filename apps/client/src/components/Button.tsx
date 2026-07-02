@@ -5,7 +5,7 @@ import { theme } from "../design-system/theme.generated";
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   tone?: "primary" | "secondary";
-  width?: "fit" | "full";
+  width?: string;
 }
 
 const S = {
@@ -23,7 +23,7 @@ const S = {
       opacity 0.2s ease-in-out,
       transform 0.1s ease;
 
-    width: ${({ width }) => (width === "full" ? "100%" : "fit-content")};
+    width: ${({ width }) => width ?? "100%"};
 
     background-color: ${({ tone }) => {
       return tone === "secondary"
