@@ -30,7 +30,13 @@ const iconRenderers = {
     </g>
   ),
   "map-pin": () => (
-    <g fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}>
+    <g
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+    >
       <path d="M20 10.5c0 4.8-8 10.5-8 10.5s-8-5.7-8-10.5a8 8 0 0 1 16 0" />
       <circle cx={12} cy={10.5} r={2.5} />
     </g>
@@ -49,6 +55,26 @@ const iconRenderers = {
       <circle cx={12} cy={12} r={8.5} strokeWidth={2} />
       <path d="m9 9 6 6m0-6-6 6" strokeLinecap="round" strokeWidth={2} />
     </g>
+  ),
+  "chevron-left": () => (
+    <path
+      d="m15 18-6-6 6-6"
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2.4}
+    />
+  ),
+  "chevron-right": () => (
+    <path
+      d="m9 6 6 6-6 6"
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2.4}
+    />
   ),
 } satisfies Record<IconName, IconRenderer>;
 

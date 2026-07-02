@@ -1,11 +1,12 @@
 import type {
   BudgetRange,
   PartyType,
-  ScheduleInput,
   UserInput,
 } from "@monorepo/recommendation-engine/v1/contracts";
 import type { Dispatch, SetStateAction } from "react";
 import { createContext, useContext } from "react";
+
+import type { CalendarDate } from "./utils/calendarDayViewModel";
 
 export type RecommendationFormLocation = {
   readonly lat: number;
@@ -14,18 +15,24 @@ export type RecommendationFormLocation = {
   readonly roadNameAddress: string;
 };
 
+export type RecommendationFormDate = CalendarDate;
+
 export type RecommendationFormSheet = "location" | "date";
 
 export type RecommendationFormInputContextType = {
   readonly location: RecommendationFormLocation;
-  readonly schedule: ScheduleInput | null;
+  readonly date: RecommendationFormDate | null;
+  readonly time24h: string | null;
+  readonly stayDurationMinutes: number | null;
   readonly numberOfPeople: number | null;
   readonly partyType: PartyType | null;
   readonly budgetPerPerson: BudgetRange | null;
   readonly userNaturalLanguageRequest: string;
 
   readonly setLocation: Dispatch<SetStateAction<RecommendationFormLocation>>;
-  readonly setSchedule: Dispatch<SetStateAction<ScheduleInput | null>>;
+  readonly setDate: Dispatch<SetStateAction<RecommendationFormDate | null>>;
+  readonly setTime24h: Dispatch<SetStateAction<string | null>>;
+  readonly setStayDurationMinutes: Dispatch<SetStateAction<number | null>>;
   readonly setNumberOfPeople: Dispatch<SetStateAction<number | null>>;
   readonly setPartyType: Dispatch<SetStateAction<PartyType | null>>;
   readonly setBudgetPerPerson: Dispatch<SetStateAction<BudgetRange | null>>;

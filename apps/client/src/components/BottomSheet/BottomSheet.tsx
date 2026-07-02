@@ -11,7 +11,8 @@ export type BottomSheetProps = {
   readonly close: () => void;
   readonly closeOnBackdropClick?: boolean;
   readonly children: ReactNode;
-  readonly handleType: "drag" | "none";
+  readonly handleType?: "drag" | "none";
+  readonly height?: string;
 };
 
 const BOTTOM_SHEET_ANIMATION_DURATION_MS = 200;
@@ -23,7 +24,8 @@ const BottomSheet = ({
   children,
   close,
   closeOnBackdropClick = false,
-  handleType,
+  handleType = "none",
+  height = "auto",
 }: BottomSheetProps) => {
   const presence = useOverlayPresence({
     isOpen,
@@ -82,7 +84,7 @@ const BottomSheet = ({
       backdropHandler={closeOnBackdropClick ? close : () => {}}
       animationDurationMs={BOTTOM_SHEET_ANIMATION_DURATION_MS}
     >
-      <S.Wrapper ref={elementRef} data-state={presence}>
+      <S.Wrapper ref={elementRef} data-state={presence} $height={height}>
         {handleType === "drag" && (
           <S.HandleWrapper
             onPointerDown={onHandlePointerDown}

@@ -42,7 +42,11 @@ export const LocationSelectionProvider = ({ children }: { readonly children: Rea
     [mode, openMapMode, openSearchMode, query],
   );
 
-  return createElement(LocationSelectionContext.Provider, { value: contextValue }, children);
+  return (
+    <LocationSelectionContext.Provider value={contextValue}>
+      {children}
+    </LocationSelectionContext.Provider>
+  );
 };
 
 export const useLocationSelection = () => {
