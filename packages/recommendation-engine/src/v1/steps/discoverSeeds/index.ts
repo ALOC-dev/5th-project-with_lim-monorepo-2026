@@ -1,4 +1,3 @@
-import type { UserInput } from "../../interfaces/input.contracts.js";
 import type { Logger } from "../../observability/logger.js";
 import { DiscoverSeedsOutputSchema, type DiscoveryContext } from "./contracts.js";
 import type { DiscoverSeedsOptions, DiscoverSeedsProcessResult } from "./types.js";
@@ -8,7 +7,6 @@ import { fetchProviderSeeds, isPaginationExhausted } from "./utils/provider.js";
 import type { LocalSeed } from "./vendors/contracts.js";
 
 export const discoverSeeds = async (
-  _userInput: UserInput,
   context: DiscoveryContext,
   logger: Logger,
   options: DiscoverSeedsOptions = {},
