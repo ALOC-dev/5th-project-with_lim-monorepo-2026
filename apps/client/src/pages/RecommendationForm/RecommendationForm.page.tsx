@@ -2,11 +2,11 @@ import { UserInputSchema } from "@monorepo/recommendation-engine/v1/contracts";
 import type { ReactNode } from "react";
 import { useCallback, useMemo, useState } from "react";
 
-import FormContent from "../../components/FormContent";
 import PageRoot from "../../components/PageRoot/PageRoot";
 import { tokens } from "../../design-system/tokens.generated";
 import DateSelectionBottomSheet from "./components/date/DateSelectionBottomSheet";
 import LocationSelectionBottomSheet from "./components/location/LocationSelectionBottomSheet";
+import FormContent from "./FormContent";
 import {
   RecommendationFormInputContext,
   type RecommendationFormInputContextType,
@@ -32,7 +32,8 @@ const RecommendationFlowProvider = ({ children }: { readonly children: ReactNode
   const [numberOfPeople, setNumberOfPeople] =
     useState<RecommendationFormInputContextType["numberOfPeople"]>(null);
   const [partyType, setPartyType] = useState<RecommendationFormInputContextType["partyType"]>(null);
-  const [activityType, setActivityType] = useState<RecommendationFormInputContextType["activityType"]>(null);
+  const [activityType, setActivityType] =
+    useState<RecommendationFormInputContextType["activityType"]>(null);
   const [budgetPerPerson, setBudgetPerPerson] =
     useState<RecommendationFormInputContextType["budgetPerPerson"]>(null);
   const [userNaturalLanguageRequest, setUserNaturalLanguageRequest] = useState("");
