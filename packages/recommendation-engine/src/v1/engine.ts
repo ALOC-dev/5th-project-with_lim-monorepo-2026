@@ -9,6 +9,8 @@ import type { UserInput } from "./interfaces/input.contracts.js";
 import type { EngineOutput, RecommendationOriginContext } from "./interfaces/output.contracts.js";
 import { consoleLogger, type Logger, noopLogger } from "./observability/logger.js";
 import {
+  type DiscoverSeedsOutput,
+  DiscoverSeedsOutputSchema,
   type DiscoveryContext,
   DiscoveryContextSchema,
   type EvaluateSeedsRetryReason,
@@ -30,6 +32,13 @@ type EngineDiscoveryState = {
   alreadyCheckedIds: string[];
   queries: SearchQuery[];
   previousFailureReason?: EvaluateSeedsRetryReason;
+};
+
+type DiscoverySeedPool = Pick<DiscoverSeedsOutput, "seeds" | "seedKeys">;
+
+const EMPTY_DISCOVERY_SEED_POOL: DiscoverySeedPool = {
+  seeds: [],
+  seedKeys: [],
 };
 
 const buildDiscoveryContext = (
@@ -72,6 +81,59 @@ const hydrateQueriesWithLocation = (
   }));
 };
 
+const appendDiscoverSeedsOutputToPool = (
+  pool: DiscoverySeedPool,
+  output: DiscoverSeedsOutput,
+): DiscoverySeedPool => {
+  const seenSeedKeys = new Set(pool.seedKeys);
+  const seeds = [...pool.seeds];
+  const seedKeys = [...pool.seedKeys];
+
+  output.seeds.forEach((seed, index) => {
+    const seedKey = output.seedKeys[index];
+    if (!seedKey || seenSeedKeys.has(seedKey)) return;
+
+    seenSeedKeys.add(seedKey);
+    seeds.push(seed);
+    seedKeys.push(seedKey);
+  });
+
+  return { seeds, seedKeys };
+};
+
+const removeSeedKeysFromPool = (
+  pool: DiscoverySeedPool,
+  seedKeysToRemove: string[],
+): DiscoverySeedPool => {
+  if (seedKeysToRemove.length === 0) return pool;
+
+  const removableSeedKeys = new Set(seedKeysToRemove);
+  const seeds: DiscoverySeedPool["seeds"] = [];
+  const seedKeys: DiscoverySeedPool["seedKeys"] = [];
+
+  pool.seeds.forEach((seed, index) => {
+    const seedKey = pool.seedKeys[index];
+    if (!seedKey || removableSeedKeys.has(seedKey)) return;
+
+    seeds.push(seed);
+    seedKeys.push(seedKey);
+  });
+
+  return { seeds, seedKeys };
+};
+
+const toEvaluateSeedsInput = (
+  pool: DiscoverySeedPool,
+  latestOutput: DiscoverSeedsOutput,
+): DiscoverSeedsOutput =>
+  DiscoverSeedsOutputSchema.parse({
+    seeds: pool.seeds,
+    seedKeys: pool.seedKeys,
+    excludedSeedKeysApplied: latestOutput.excludedSeedKeysApplied,
+    nextQueries: latestOutput.nextQueries,
+    attemptNo: latestOutput.attemptNo,
+  });
+
 const buildRecommendationOriginContext = (userInput: UserInput): RecommendationOriginContext => {
   const origins = userInput.location.map((location, index) => ({
     id: toOriginId(index),
@@ -100,6 +162,7 @@ const toCenterLocation = (
 
 export type RecommendationEngineOptions = {
   loggingActivated?: boolean;
+  logger?: Logger;
   secrets?: RecommendationEngineSecrets;
 };
 
@@ -111,7 +174,7 @@ export class RecommendationEngine {
 
   constructor(input: UserInput, config: EngineConfig, options: RecommendationEngineOptions = {}) {
     this.config = config;
-    this.logger = options.loggingActivated ? consoleLogger : noopLogger;
+    this.logger = options.logger ?? (options.loggingActivated ? consoleLogger : noopLogger);
     this.secrets = options.secrets ?? {};
     this.userInput = input;
   }
@@ -123,6 +186,7 @@ export class RecommendationEngine {
       alreadyCheckedIds: [],
       queries: [],
     };
+    let discoverySeedPool: DiscoverySeedPool = EMPTY_DISCOVERY_SEED_POOL;
     const finish = this.logger.startTimer("engine.process.success");
     this.logger.info("engine.process.start", {
       maxDiscoveryAttempts: MAX_DISCOVERY_ATTEMPTS,
@@ -172,12 +236,9 @@ export class RecommendationEngine {
         ...discoveryState,
         attemptNo: currAttemptNo,
       });
-      const discoverSeedsResult = await discoverSeeds(
-        this.userInput,
-        discoveryContext,
-        attemptLogger,
-        { secrets: { tmapAppKey: this.secrets.tmapAppKey } },
-      );
+      const discoverSeedsResult = await discoverSeeds(discoveryContext, attemptLogger, {
+        secrets: { tmapAppKey: this.secrets.tmapAppKey },
+      });
       if (!discoverSeedsResult.ok) {
         // seed 확보 실패는 recoverable context가 없으므로 즉시 종료한다.
         attemptLogger.warn("engine.attempt.failure", {
@@ -198,10 +259,40 @@ export class RecommendationEngine {
         };
       }
       const discoverSeedsOutput = discoverSeedsResult.data;
+      discoverySeedPool = appendDiscoverSeedsOutputToPool(discoverySeedPool, discoverSeedsOutput);
+      attemptLogger.info("engine.seed_pool.updated", {
+        newSeedCount: discoverSeedsOutput.seeds.length,
+        seedPoolCount: discoverySeedPool.seedKeys.length,
+        nextQueryCount: discoverSeedsOutput.nextQueries.length,
+      });
+
+      if (
+        discoverySeedPool.seedKeys.length < this.config.targetCount &&
+        discoverSeedsOutput.nextQueries.length > 0
+      ) {
+        discoveryState = {
+          ...discoveryState,
+          alreadyCheckedIds: Array.from(
+            new Set([...discoveryState.alreadyCheckedIds, ...discoverSeedsOutput.seedKeys]),
+          ),
+          queries: discoverSeedsOutput.nextQueries,
+          previousFailureReason:
+            discoverySeedPool.seedKeys.length === 0 ? "ZERO_SEEDS" : "LOW_QUALITY",
+        };
+        attemptLogger.warn("engine.attempt.defer_evaluation", {
+          seedPoolCount: discoverySeedPool.seedKeys.length,
+          targetCount: this.config.targetCount,
+          nextAlreadyCheckedIdCount: discoveryState.alreadyCheckedIds.length,
+          nextQueryCount: discoveryState.queries.length,
+        });
+        continue;
+      }
+
+      const evaluateSeedsInput = toEvaluateSeedsInput(discoverySeedPool, discoverSeedsOutput);
 
       const evaluateSeedsResult = await evaluateSeeds(
         this.userInput,
-        discoverSeedsOutput,
+        evaluateSeedsInput,
         this.config,
         attemptLogger,
         {
@@ -256,6 +347,7 @@ export class RecommendationEngine {
         }
 
         // 다음 discoverSeeds 호출이 같은 후보/검색 조합을 반복하지 않도록 누적한다.
+        discoverySeedPool = removeSeedKeysFromPool(discoverySeedPool, excludeSeedKeys);
         discoveryState = {
           ...discoveryState,
           alreadyCheckedIds: Array.from(
@@ -271,6 +363,7 @@ export class RecommendationEngine {
         attemptLogger.warn("engine.attempt.needs_more_seeds", {
           reason,
           excludeSeedKeyCount: excludeSeedKeys.length,
+          retainedSeedPoolCount: discoverySeedPool.seedKeys.length,
           nextAlreadyCheckedIdCount: discoveryState.alreadyCheckedIds.length,
           nextQueryCount: discoveryState.queries.length,
         });

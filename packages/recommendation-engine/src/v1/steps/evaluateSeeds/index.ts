@@ -159,9 +159,11 @@ export const evaluateSeeds = async (
   const evidences = discoverSeedsOutput.seeds.map((seed, index) =>
     buildCandidateScoringEvidence(seed, getSeedKey(discoverSeedsOutput, index), userInput),
   );
+  const prioritizedEvidences = prioritizeEvidencesForEvaluation(evidences, userInput);
   stepLogger.info("evaluateSeeds.evidence.built", {
     evidenceCount: evidences.length,
     candidateIds: evidences.map((evidence) => evidence.candidateId),
+    prioritizedCandidateIds: prioritizedEvidences.map((evidence) => evidence.candidateId),
   });
 
   if (evidences.length === 0) {
@@ -187,14 +189,14 @@ export const evaluateSeeds = async (
   try {
     const finishEnrichment = stepLogger.startTimer("evaluateSeeds.enrichment.success");
     stepLogger.info("evaluateSeeds.enrichment.start", {
-      evidenceCount: evidences.length,
+      evidenceCount: prioritizedEvidences.length,
       client: "agentic",
       initialBatchSize: LIVE_MAX_CANDIDATES,
-      maxEvidenceCount: getMaxEvidenceCount(evidences.length, config),
+      maxEvidenceCount: getMaxEvidenceCount(prioritizedEvidences.length, config),
     });
     const enrichmentResult = await collectEnrichmentBatches({
       userInput,
-      evidences,
+      evidences: prioritizedEvidences,
       config,
       logger: stepLogger,
       enrichCandidates: (request, enrichmentLogger) =>
@@ -208,7 +210,7 @@ export const evaluateSeeds = async (
     finishEnrichment({
       enrichmentCount: enrichmentResult.enrichments.length,
       evaluatedEvidenceCount: enrichmentResult.evaluatedEvidenceCount,
-      skippedEvidenceCount: evidences.length - enrichmentResult.evaluatedEvidenceCount,
+      skippedEvidenceCount: prioritizedEvidences.length - enrichmentResult.evaluatedEvidenceCount,
       verifiedOpenCount: enrichedEvidences.length,
       rejectedCount: enrichmentResult.evaluatedEvidenceCount - enrichedEvidences.length,
       batches: enrichmentResult.batches,
@@ -332,6 +334,23 @@ export const evaluateSeeds = async (
     };
   }
 
+  if (ranked.length < config.targetCount && discoverSeedsOutput.nextQueries.length > 0) {
+    stepLogger.warn("evaluateSeeds.evaluation.needs_more_seeds", {
+      reason: "LOW_QUALITY",
+      rankedCount: ranked.length,
+      targetCount: config.targetCount,
+      nextQueryCount: discoverSeedsOutput.nextQueries.length,
+    });
+    return {
+      ok: true,
+      needsMoreSeeds: {
+        status: "NEEDS_MORE_SEEDS",
+        reason: "LOW_QUALITY",
+        excludeSeedKeys: [],
+      },
+    };
+  }
+
   const top = ranked.slice(0, config.targetCount);
   stepLogger.info("evaluateSeeds.ranking.selected", {
     selectedCount: top.length,
@@ -368,6 +387,64 @@ const getSeedKey = (discoverSeedsOutput: DiscoverSeedsOutput, index: number): st
   }
   return seedKey;
 };
+
+const prioritizeEvidencesForEvaluation = (
+  evidences: CandidateScoringEvidence[],
+  userInput: UserInput,
+): CandidateScoringEvidence[] =>
+  evidences
+    .map((evidence, index) => ({
+      evidence,
+      index,
+      score: getLightweightEvaluationPriority(evidence, userInput),
+    }))
+    .sort((left, right) => right.score - left.score || left.index - right.index)
+    .map(({ evidence }) => evidence);
+
+const getLightweightEvaluationPriority = (
+  evidence: CandidateScoringEvidence,
+  userInput: UserInput,
+): number => {
+  const request = userInput.userNaturalLanguageRequest;
+  const candidateText = [
+    evidence.name,
+    evidence.category.mainCategory,
+    evidence.category.subCategory,
+    ...evidence.category.tags,
+  ].join(" ");
+  let score = 0;
+
+  if (hasCafeIntent(request) && /카페|커피|디저트|베이커리|브런치/iu.test(candidateText)) {
+    score += 30;
+  }
+  if (
+    hasFoodIntent(request) &&
+    /음식점|식당|맛집|한식|중식|일식|양식|고기|파스타/iu.test(candidateText)
+  ) {
+    score += 30;
+  }
+  if (hasDrinkIntent(request) && /술집|호프|펍|포차|이자카야|와인|바\b/iu.test(candidateText)) {
+    score += 30;
+  }
+
+  const distanceMeters = evidence.accessibilitySignals.distanceMeters;
+  if (distanceMeters !== undefined) {
+    score += Math.max(0, 20 - distanceMeters / 500);
+  }
+  if (evidence.placeInfo.roadAddress || evidence.placeInfo.address) score += 5;
+  if (evidence.trustSignals.evidenceUrls.length > 0) score += 5;
+
+  return score;
+};
+
+const hasCafeIntent = (request: string): boolean =>
+  /카페|커피|디저트|브런치|베이커리|티룸|차\b|tea|coffee|cafe/iu.test(request);
+
+const hasFoodIntent = (request: string): boolean =>
+  /맛집|식당|음식|곱창|고기|파스타|한식|중식|일식|양식|비건|점심|저녁/iu.test(request);
+
+const hasDrinkIntent = (request: string): boolean =>
+  /술집|맥주|펍|호프|바\b|bar\b|포차|와인|칵테일|이자카야/iu.test(request);
 
 const resolveReferenceUrlsForEvidences = async (
   evidences: CandidateScoringEvidence[],
