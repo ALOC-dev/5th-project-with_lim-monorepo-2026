@@ -4,7 +4,7 @@ import HealthCheckPage from "./pages/HealthCheck/page";
 import RecommendationFormPage from "./pages/RecommendationForm/RecommendationForm.page";
 import RecommendationMemberPage from "./pages/RecommendationMember/page";
 import RecommendationPendingPage from "./pages/RecommendationPending/page";
-import RecommendationResultPage from "./pages/RecommendationResult/page";
+import RecommendationResultPage from "./pages/RecommendationResult/RecommendationResult.page";
 
 const NotFoundPage = () => <div>NotFoundPage</div>;
 
@@ -22,7 +22,11 @@ export const router = createBrowserRouter([
     element: <RecommendationPendingPage />,
   },
   {
-    path: "/place/recommendation/result",
+    path: "/place/recommendation/result/:recommendationId",
+    element: <RecommendationResultPage />,
+  },
+  {
+    path: "/place/recommendation/result/:recommendationId/place/:placeId",
     element: <RecommendationResultPage />,
   },
   {
