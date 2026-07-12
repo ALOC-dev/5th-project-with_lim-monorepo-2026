@@ -80,13 +80,7 @@ const assertDimension = (value, pathLabel) => {
 };
 
 const normalizeTypography = (value, pathLabel) => {
-  const requiredKeys = [
-    "fontFamily",
-    "fontWeight",
-    "fontSize",
-    "lineHeight",
-    "letterSpacing",
-  ];
+  const requiredKeys = ["fontFamily", "fontWeight", "fontSize", "lineHeight", "letterSpacing"];
 
   for (const key of requiredKeys) {
     if (!Object.hasOwn(value, key)) {

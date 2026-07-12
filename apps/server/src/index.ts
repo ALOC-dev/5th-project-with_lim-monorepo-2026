@@ -21,7 +21,7 @@ const jobStore = new Map<string, JobState>();
 
 const port = 3000;
 
-app.get("/health", (_req, res) => {
+app.get("/health", (_req, res) => { // api 받아서 처리
   res.json(
     createApiResponse({
       service: formatServiceName("server"),

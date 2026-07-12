@@ -114,7 +114,7 @@ const executeEngineTest = async (
   scenarioName: TestScenarioName,
 ): Promise<TestExecution> => {
   const engine = new RecommendationEngine(input, testConfig, {
-    loggingActivated: true,
+    logger: testMonitor.logger,
     secrets: getRecommendationEngineSecretsFromEnv(),
   });
   const result = EngineOutputSchema.parse(await engine.process());

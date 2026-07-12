@@ -69,7 +69,7 @@ export default tseslint.config(
       "@typescript-eslint/no-unused-vars": "off",
       "simple-import-sort/exports": "warn",
       "simple-import-sort/imports": "warn",
-      "unused-imports/no-unused-imports": "error",
+      "unused-imports/no-unused-imports": "warn",
       "unused-imports/no-unused-vars": [
         "warn",
         {

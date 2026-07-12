@@ -19,6 +19,7 @@ const DISCOVERY_CONTEXT_SYSTEM_PROMPT = `너는 지역 추천 엔진의 Discover
   장소 유형 또는 업종명 중심으로 작성하고, 형용사·부사·조사·조건절은 포함하지 않는다.
   올바른 예) "파스타", "이탈리안 레스토랑", "파스타 맛집", "양식 레스토랑"
   잘못된 예) "분위기 좋은 와인바", "친구랑 가기 좋은 파스타집", "비 오는 날 가기 좋은 실내 카페"
+- 사용자 조건이 좁으면, 모든 query를 좁게 만들지 말고 최소 하나는 업종 중심의 넓은 query로 만든다.
 - 동일/유사 의미의 query를 중복 생성하지 않는다.
 - count는 페이지당 요청 개수(즉 pagination.count)이며, 모든 query의 count 합은 targetSeedCount와 같다.
 - page는 최초 호출에서는 1로 시작한다.
@@ -72,7 +73,69 @@ export const createDiscoveryContextWithLlm = async (
     }),
   });
 
-  return normalizeQueryCounts(queries, options.targetSeedCount);
+  return normalizeQueryCounts(normalizeSearchQueries(queries, userInput), options.targetSeedCount);
+};
+
+const normalizeSearchQueries = (queries: SearchQuery[], userInput: UserInput): SearchQuery[] => {
+  const normalized = queries.flatMap((query) => {
+    const normalizedQuery = normalizeSearchQueryText(query.query);
+    if (!normalizedQuery) return [];
+    return [
+      {
+        ...query,
+        query: normalizedQuery,
+        page: 1,
+      },
+    ];
+  });
+  const fallbackQuery = inferBroadFallbackQuery(userInput);
+  if (!fallbackQuery || normalized.some((query) => query.query.includes(fallbackQuery))) {
+    return normalized;
+  }
+
+  if (normalized.length < MAX_DISCOVERY_TERM_COUNT) {
+    return [
+      ...normalized,
+      {
+        query: fallbackQuery,
+        count: 1,
+        page: 1,
+      },
+    ];
+  }
+
+  const lastQuery = normalized.at(-1);
+  if (!lastQuery) return normalized;
+
+  return [
+    ...normalized.slice(0, -1),
+    {
+      ...lastQuery,
+      query: fallbackQuery,
+      page: 1,
+    },
+  ];
+};
+
+const normalizeSearchQueryText = (query: string): string =>
+  query
+    .replace(/[.,!?;:"'`()[\]{}<>]/gu, " ")
+    .replace(/(?:추천|찾아|찾기|가고\s*싶은|갈\s*만한|가기\s*좋은|해줘|해주세요)/gu, " ")
+    .replace(/\s+/gu, " ")
+    .trim();
+
+const inferBroadFallbackQuery = (userInput: UserInput): string | undefined => {
+  const request = userInput.userNaturalLanguageRequest;
+  if (/카페|커피|디저트|브런치|베이커리|티룸|차\b|tea|coffee|cafe/iu.test(request)) {
+    return "카페";
+  }
+  if (/술집|맥주|펍|호프|바\b|bar\b|포차|와인|칵테일|이자카야/iu.test(request)) {
+    return "술집";
+  }
+  if (/맛집|식당|음식|곱창|고기|파스타|한식|중식|일식|양식|비건|점심|저녁/iu.test(request)) {
+    return "맛집";
+  }
+  return undefined;
 };
 
 const normalizeQueryCounts = (queries: SearchQuery[], targetSeedCount: number): SearchQuery[] => {
