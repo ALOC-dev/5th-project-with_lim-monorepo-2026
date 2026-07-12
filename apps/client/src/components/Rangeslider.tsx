@@ -3,27 +3,27 @@ import "rc-slider/assets/index.css";
 import styled from "@emotion/styled";
 import Slider, { type SliderProps } from "rc-slider";
 
-import { type theme as themeType } from "../design-system/theme.generated";
+import { theme } from "../design-system/theme.generated";
 
 const SliderWrapper = styled.div`
   width: 100%;
   padding: 10px 0;
 
   .rc-slider-rail {
-    background-color: ${({ theme }) => (theme as typeof themeType).tokens.color.neutral["200"]};
-    height: 4px;
-    border-radius: 2px;
+    background-color: ${theme.tokens.color.neutral["200"]};
+    height: 6px;
+    border-radius: 1px;
   }
 
   .rc-slider-track {
-    background-color: ${({ theme }) => (theme as typeof themeType).tokens.color.primary["500"]};
-    height: 4px;
-    border-radius: 2px;
+    background-color: ${theme.tokens.color.primary["500"]};
+    height: 6px;
+    border-radius: 1px;
   }
 
   .rc-slider-handle {
-    background-color: ${({ theme }) => (theme as typeof themeType).tokens.color.primary["500"]};
-    border: none;
+    background-color: ${theme.tokens.color.neutral["50"]};
+    border: 1px solid ${theme.tokens.color.primary["500"]};
     width: 18px;
     height: 18px;
     margin-top: -8px;

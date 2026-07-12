@@ -26,6 +26,7 @@ export type RecommendationFormInputContextType = {
   readonly stayDurationMinutes: number | null;
   readonly numberOfPeople: number | null;
   readonly partyType: PartyType | null;
+  readonly activityType: string | null;
   readonly budgetPerPerson: BudgetRange | null;
   readonly userNaturalLanguageRequest: string;
 
@@ -35,6 +36,7 @@ export type RecommendationFormInputContextType = {
   readonly setStayDurationMinutes: Dispatch<SetStateAction<number | null>>;
   readonly setNumberOfPeople: Dispatch<SetStateAction<number | null>>;
   readonly setPartyType: Dispatch<SetStateAction<PartyType | null>>;
+  readonly setActivityType: Dispatch<SetStateAction<string | null>>;
   readonly setBudgetPerPerson: Dispatch<SetStateAction<BudgetRange | null>>;
   readonly setUserNaturalLanguageRequest: Dispatch<SetStateAction<string>>;
 

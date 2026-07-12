@@ -6,6 +6,7 @@ import PageRoot from "../../components/PageRoot/PageRoot";
 import { tokens } from "../../design-system/tokens.generated";
 import DateSelectionBottomSheet from "./components/date/DateSelectionBottomSheet";
 import LocationSelectionBottomSheet from "./components/location/LocationSelectionBottomSheet";
+import FormContent from "./FormContent";
 import {
   RecommendationFormInputContext,
   type RecommendationFormInputContextType,
@@ -31,10 +32,12 @@ const RecommendationFlowProvider = ({ children }: { readonly children: ReactNode
   const [numberOfPeople, setNumberOfPeople] =
     useState<RecommendationFormInputContextType["numberOfPeople"]>(null);
   const [partyType, setPartyType] = useState<RecommendationFormInputContextType["partyType"]>(null);
+  const [activityType, setActivityType] =
+    useState<RecommendationFormInputContextType["activityType"]>(null);
   const [budgetPerPerson, setBudgetPerPerson] =
     useState<RecommendationFormInputContextType["budgetPerPerson"]>(null);
   const [userNaturalLanguageRequest, setUserNaturalLanguageRequest] = useState("");
-  const [activeSheet, setActiveSheet] = useState<RecommendationFormSheet | null>("date");
+  const [activeSheet, setActiveSheet] = useState<RecommendationFormSheet | null>(null);
 
   const resetForm = useCallback(() => {
     setLocation(getInitialLocation());
@@ -43,6 +46,7 @@ const RecommendationFlowProvider = ({ children }: { readonly children: ReactNode
     setStayDurationMinutes(null);
     setNumberOfPeople(null);
     setPartyType(null);
+    setActivityType(null);
     setBudgetPerPerson(null);
     setUserNaturalLanguageRequest("");
     setActiveSheet("location");
@@ -55,6 +59,7 @@ const RecommendationFlowProvider = ({ children }: { readonly children: ReactNode
       stayDurationMinutes === null ||
       numberOfPeople === null ||
       !partyType ||
+      !activityType ||
       !budgetPerPerson
     ) {
       return null;
@@ -74,6 +79,7 @@ const RecommendationFlowProvider = ({ children }: { readonly children: ReactNode
       ],
       numberOfPeople,
       partyType,
+      activityType,
       budgetPerPerson,
       userNaturalLanguageRequest,
     });
@@ -86,6 +92,7 @@ const RecommendationFlowProvider = ({ children }: { readonly children: ReactNode
     location.lng,
     numberOfPeople,
     partyType,
+    activityType,
     stayDurationMinutes,
     time24h,
     userNaturalLanguageRequest,
@@ -99,6 +106,7 @@ const RecommendationFlowProvider = ({ children }: { readonly children: ReactNode
       stayDurationMinutes,
       numberOfPeople,
       partyType,
+      activityType,
       budgetPerPerson,
       userNaturalLanguageRequest,
       setLocation,
@@ -107,6 +115,7 @@ const RecommendationFlowProvider = ({ children }: { readonly children: ReactNode
       setStayDurationMinutes,
       setNumberOfPeople,
       setPartyType,
+      setActivityType,
       setBudgetPerPerson,
       setUserNaturalLanguageRequest,
       resetForm,
@@ -119,6 +128,7 @@ const RecommendationFlowProvider = ({ children }: { readonly children: ReactNode
       location,
       numberOfPeople,
       partyType,
+      activityType,
       resetForm,
       stayDurationMinutes,
       time24h,
@@ -161,7 +171,8 @@ const RecommendationFlowProvider = ({ children }: { readonly children: ReactNode
 const RecommendationFormPage = () => {
   return (
     <RecommendationFlowProvider>
-      <PageRoot backgroundColor={tokens.color.primary[500]}>
+      <PageRoot backgroundColor={tokens.color.neutral[50]}>
+        <FormContent />
         <LocationSelectionBottomSheet />
         <DateSelectionBottomSheet />
       </PageRoot>
