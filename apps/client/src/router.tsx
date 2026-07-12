@@ -1,7 +1,7 @@
 import { createBrowserRouter, Navigate } from "react-router-dom";
 
 import HealthCheckPage from "./pages/HealthCheck/page";
-import RecommendationFormPage from "./pages/RecommendationForm/page";
+import RecommendationFormPage from "./pages/RecommendationForm/RecommendationForm.page";
 import RecommendationMemberPage from "./pages/RecommendationMember/page";
 import RecommendationPendingPage from "./pages/RecommendationPending/page";
 import RecommendationResultPage from "./pages/RecommendationResult/page";

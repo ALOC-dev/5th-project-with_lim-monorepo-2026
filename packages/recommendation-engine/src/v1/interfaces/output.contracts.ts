@@ -92,10 +92,13 @@ export type OperationInfo = z.infer<typeof OperationInfoSchema>;
 
 export const ReferenceUrlsSchema = z
   .object({
-    kakaoMap: trimmedUrlSchema, // 검증된 카카오맵 URL
-    naverMap: trimmedUrlSchema, // 검증된 네이버맵 URL
+    kakaoMap: trimmedUrlSchema.optional(), // 검증된 카카오맵 URL
+    naverMap: trimmedUrlSchema.optional(), // 검증된 네이버맵 URL
     instagram: trimmedUrlSchema.optional(), // 인스타그램 URL (optional)
     others: z.array(trimmedUrlSchema).optional(), // 검증된 기타 참고 URL (optional)
+  })
+  .refine((urls) => urls.kakaoMap || urls.naverMap, {
+    message: "referenceUrls must include at least one verified map URL",
   })
   .strict();
 

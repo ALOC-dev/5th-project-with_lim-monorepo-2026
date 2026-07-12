@@ -1,7 +1,7 @@
-import 'rc-slider/assets/index.css';
+import "rc-slider/assets/index.css";
 
-import styled from '@emotion/styled';
-import Slider from 'rc-slider';
+import styled from "@emotion/styled";
+import Slider, { type SliderProps } from "rc-slider";
 
 import { type theme as themeType } from "../design-system/theme.generated";
 
@@ -28,16 +28,34 @@ const SliderWrapper = styled.div`
     height: 18px;
     margin-top: -8px;
     opacity: 1;
-    
-    &:hover, &:active, &:focus {
+
+    &:hover,
+    &:active,
+    &:focus {
       border: none;
       box-shadow: 0 0 0 5px rgba(200, 100, 80, 0.2);
     }
   }
 `;
 
-export const RangeSlider = (props: any) => (
+type RangeSliderProps = {
+  min: number;
+  max: number;
+  step?: number;
+  value: SliderProps["value"];
+  onChange: SliderProps["onChange"];
+};
+
+export const RangeSlider = ({ min, max, step, value, onChange }: RangeSliderProps) => (
   <SliderWrapper>
-    <Slider range {...props} allowCross={false} />
+    <Slider
+      range
+      min={min}
+      max={max}
+      step={step}
+      value={value}
+      onChange={onChange}
+      allowCross={false}
+    />
   </SliderWrapper>
 );

@@ -48,8 +48,8 @@ export type CandidateScoringEvidence = {
   enrichment?: CandidateEnrichment;
   semanticFit?: SemanticFitAssessment;
   referenceUrls?: {
-    kakaoMap: string;
-    naverMap: string;
+    kakaoMap?: string;
+    naverMap?: string;
   };
 };
 

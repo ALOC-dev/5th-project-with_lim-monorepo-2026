@@ -52,8 +52,8 @@ export const toPlaceRecommendationItem = (
       reason: enrichment.operationVerification.reason,
     },
     referenceUrls: {
-      kakaoMap: referenceUrls.kakaoMap,
-      naverMap: referenceUrls.naverMap,
+      ...(referenceUrls.kakaoMap ? { kakaoMap: referenceUrls.kakaoMap } : {}),
+      ...(referenceUrls.naverMap ? { naverMap: referenceUrls.naverMap } : {}),
       ...(instagramUrl ? { instagram: instagramUrl } : {}),
       ...(otherReferenceUrls.length > 0 ? { others: otherReferenceUrls } : {}),
     },
@@ -91,7 +91,10 @@ const getOtherReferenceUrls = (
   const urls = getVerifiedSourceReferenceUrls(evidence);
   const { kakaoMap, naverMap } = getVerifiedReferenceUrls(evidence);
   return Array.from(new Set(urls)).filter(
-    (url) => url !== kakaoMap && url !== naverMap && url !== instagramUrl,
+    (url) =>
+      (kakaoMap === undefined || url !== kakaoMap) &&
+      (naverMap === undefined || url !== naverMap) &&
+      url !== instagramUrl,
   );
 };
 

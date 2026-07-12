@@ -1,9 +1,9 @@
 import styled from "@emotion/styled";
 import { type TextareaHTMLAttributes } from "react";
 
-import { type theme as themeType } from "../../design-system/theme.generated";
+import { type theme as themeType } from "../design-system/theme.generated";
 
-type TextAreaProps = TextareaHTMLAttributes<HTMLTextAreaElement>
+type TextAreaProps = TextareaHTMLAttributes<HTMLTextAreaElement>;
 
 const S = {
   Wrapper: styled.textarea`
