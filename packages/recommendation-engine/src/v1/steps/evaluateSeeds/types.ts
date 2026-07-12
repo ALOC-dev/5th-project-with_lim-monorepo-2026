@@ -30,6 +30,7 @@ export type EvaluateSeedsOptions = {
     RecommendationEngineSecrets,
     "kakaoRestApiKey" | "naverSearchClientId" | "naverSearchClientSecret" | "openAiApiKey"
   >;
+  onProgress?: (step: 'enriching' | 'scoring') => void;
 };
 
 export type { PlaceRecommendationItem };
