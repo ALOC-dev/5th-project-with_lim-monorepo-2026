@@ -7,10 +7,18 @@ import type { RecommendationSseEvent } from '@monorepo/api-contracts';
 import { DEFAULT_ENGINE_CONFIG, RecommendationEngine } from '@monorepo/recommendation-engine';
 import type { UserInput } from '@monorepo/recommendation-engine/v1/contracts';
 import { UserInputSchema } from '@monorepo/recommendation-engine/v1/contracts';
+import authRouter from './routes/auth.js';
+import usersRouter from './routes/users.js';
+import cookieParser from 'cookie-parser';
+
+
 
 const app = express();
 app.use(cors());
 app.use(express.json());
+app.use(cookieParser());
+app.use('/api/auth', authRouter);
+app.use('/api/users', usersRouter);
 
 type JobState = {
   userInput: UserInput;
@@ -41,7 +49,7 @@ app.post('/api/recommend', (req, res) => {
   const jobId = randomUUID();
   jobStore.set(jobId, { userInput: parsed.data, emitter: null, bufferedEvents: [] });
   res.json({ jobId });
-});
+}); //입력 검증
 
 app.get('/api/recommend/stream/:jobId', (req, res) => {
   const { jobId } = req.params;
@@ -128,3 +136,5 @@ app.get('/api/recommend/stream/:jobId', (req, res) => {
 app.listen(port, () => {
   console.log(`Server is running on http://localhost:${port}`);
 });
+
+
