@@ -1,17 +1,46 @@
-import { useQuery } from "@tanstack/react-query";
+import type { EngineOutput } from "@monorepo/recommendation-engine/v1/contracts";
+import { EngineOutputSchema } from "@monorepo/recommendation-engine/v1/contracts";
+import { useQueryClient } from "@tanstack/react-query";
 import type { ReactNode } from "react";
-import { useMemo } from "react";
-import { useParams } from "react-router-dom";
+import { useEffect, useMemo } from "react";
+import { useLocation, useParams } from "react-router-dom";
 
-import { mockEngineOutput } from "../../../mockEngineOutput";
 import {
   RecommendationResultDataContext,
   type RecommendationResultDataContextType,
 } from "./RecommendationResult.data.context";
+import { getRecommendationResultQueryKey } from "./RecommendationResult.query-key";
 
-const RECOMMENDATION_RESULT_MOCK_QUERY_KEY = ["recommendationResult", "mock"] as const;
+const getEngineOutputFromLocationState = (state: unknown): EngineOutput | null => {
+  if (!isRecord(state)) {
+    return null;
+  }
 
-const fetchMockRecommendationResult = () => mockEngineOutput;
+  const parseResult = EngineOutputSchema.safeParse(state.result);
+  return parseResult.success ? parseResult.data : null;
+};
+
+const isRecord = (value: unknown): value is Readonly<Record<string, unknown>> => {
+  return typeof value === "object" && value !== null;
+};
+
+const toDataContextValue = (
+  output: EngineOutput | null | undefined,
+): RecommendationResultDataContextType => {
+  if (output === null || output === undefined) {
+    return { status: "error" };
+  }
+
+  switch (output.status) {
+    case "ERROR":
+      return { status: "error" };
+    case "SUCCESS":
+      return {
+        result: output,
+        status: "success",
+      };
+  }
+};
 
 export const RecommendationResultDataProvider = ({
   children,
@@ -19,35 +48,32 @@ export const RecommendationResultDataProvider = ({
   readonly children: ReactNode;
 }) => {
   const { recommendationId } = useParams();
+  const location = useLocation();
+  const queryClient = useQueryClient();
+  const routeStateOutput = useMemo(
+    () => getEngineOutputFromLocationState(location.state),
+    [location.state],
+  );
 
-  const resultQuery = useQuery({
-    queryKey: [...RECOMMENDATION_RESULT_MOCK_QUERY_KEY, recommendationId],
-    queryFn: fetchMockRecommendationResult,
-    retry: false,
-    staleTime: Infinity,
-  });
-
-  const contextValue = useMemo<RecommendationResultDataContextType>(() => {
-    if (resultQuery.isPending) {
-      return { status: "loading" };
+  useEffect(() => {
+    if (recommendationId === undefined || routeStateOutput === null) {
+      return;
     }
 
-    if (resultQuery.isError) {
+    queryClient.setQueryData(getRecommendationResultQueryKey(recommendationId), routeStateOutput);
+  }, [queryClient, recommendationId, routeStateOutput]);
+
+  const contextValue = useMemo<RecommendationResultDataContextType>(() => {
+    if (recommendationId === undefined) {
       return { status: "error" };
     }
 
-    if (resultQuery.isSuccess) {
-      if (resultQuery.data.status === "ERROR") return { status: "error" };
-      else
-        return {
-          result: resultQuery.data,
-          status: "success",
-        };
-    }
+    const cachedOutput = queryClient.getQueryData<EngineOutput>(
+      getRecommendationResultQueryKey(recommendationId),
+    );
 
-    const exhaustiveCheck: never = resultQuery;
-    return exhaustiveCheck;
-  }, [resultQuery]);
+    return toDataContextValue(routeStateOutput ?? cachedOutput);
+  }, [queryClient, recommendationId, routeStateOutput]);
 
   return (
     <RecommendationResultDataContext.Provider value={contextValue}>

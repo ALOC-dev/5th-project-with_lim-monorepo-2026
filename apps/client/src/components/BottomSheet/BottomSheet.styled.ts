@@ -35,6 +35,8 @@ export const S = {
     position: fixed;
     bottom: 0;
     left: 0;
+    right: 0;
+    width: 100%;
     height: ${({ $height }) => $height};
     max-height: calc(100dvh - 24px);
     overflow: hidden;
