@@ -1,12 +1,27 @@
-import { createApiResponse, formatServiceName } from "@monorepo/api-contracts";
+import { randomUUID } from "node:crypto";
+import { EventEmitter } from "node:events";
+
+import {
+  createApiResponse,
+  formatServiceName,
+  type RecommendationSseEvent,
+} from "@monorepo/api-contracts";
+import {
+  DEFAULT_ENGINE_CONFIG,
+  type EngineOutput,
+  RecommendationEngine,
+} from "@monorepo/recommendation-engine";
+import { type UserInput, UserInputSchema } from "@monorepo/recommendation-engine/v1/contracts";
 import cors from "cors";
 import express from "express";
-import { randomUUID } from 'node:crypto';
-import { EventEmitter } from 'node:events';
-import type { RecommendationSseEvent } from '@monorepo/api-contracts';
-import { DEFAULT_ENGINE_CONFIG, RecommendationEngine } from '@monorepo/recommendation-engine';
-import type { UserInput } from '@monorepo/recommendation-engine/v1/contracts';
-import { UserInputSchema } from '@monorepo/recommendation-engine/v1/contracts';
+
+import { parseServerEnvironment } from "./config/env.js";
+import {
+  presentRecommendationError,
+  RECOMMENDATION_FAILURE_EVENT,
+} from "./recommendation/error-presentation.js";
+
+const { config, secrets } = parseServerEnvironment(process.env);
 
 const app = express();
 app.use(cors());
@@ -19,9 +34,8 @@ type JobState = {
 };
 const jobStore = new Map<string, JobState>();
 
-const port = 3000;
-
-app.get("/health", (_req, res) => { // api 받아서 처리
+app.get("/health", (_req, res) => {
+  // api 받아서 처리
   res.json(
     createApiResponse({
       service: formatServiceName("server"),
@@ -31,10 +45,10 @@ app.get("/health", (_req, res) => { // api 받아서 처리
   );
 });
 
-app.post('/api/recommend', (req, res) => {
+app.post("/api/recommend", (req, res) => {
   const parsed = UserInputSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: 'invalid input' });
+    res.status(400).json({ error: "invalid input" });
     return;
   }
 
@@ -43,17 +57,17 @@ app.post('/api/recommend', (req, res) => {
   res.json({ jobId });
 });
 
-app.get('/api/recommend/stream/:jobId', (req, res) => {
+app.get("/api/recommend/stream/:jobId", (req, res) => {
   const { jobId } = req.params;
   const jobState = jobStore.get(jobId);
 
-  res.setHeader('Content-Type', 'text/event-stream');
-  res.setHeader('Cache-Control', 'no-cache');
-  res.setHeader('Connection', 'keep-alive');
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
   res.flushHeaders();
 
   if (!jobState) {
-    res.write(`event: error\ndata: ${JSON.stringify({ type: 'error', message: 'job not found' })}\n\n`);
+    res.write(`event: error\ndata: ${JSON.stringify(RECOMMENDATION_FAILURE_EVENT)}\n\n`);
     res.end();
     return;
   }
@@ -61,7 +75,7 @@ app.get('/api/recommend/stream/:jobId', (req, res) => {
   // 이미 수신된 이벤트 재전송 (StrictMode 재연결 대응)
   for (const event of [...jobState.bufferedEvents]) {
     res.write(`event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`);
-    if (event.type === 'result' || event.type === 'error') {
+    if (event.type === "result" || event.type === "error") {
       res.end();
       return;
     }
@@ -76,15 +90,18 @@ app.get('/api/recommend/stream/:jobId', (req, res) => {
   const sseHandler = (event: RecommendationSseEvent) => {
     if (res.writableEnded) return;
     res.write(`event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`);
-    if (event.type === 'result' || event.type === 'error') {
+    if (event.type === "result" || event.type === "error") {
       res.end();
     }
   };
-  jobState.emitter.on('sse', sseHandler);
+  jobState.emitter.on("sse", sseHandler);
 
   // heartbeat: 10초마다 "나 살아있어" 신호 전송
   const heartbeatInterval = setInterval(() => {
-    if (res.writableEnded) { clearInterval(heartbeatInterval); return; }
+    if (res.writableEnded) {
+      clearInterval(heartbeatInterval);
+      return;
+    }
     res.write(`event: heartbeat\ndata: {}\n\n`);
   }, 10_000);
 
@@ -94,37 +111,56 @@ app.get('/api/recommend/stream/:jobId', (req, res) => {
     const emitter = jobState.emitter;
     const emitEvent = (event: RecommendationSseEvent) => {
       jobState.bufferedEvents.push(event);
-      emitter.emit('sse', event);
+      emitter.emit("sse", event);
     };
 
     const engine = new RecommendationEngine(jobState.userInput, DEFAULT_ENGINE_CONFIG, {
-      loggingActivated: true,
-      onProgress: (step) => emitEvent({ type: 'progress', step }),
-      secrets: {
-        openAiApiKey: process.env.OPENAI_API_KEY,
-        kakaoRestApiKey: process.env.KAKAO_REST_API_KEY,
-        tmapAppKey: process.env.TMAP_APP_KEY,
-        naverSearchClientId: process.env.NAVER_SEARCH_CLIENT_ID ?? process.env.NAVER_CLIENT_ID,
-        naverSearchClientSecret: process.env.NAVER_SEARCH_CLIENT_SECRET ?? process.env.NAVER_CLIENT_SECRET,
-      },
+      onProgress: (step) => emitEvent({ type: "progress", step }),
+      secrets,
     });
 
-    engine.process().then((result) => {
-      if (result.status === 'SUCCESS') {
-        emitEvent({ type: 'result', data: result.userOutput });
-      } else {
-        emitEvent({ type: 'error', message: result.error.message });
-      }
-      setTimeout(() => jobStore.delete(jobId), 5000);
-    });
+    const emitFailure = (failure: unknown) => {
+      const presentation = presentRecommendationError(failure, secrets);
+      console.error(
+        JSON.stringify({
+          event: "recommendation.process.failure",
+          ...presentation.internal,
+        }),
+      );
+      emitEvent(presentation.publicEvent);
+    };
+
+    void engine
+      .process()
+      .then((result: EngineOutput) => {
+        switch (result.status) {
+          case "SUCCESS":
+            emitEvent({ type: "result", data: result.userOutput });
+            break;
+          case "ERROR":
+            emitFailure(result.error);
+            break;
+          default: {
+            const exhaustive: never = result;
+            void exhaustive;
+            throw new TypeError("Unexpected recommendation engine output");
+          }
+        }
+      })
+      .catch((error: unknown) => {
+        emitFailure(error);
+      })
+      .finally(() => {
+        setTimeout(() => jobStore.delete(jobId), 5000);
+      });
   }
 
-  req.on('close', () => {
+  req.on("close", () => {
     clearInterval(heartbeatInterval);
-    jobState.emitter?.removeListener('sse', sseHandler);
+    jobState.emitter?.removeListener("sse", sseHandler);
   });
 });
 
-app.listen(port, () => {
-  console.log(`Server is running on http://localhost:${port}`);
+app.listen(config.port, () => {
+  console.log(`Server is running on http://localhost:${config.port}`);
 });

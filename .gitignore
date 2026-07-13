@@ -12,3 +12,4 @@ apps/server/src/recommendation-engine/eojin/llm/tools/*-local/result.json
 apps/server/src/recommendation-engine/eojin/llm/tools/*-local/detail-result.json
 packages/recommendation-engine/src/v1/scripts/.log/
 packages/recommendation-engine/src/v1/.cache/
+.omo/*
