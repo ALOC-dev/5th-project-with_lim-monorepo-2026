@@ -5,7 +5,6 @@ import { Button } from "../../components/Button";
 import { Dropdown, type DropdownOption } from "../../components/Dropdown";
 import { Input } from "../../components/Input";
 import { RangeSlider } from "../../components/Rangeslider";
-import { theme } from "../../design-system/theme.generated";
 import { S } from "./FormContent.style";
 import { useRecommendationFormInput, useRecommendationFormUi } from "./RecommendationForm.context";
 const ACTIVITY_OPTIONS: DropdownOption[] = [
