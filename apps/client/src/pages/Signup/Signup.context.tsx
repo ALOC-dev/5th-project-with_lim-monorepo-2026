@@ -14,6 +14,8 @@ export type SignupFormInputContextType = {
   readonly isAgreed: boolean;
   readonly isSignupReady: boolean;
 
+  readonly isAuthCodeReady: boolean;
+
   readonly setNickname: Dispatch<SetStateAction<string>>;
   readonly setEmail: Dispatch<SetStateAction<string>>;
   readonly setAuthCode: Dispatch<SetStateAction<string>>;

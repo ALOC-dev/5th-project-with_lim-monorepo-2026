@@ -17,6 +17,10 @@ const ForgotPasswordFlowProvider = ({ children }: { readonly children: ReactNode
     return password.length >= 8 && password === passwordConfirm;
   }, [password, passwordConfirm]);
 
+  const isAuthCodeReady = useMemo(() => {
+    return authCode.length === 6;
+  }, [authCode]);
+
   const handleSendAuthCode = useCallback(() => {
     if (email.length > 0) setIsEmailCodeSent(true);
   }, [email]);
@@ -47,6 +51,7 @@ const ForgotPasswordFlowProvider = ({ children }: { readonly children: ReactNode
       password,
       passwordConfirm,
       isResetReady,
+      isAuthCodeReady,
       setPassword,
       setPasswordConfirm,
       resetForm,
@@ -61,6 +66,9 @@ const ForgotPasswordFlowProvider = ({ children }: { readonly children: ReactNode
       password,
       passwordConfirm,
       isResetReady,
+      isAuthCodeReady,
+      setPassword,
+      setPasswordConfirm,
       resetForm,
     ],
   );

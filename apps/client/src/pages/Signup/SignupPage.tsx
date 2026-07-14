@@ -39,6 +39,10 @@ export const SignupFlowProvider = ({ children }: { readonly children: ReactNode 
     if (authCode.length > 0) setIsEmailVerified(true);
   }, [authCode]);
 
+  const isAuthCodeReady = useMemo(() => {
+    return authCode.length === 6;
+  }, [authCode]);
+
   const resetForm = useCallback(() => {
     setNickname("");
     setEmail("");
@@ -63,6 +67,7 @@ export const SignupFlowProvider = ({ children }: { readonly children: ReactNode 
       isEmailVerified,
       isSignupReady,
       isAgreed,
+      isAuthCodeReady,
       setNickname,
       setEmail,
       setAuthCode,
@@ -85,6 +90,7 @@ export const SignupFlowProvider = ({ children }: { readonly children: ReactNode 
       isEmailVerified,
       isSignupReady,
       isAgreed,
+      isAuthCodeReady,
       handleCheckNickname,
       handleSendAuthCode,
       handleVerifyAuthCode,

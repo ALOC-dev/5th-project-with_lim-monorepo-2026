@@ -16,6 +16,8 @@ export type ForgotPasswordContextType = {
   readonly passwordConfirm: string;
   readonly isResetReady: boolean;
 
+  readonly isAuthCodeReady: boolean;
+
   readonly setPassword: Dispatch<SetStateAction<string>>;
   readonly setPasswordConfirm: Dispatch<SetStateAction<string>>;
 

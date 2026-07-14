@@ -79,9 +79,19 @@ export const S = {
   `,
 
   Label: styled.label`
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 500;
+    line-height: 18px;
     color: ${tokens.color.neutral["900"]};
+  `,
+
+  InputRow: styled.div`
+    display: flex;
+    width: 100%;
+    height: 56px;
+    align-items: flex-start;
+    gap: 8px;
+    flex-shrink: 0;
   `,
 
   Input: styled.input`
@@ -96,6 +106,7 @@ export const S = {
     outline: none;
     color: ${tokens.color.neutral["900"]};
     transition: border-color 0.2s ease;
+    width: 100%;
 
     &:focus {
       border-color: ${tokens.color.primary["500"]};
@@ -111,6 +122,31 @@ export const S = {
     font-weight: 400;
     line-height: 20px;
     color: ${tokens.color.neutral["700"]};
+  `,
+
+  HelperTextError: styled.span`
+    font-size: 13px;
+    font-weight: 400;
+    line-height: 20px;
+    color: ${tokens.color.primary["500"]};
+  `,
+
+  ActionButton: styled.button`
+    display: flex;
+    height: 56px;
+    width: 116px;
+    padding: 18px 0px;
+    border-radius: 10px;
+    flex-shrink: 0;
+    justify-content: center;
+    align-items: center;
+    background-color: ${tokens.color.primary["500"]};
+    border: none;
+    color: ${tokens.color.neutral["0"]};
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 20px;
+    cursor: pointer;
   `,
 
   SubmitButton: styled.button<{ disabled?: boolean }>`
@@ -131,13 +167,14 @@ export const S = {
     margin-top: 16px;
   `,
 
-  Footer: styled.div`
+  Footer: styled.div<{ isBottomFixed?: boolean }>`
     display: flex;
     height: 44px;
     justify-content: center;
     align-items: center;
     gap: 4px;
     padding-bottom: 32px;
+    margin-top: ${({ isBottomFixed }) => (isBottomFixed ? "auto" : "0")};
   `,
 
   FooterText: styled.span`
@@ -170,15 +207,15 @@ export const S = {
   Heading: styled.h2`
     font-size: 28px;
     font-weight: 700;
-    line-height: 38px;
+    line-height: 36px;
     color: ${tokens.color.neutral["900"]};
     margin: 0;
   `,
 
   Description: styled.p`
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 400;
-    line-height: 22px;
+    line-height: 20px;
     color: ${tokens.color.neutral["700"]};
     margin: 0;
   `,
@@ -187,7 +224,7 @@ export const S = {
     display: flex;
     align-items: flex-start;
     flex-direction: column;
-    gap: 8px;
+    gap: 6px;
     padding: 16px 18px;
     border-radius: 12px;
     border: 1px solid ${tokens.color.neutral["200"]};
@@ -195,15 +232,16 @@ export const S = {
   `,
 
   InfoTitle: styled.strong`
-    font-size: 14px;
-    font-weight: 500;
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 18px;
     color: ${tokens.color.neutral["900"]};
   `,
 
   InfoText: styled.span`
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 400;
-    line-height: 20px;
+    line-height: 18px;
     color: ${tokens.color.neutral["700"]};
   `,
 

@@ -13,6 +13,7 @@ export default function SignupFormContent() {
     password,
     passwordConfirm,
     isNicknameChecked,
+    isAuthCodeReady,
     isEmailCodeSent,
     isEmailVerified,
     isSignupReady,
@@ -54,22 +55,6 @@ export default function SignupFormContent() {
 
       <S.Form onSubmit={handleSubmit}>
         <S.InputGroup>
-          <S.Label htmlFor="nickname">닉네임</S.Label>
-          <S.InputRow>
-            <S.Input
-              type="text"
-              id="nickname"
-              placeholder="예: limeojin"
-              value={nickname}
-              onChange={(e) => setNickname(e.target.value)}
-            />
-            <S.ActionButton type="button" onClick={handleCheckNickname}>
-              중복확인
-            </S.ActionButton>
-          </S.InputRow>
-        </S.InputGroup>
-
-        <S.InputGroup>
           <S.Label htmlFor="email">이메일</S.Label>
           <S.InputRow>
             <S.Input
@@ -78,13 +63,37 @@ export default function SignupFormContent() {
               placeholder="name@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              disabled={isEmailVerified} // 인증 완료 시 수정 불가
             />
             <S.ActionButton type="button" onClick={handleSendAuthCode}>
-              인증번호 받기
+              {isEmailCodeSent ? "다시 받기" : "인증번호 받기"}
             </S.ActionButton>
           </S.InputRow>
         </S.InputGroup>
 
+        {isEmailCodeSent && !isEmailVerified && (
+          <S.InputGroup>
+            <S.Label htmlFor="authCode">인증번호</S.Label>
+
+            <S.Input
+              type="text"
+              id="authCode"
+              maxLength={6}
+              value={authCode}
+              onChange={(e) => setAuthCode(e.target.value)}
+            />
+
+            <S.HelperText>인증번호 6자리를 확인해 주세요.</S.HelperText>
+
+            <S.SubmitButton
+              type="button"
+              disabled={!isAuthCodeReady}
+              onClick={handleVerifyAuthCode}
+            >
+              인증하기
+            </S.SubmitButton>
+          </S.InputGroup>
+        )}
         <S.InputGroup>
           <S.Label htmlFor="password">비밀번호</S.Label>
           <S.Input
@@ -107,6 +116,22 @@ export default function SignupFormContent() {
             onChange={(e) => setPasswordConfirm(e.target.value)}
           />
           <S.HelperText>비밀번호와 똑같이 입력해 주세요.</S.HelperText>
+        </S.InputGroup>
+
+        <S.InputGroup>
+          <S.Label htmlFor="nickname">닉네임</S.Label>
+          <S.InputRow>
+            <S.Input
+              type="text"
+              id="nickname"
+              placeholder="예: limeojin"
+              value={nickname}
+              onChange={(e) => setNickname(e.target.value)}
+            />
+            <S.ActionButton type="button" onClick={handleCheckNickname}>
+              중복확인
+            </S.ActionButton>
+          </S.InputRow>
         </S.InputGroup>
 
         <S.SubmitButton type="submit" disabled={!isSignupReady}>
