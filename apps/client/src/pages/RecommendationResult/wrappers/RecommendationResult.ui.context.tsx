@@ -18,8 +18,8 @@ export type RecommendationResultPlace = {
   readonly priceRangeLabel: string;
   readonly referenceUrls: {
     readonly instagram?: string;
-    readonly kakaoMap: string;
-    readonly naverMap: string;
+    readonly kakaoMap?: string;
+    readonly naverMap?: string;
     readonly others?: readonly string[];
   };
   readonly roadAddressKo: string;

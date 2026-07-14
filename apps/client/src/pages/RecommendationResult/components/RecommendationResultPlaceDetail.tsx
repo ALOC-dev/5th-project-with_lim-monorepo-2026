@@ -69,12 +69,24 @@ const RecommendationResultPlaceDetail = () => {
         <S.InfoCard>
           <S.InfoLabel>참고 링크</S.InfoLabel>
           <S.ReferenceLinks>
-            <S.ReferenceLink href={place.referenceUrls.naverMap} target="_blank" rel="noreferrer">
-              네이버지도
-            </S.ReferenceLink>
-            <S.ReferenceLink href={place.referenceUrls.kakaoMap} target="_blank" rel="noreferrer">
-              카카오맵
-            </S.ReferenceLink>
+            {place.referenceUrls.naverMap !== undefined && (
+              <S.ReferenceLink
+                href={place.referenceUrls.naverMap}
+                target="_blank"
+                rel="noreferrer"
+              >
+                네이버지도
+              </S.ReferenceLink>
+            )}
+            {place.referenceUrls.kakaoMap !== undefined && (
+              <S.ReferenceLink
+                href={place.referenceUrls.kakaoMap}
+                target="_blank"
+                rel="noreferrer"
+              >
+                카카오맵
+              </S.ReferenceLink>
+            )}
             {place.referenceUrls.instagram !== undefined && (
               <S.ReferenceLink
                 href={place.referenceUrls.instagram}

@@ -26,7 +26,6 @@ type RecommendationResultRecommendation =
 type RecommendationResultDayOfWeek = keyof RecommendationResultRecommendation["operationInfo"]["schedules"];
 type RecommendationResultOperationStatus =
   RecommendationResultRecommendation["operationInfo"]["schedules"][RecommendationResultDayOfWeek];
-type RecommendationResultReferenceUrls = RecommendationResultPlace["referenceUrls"];
 
 class EmptyRecommendationResultError extends Error {
   constructor() {
@@ -84,7 +83,7 @@ const toRecommendationResultPlaces = (
       phoneNumber: recommendation.phoneNumber,
       priceRangeLabel,
       rank: index + 1,
-      referenceUrls: toRecommendationResultReferenceUrls(recommendation),
+      referenceUrls: recommendation.referenceUrls,
       roadAddressKo: recommendation.location.roadAddressKo,
       score: recommendation.score,
       subInfo: `${priceRangeLabel} · ${DAY_OF_WEEK_LABELS[dayOfWeek]} ${toOperationHoursLabel(
@@ -117,23 +116,6 @@ const toRecommendationResultUiModelKey = (result: RecommendationResultSuccess): 
 
 const toPriceRangeLabel = (priceRange: readonly [number, number]): string => {
   return `예상 ${PRICE_FORMATTER.format(priceRange[0])}~${PRICE_FORMATTER.format(priceRange[1])}원`;
-};
-
-const toRecommendationResultReferenceUrls = (
-  recommendation: RecommendationResultRecommendation,
-): RecommendationResultReferenceUrls => {
-  const { kakaoMap, naverMap, instagram, others } = recommendation.referenceUrls;
-
-  if (kakaoMap === undefined || naverMap === undefined) {
-    throw new Error(`Recommendation ${recommendation.id} is missing required map reference urls`);
-  }
-
-  return {
-    instagram,
-    kakaoMap,
-    naverMap,
-    others,
-  };
 };
 
 const toOperationHoursLabel = (operationStatus: RecommendationResultOperationStatus): string => {
