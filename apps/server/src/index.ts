@@ -1,15 +1,16 @@
-import { createApiResponse, formatServiceName } from "@monorepo/api-contracts";
-import cors from "cors";
-import express from "express";
 import { randomUUID } from "node:crypto";
 import { EventEmitter } from "node:events";
-import type { RecommendationSseEvent } from "@monorepo/api-contracts";
+
+import { createApiResponse, type PlaceRecommendationSseEvent } from "@monorepo/api-contracts";
 import { DEFAULT_ENGINE_CONFIG, RecommendationEngine } from "@monorepo/recommendation-engine";
 import type { UserInput } from "@monorepo/recommendation-engine/v1/contracts";
 import { UserInputSchema } from "@monorepo/recommendation-engine/v1/contracts";
+import cookieParser from "cookie-parser";
+import cors from "cors";
+import express from "express";
+
 import authRouter from "./routes/auth.js";
 import usersRouter from "./routes/users.js";
-import cookieParser from "cookie-parser";
 
 const app = express();
 app.use(cors());
@@ -21,13 +22,16 @@ app.use("/api/users", usersRouter);
 type JobState = {
   userInput: UserInput;
   emitter: EventEmitter | null; // null = 엔진 아직 미시작
-  bufferedEvents: RecommendationSseEvent[];
+  bufferedEvents: PlaceRecommendationSseEvent[];
 };
 const jobStore = new Map<string, JobState>();
 
 const port = 3000;
 
-app.get("/health", (_req, res) => { // api 받아서 처리
+const formatServiceName = (name: string): string => name.trim().toUpperCase();
+
+app.get("/health", (_req, res) => {
+  // api 받아서 처리
   res.json(
     createApiResponse({
       service: formatServiceName("server"),
@@ -81,7 +85,7 @@ app.get("/api/recommend/stream/:jobId", (req, res) => {
   }
 
   // 핸들러를 먼저 등록해야 동기 이벤트(input_validated)를 놓치지 않는다
-  const sseHandler = (event: RecommendationSseEvent) => {
+  const sseHandler = (event: PlaceRecommendationSseEvent) => {
     if (res.writableEnded) return;
     res.write(`event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`);
     if (event.type === "result" || event.type === "error") {
@@ -103,7 +107,7 @@ app.get("/api/recommend/stream/:jobId", (req, res) => {
   const isFirstConnection = jobState.bufferedEvents.length === 0;
   if (isFirstConnection) {
     const emitter = jobState.emitter;
-    const emitEvent = (event: RecommendationSseEvent) => {
+    const emitEvent = (event: PlaceRecommendationSseEvent) => {
       jobState.bufferedEvents.push(event);
       emitter.emit("sse", event);
     };
@@ -121,14 +125,20 @@ app.get("/api/recommend/stream/:jobId", (req, res) => {
       },
     });
 
-    engine.process().then((result) => {
-      if (result.status === "SUCCESS") {
-        emitEvent({ type: "result", data: result.userOutput });
-      } else {
-        emitEvent({ type: "error", message: result.error.message });
-      }
-      setTimeout(() => jobStore.delete(jobId), 5000);
-    });
+    engine
+      .process()
+      .then((result) => {
+        if (result.status === "SUCCESS") {
+          emitEvent({ type: "result", data: result.userOutput });
+        } else {
+          emitEvent({ type: "error", message: result.error.message });
+        }
+        setTimeout(() => jobStore.delete(jobId), 5000);
+      })
+      .catch(() => {
+        emitEvent({ type: "error", message: "An unexpected error occurred" });
+        setTimeout(() => jobStore.delete(jobId), 5000);
+      });
   }
 
   req.on("close", () => {

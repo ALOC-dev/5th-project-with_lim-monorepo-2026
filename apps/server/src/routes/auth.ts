@@ -1,9 +1,22 @@
-import { createApiError, createApiResponse } from "@monorepo/api-contracts";
+import {
+  type AuthenticatedUserResponseData,
+  createApiError,
+  createApiResponse,
+  ForgotPasswordRequestSchema,
+  type ForgotPasswordResponseData,
+  LoginRequestSchema,
+  type LogoutResponseData,
+  type ResendVerificationEmailResponseData,
+  ResetPasswordRequestSchema,
+  type ResetPasswordResponseData,
+  SignupRequestSchema,
+  VerifyEmailQuerySchema,
+  type VerifyEmailResponseData,
+} from "@monorepo/api-contracts";
 import bcrypt from "bcryptjs";
 import { and, eq, gt, isNull, or } from "drizzle-orm";
 import { Router } from "express";
 import jwt from "jsonwebtoken";
-import { z } from "zod";
 
 import { db } from "../db/client.js";
 import { emailVerifications, passwordResetTokens, users } from "../db/schema.js";
@@ -15,30 +28,10 @@ import { requireAuth } from "../middleware/auth.js";
 
 const router = Router();
 
-const SignupSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(8),
-  nickname: z.string().min(1),
-});
-
-const LoginSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(8),
-});
-
-const ForgotPasswordSchema = z.object({
-  email: z.string().email(),
-});
-
-const ResetPasswordSchema = z.object({
-  token: z.string().min(1),
-  newPassword: z.string().min(8),
-});
-
 router.post(
   "/signup",
   asyncHandler(async (req, res) => {
-    const parsed = SignupSchema.safeParse(req.body);
+    const parsed = SignupRequestSchema.safeParse(req.body);
     if (!parsed.success) {
       res.status(400).json(createApiError("invalid input"));
       return;
@@ -91,7 +84,7 @@ router.post(
           email: newUser.email,
           nickname: newUser.nickname,
         },
-      }),
+      } satisfies AuthenticatedUserResponseData),
     );
 
     try {
@@ -111,7 +104,7 @@ router.post(
 router.post(
   "/login",
   asyncHandler(async (req, res) => {
-    const parsed = LoginSchema.safeParse(req.body);
+    const parsed = LoginRequestSchema.safeParse(req.body);
     if (!parsed.success) {
       res.status(400).json(createApiError("invalid input"));
       return;
@@ -147,7 +140,7 @@ router.post(
           email: user.email,
           nickname: user.nickname,
         },
-      }),
+      } satisfies AuthenticatedUserResponseData),
     );
   }),
 );
@@ -159,14 +152,14 @@ router.post("/logout", (req, res) => {
     secure: process.env.NODE_ENV === "production",
   });
 
-  res.status(200).json(createApiResponse({ success: true }));
+  res.status(200).json(createApiResponse({ success: true } satisfies LogoutResponseData));
 });
 
 router.get(
   "/verify-email",
   asyncHandler(async (req, res) => {
-    const token = req.query.token;
-    if (typeof token !== "string") {
+    const parsed = VerifyEmailQuerySchema.safeParse(req.query);
+    if (!parsed.success) {
       res.status(400).json(createApiError("invalid token"));
       return;
     }
@@ -176,7 +169,7 @@ router.get(
       .from(emailVerifications)
       .where(
         and(
-          eq(emailVerifications.tokenHash, hashToken(token)),
+          eq(emailVerifications.tokenHash, hashToken(parsed.data.token)),
           isNull(emailVerifications.usedAt),
           gt(emailVerifications.expiresAt, new Date()),
         ),
@@ -194,7 +187,9 @@ router.get(
 
     await db.update(users).set({ emailVerified: true }).where(eq(users.id, record.userId));
 
-    res.status(200).json(createApiResponse({ verified: true }));
+    res.status(200).json(
+      createApiResponse({ verified: true } satisfies VerifyEmailResponseData),
+    );
   }),
 );
 
@@ -210,7 +205,9 @@ router.post(
     }
 
     if (user.emailVerified) {
-      res.status(200).json(createApiResponse({ alreadyVerified: true }));
+      res.status(200).json(
+        createApiResponse({ alreadyVerified: true } satisfies ResendVerificationEmailResponseData),
+      );
       return;
     }
 
@@ -229,14 +226,16 @@ router.post(
       return;
     }
 
-    res.status(200).json(createApiResponse({ sent: true }));
+    res.status(200).json(
+      createApiResponse({ sent: true } satisfies ResendVerificationEmailResponseData),
+    );
   }),
 );
 
 router.post(
   "/forgot-password",
   asyncHandler(async (req, res) => {
-    const parsed = ForgotPasswordSchema.safeParse(req.body);
+    const parsed = ForgotPasswordRequestSchema.safeParse(req.body);
     if (!parsed.success) {
       res.status(400).json(createApiError("invalid input"));
       return;
@@ -260,14 +259,16 @@ router.post(
       }
     }
 
-    res.status(200).json(createApiResponse({ sent: true }));
+    res.status(200).json(
+      createApiResponse({ sent: true } satisfies ForgotPasswordResponseData),
+    );
   }),
 );
 
 router.post(
   "/reset-password",
   asyncHandler(async (req, res) => {
-    const parsed = ResetPasswordSchema.safeParse(req.body);
+    const parsed = ResetPasswordRequestSchema.safeParse(req.body);
     if (!parsed.success) {
       res.status(400).json(createApiError("invalid input"));
       return;
@@ -298,7 +299,9 @@ router.post(
       .set({ usedAt: new Date() })
       .where(eq(passwordResetTokens.id, record.id));
 
-    res.status(200).json(createApiResponse({ reset: true }));
+    res.status(200).json(
+      createApiResponse({ reset: true } satisfies ResetPasswordResponseData),
+    );
   }),
 );
 

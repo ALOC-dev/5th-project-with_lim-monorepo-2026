@@ -1,7 +1,12 @@
-import { createApiError, createApiResponse } from "@monorepo/api-contracts";
+import {
+  type AuthenticatedUserResponseData,
+  createApiError,
+  createApiResponse,
+  type DeleteCurrentUserResponseData,
+  UpdateMeRequestSchema,
+} from "@monorepo/api-contracts";
 import { eq } from "drizzle-orm";
 import { Router } from "express";
-import { z } from "zod";
 
 import { db } from "../db/client.js";
 import { users } from "../db/schema.js";
@@ -9,10 +14,6 @@ import { asyncHandler } from "../lib/asyncHandler.js";
 import { requireAuth } from "../middleware/auth.js";
 
 const router = Router();
-
-const UpdateMeSchema = z.object({
-  nickname: z.string().min(1),
-});
 
 router.get(
   "/me",
@@ -32,7 +33,7 @@ router.get(
           email: user.email,
           nickname: user.nickname,
         },
-      }),
+      } satisfies AuthenticatedUserResponseData),
     );
   }),
 );
@@ -41,7 +42,7 @@ router.patch(
   "/me",
   requireAuth,
   asyncHandler(async (req, res) => {
-    const parsed = UpdateMeSchema.safeParse(req.body);
+    const parsed = UpdateMeRequestSchema.safeParse(req.body);
     if (!parsed.success) {
       res.status(400).json(createApiError("invalid input"));
       return;
@@ -74,7 +75,7 @@ router.patch(
           email: updated.email,
           nickname: updated.nickname,
         },
-      }),
+      } satisfies AuthenticatedUserResponseData),
     );
   }),
 );
@@ -91,7 +92,9 @@ router.delete(
       secure: process.env.NODE_ENV === "production",
     });
 
-    res.status(200).json(createApiResponse({ success: true }));
+    res.status(200).json(
+      createApiResponse({ success: true } satisfies DeleteCurrentUserResponseData),
+    );
   }),
 );
 
