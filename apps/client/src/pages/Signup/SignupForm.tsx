@@ -1,5 +1,7 @@
+import { type AxiosError } from "axios"; // 💡 axios 에러 타입을 위해 추가
 import { useNavigate } from "react-router-dom";
 
+import { requestSignup } from "../../apis/auth";
 import { Icon } from "../../components/Icon/Icon";
 import { tokens } from "../../design-system/tokens.generated";
 import { useSignupFormInput } from "./Signup.context";
@@ -31,10 +33,28 @@ export default function SignupFormContent() {
 
   const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isSignupReady) return;
-    alert("회원가입이 완료되었습니다!");
+
+    try {
+      const response = await requestSignup({
+        email,
+        password,
+        nickname,
+      });
+      // 백엔드 응답 구조에 따라 성공 여부를 확인합니다.
+      if (response.success) {
+        alert("회원가입에 성공했습니다!");
+        void navigate("/login");
+      }
+    } catch (error) {
+      // 💡 2. error를 AxiosError 타입으로 정의하여 안전하게 접근
+      const err = error as AxiosError<{ error?: string }>;
+      const errorMessage =
+        err.response?.data?.error || "회원가입 중 오류가 발생했습니다. 다시 시도해 주세요.";
+      alert(errorMessage);
+    }
   };
 
   return (

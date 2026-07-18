@@ -1,11 +1,10 @@
 import axios from "axios";
 
 export const client = axios.create({
-  // 로컬 개발 서버 주소 (또는 vite 프록시 주소)
-  baseURL: "/api",
+  baseURL: "http://localhost:3000/api/auth",
   headers: {
     "Content-Type": "application/json",
   },
-  // 💡 백엔드가 쿠키로 토큰을 구워주므로 이 옵션은 무조건 켜야 합니다!
+  // 서버가 쿠키(HttpOnly Token)를 브라우저에 안전하게 내려주고 가져가도록 설정합니다.
   withCredentials: true,
 });

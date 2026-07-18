@@ -1,7 +1,15 @@
 // src/apis/auth.ts
-import type { ApiResponse } from "@monorepo/api-contracts"; // 백엔드가 만든 타입 가져오기
+import type { ApiResponse } from "@monorepo/api-contracts";
 
 import { client } from "./client";
+
+export type AuthUserResponse = {
+  user: {
+    id: string;
+    email: string;
+    nickname: string;
+  };
+};
 
 // 1. 회원가입 API (이메일, 비밀번호, 닉네임 전송)
 export const requestSignup = async (payload: {
@@ -9,12 +17,12 @@ export const requestSignup = async (payload: {
   password: string;
   nickname: string;
 }) => {
-  const response = await client.post<ApiResponse<any>>("/signup", payload);
+  const response = await client.post<ApiResponse<AuthUserResponse>>("/signup", payload);
   return response.data;
 };
 
 // 2. 로그인 API (이메일, 비밀번호 전송)
 export const requestLogin = async (payload: { email: string; password: string }) => {
-  const response = await client.post<ApiResponse<any>>("/login", payload);
+  const response = await client.post<ApiResponse<AuthUserResponse>>("/login", payload);
   return response.data;
 };

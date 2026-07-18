@@ -20,10 +20,8 @@ export const SignupFlowProvider = ({ children }: { readonly children: ReactNode 
   const isSignupReady = useMemo(() => {
     return (
       // isNicknameChecked &&
-      // isEmailVerified &&
-      // password.length >= 8 &&
-      // password === passwordConfirm &&
-      isAgreed
+      //isEmailVerified &&
+      password.length >= 8 && password === passwordConfirm && isAgreed
     );
   }, [isNicknameChecked, isEmailVerified, password, passwordConfirm, isAgreed]);
 

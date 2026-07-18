@@ -20,6 +20,8 @@ import { evaluateSeeds } from "./steps/evaluateSeeds/index.js";
 
 const MAX_DISCOVERY_ATTEMPTS = 5;
 
+export type RecommendationProgressStep = 'input_validated' | 'discovering' | 'evaluating' | 'enriching' | 'scoring';
+
 export const DEFAULT_ENGINE_CONFIG: EngineConfig = {
   targetCount: DEFAULT_TARGET_COUNT,
   candidatePoolMultiplier: DEFAULT_CANDIDATE_POOL_MULTIPLIER,
@@ -99,17 +101,21 @@ const toCenterLocation = (
 });
 
 export type RecommendationEngineOptions = {
+  onProgress?: (step: RecommendationProgressStep) => void;
   loggingActivated?: boolean;
   secrets?: RecommendationEngineSecrets;
 };
 
+
 export class RecommendationEngine {
+  private readonly onProgress : RecommendationEngineOptions['onProgress'];
   private readonly config: EngineConfig;
   private readonly logger: Logger;
   private readonly secrets: RecommendationEngineSecrets;
   private readonly userInput: UserInput;
 
   constructor(input: UserInput, config: EngineConfig, options: RecommendationEngineOptions = {}) {
+    this.onProgress = options.onProgress;
     this.config = config;
     this.logger = options.loggingActivated ? consoleLogger : noopLogger;
     this.secrets = options.secrets ?? {};
@@ -131,6 +137,7 @@ export class RecommendationEngine {
 
     try {
       const finishDiscoveryContext = this.logger.startTimer("engine.discovery_context.success");
+      this.onProgress?.('input_validated');
       const initialQueries = await createDiscoveryContextWithLlm(this.userInput, {
         openAiApiKey: this.secrets.openAiApiKey,
         targetSeedCount: this.config.targetCount * this.config.candidatePoolMultiplier,
@@ -168,6 +175,10 @@ export class RecommendationEngine {
         previousFailureReason: discoveryState.previousFailureReason,
       });
 
+      if(currAttemptNo === 1) {
+        this.onProgress?.('discovering');
+      }
+
       const discoveryContext = buildDiscoveryContext(this.config, {
         ...discoveryState,
         attemptNo: currAttemptNo,
@@ -198,6 +209,7 @@ export class RecommendationEngine {
         };
       }
       const discoverSeedsOutput = discoverSeedsResult.data;
+      this.onProgress?.('evaluating');
 
       const evaluateSeedsResult = await evaluateSeeds(
         this.userInput,
@@ -211,6 +223,7 @@ export class RecommendationEngine {
             naverSearchClientSecret: this.secrets.naverSearchClientSecret,
             openAiApiKey: this.secrets.openAiApiKey,
           },
+          onProgress: this.onProgress,
         },
       );
       if (!evaluateSeedsResult.ok) {
