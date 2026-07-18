@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 export type ApiResponse<T> = { success: true; data: T } | { success: false; error: string };
+// 서버가 JSON 응답 보낼 때 항상 요 모양을 쓰겠다
 
 export const ApiErrorResponseSchema = z.object({
   success: z.literal(false),
