@@ -1,17 +1,25 @@
 import { createApiError } from "@monorepo/api-contracts";
 import type { NextFunction, Request, Response } from "express";
 import jwt from "jsonwebtoken";
+import { z } from "zod";
+
+import { JWT_SECRET } from "../lib/env.js";
+
+const JwtPayloadSchema = z.object({
+  userId: z.string(),
+});
 
 export const requireAuth = (req: Request, res: Response, next: NextFunction) => {
-  const token = req.cookies.token;
+  const tokenParse = z.string().safeParse((req.cookies as Record<string, unknown>).token);
 
-  if (!token) {
+  if (!tokenParse.success) {
     res.status(401).json(createApiError("unauthorized"));
     return;
   }
 
   try {
-    const payload = jwt.verify(token, process.env.JWT_SECRET!) as { userId: string };
+    const decoded = jwt.verify(tokenParse.data, JWT_SECRET);
+    const payload = JwtPayloadSchema.parse(decoded);
     req.userId = payload.userId;
     next();
   } catch {
