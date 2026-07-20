@@ -49,7 +49,7 @@ export default function SignupFormContent() {
         void navigate("/login");
       }
     } catch (error) {
-      // 💡 2. error를 AxiosError 타입으로 정의하여 안전하게 접근
+      //error를 AxiosError 타입으로 정의하여 안전하게 접근
       const err = error as AxiosError<{ error?: string }>;
       const errorMessage =
         err.response?.data?.error || "회원가입 중 오류가 발생했습니다. 다시 시도해 주세요.";
