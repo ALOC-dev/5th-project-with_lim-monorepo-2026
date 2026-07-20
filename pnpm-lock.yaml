@@ -109,12 +109,18 @@ importers:
 
   apps/server:
     dependencies:
+      '@ai-sdk/openai':
+        specifier: ^3.0.64
+        version: 3.0.64(zod@4.4.1)
       '@monorepo/api-contracts':
         specifier: workspace:*
         version: link:../../packages/api-contracts
       '@monorepo/recommendation-engine':
         specifier: workspace:*
         version: link:../../packages/recommendation-engine
+      ai:
+        specifier: ^6.0.183
+        version: 6.0.183(zod@4.4.1)
       bcryptjs:
         specifier: ^3.0.3
         version: 3.0.3
@@ -133,12 +139,21 @@ importers:
       jsonwebtoken:
         specifier: ^9.0.3
         version: 9.0.3
+      ky:
+        specifier: ^2.0.2
+        version: 2.0.2
+      playwright:
+        specifier: ^1.60.0
+        version: 1.60.0
       postgres:
         specifier: ^3.4.9
         version: 3.4.9
       resend:
         specifier: ^6.17.2
         version: 6.17.2
+      zod:
+        specifier: ^4.4.1
+        version: 4.4.1
     devDependencies:
       '@types/bcryptjs':
         specifier: ^3.0.0
