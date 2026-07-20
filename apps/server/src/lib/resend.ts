@@ -23,16 +23,6 @@ export const sendVerificationEmail = async (to: string, token: string) => {
   });
 };
 
-export const sendSignupVerificationCode = async (to: string, code: string) => {
-  await send({
-    from: FROM,
-    to,
-    subject: "회원가입 인증번호",
-    html: `<p>아래 인증번호를 입력해주세요. (5분 이내 유효)</p>
-<p style="font-size: 24px; font-weight: bold;">${code}</p>`,
-  });
-};
-
 export const sendPasswordResetEmail = async (to: string, token: string) => {
   await send({
     from: FROM,
