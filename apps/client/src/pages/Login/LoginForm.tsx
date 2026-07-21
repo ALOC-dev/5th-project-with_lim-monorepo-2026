@@ -2,13 +2,16 @@ import { type AxiosError } from "axios";
 import { useNavigate } from "react-router-dom";
 
 import { requestLogin } from "../../apis/auth";
+import { useAuth } from "../../contexts/Auth.context";
 import { useLoginFormInput } from "./Login.context";
 import { S } from "./Login.styled";
 
 export default function LoginFormContent() {
   const { email, password, isLoginReady, setEmail, setPassword } = useLoginFormInput();
 
-  // const navigate = useNavigate();
+  const navigate = useNavigate();
+
+  const { login } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -19,16 +22,19 @@ export default function LoginFormContent() {
 
       if (response.success) {
         alert("로그인에 성공했습니다!");
-        // void navigate("/place/recommendation/form");
+        // AuthContext의 isAuthenticated가 true로 바꿈
+        login();
+        // replace: true를 넣으면, 로그인 성공 후 뒤로가기를 눌러도 다시 로그인 페이지로 오지 않게 막아줍니다.
+        void navigate("/place/recommendation/form", { replace: true });
       }
     } catch (error) {
-      // 💡 2. error를 AxiosError 타입으로 정의하여 안전하게 접근
       const err = error as AxiosError<{ error?: string }>;
       const errorMessage =
         err.response?.data?.error || "로그인 중 오류가 발생했습니다. 다시 시도해 주세요.";
       alert(errorMessage);
     }
   };
+
   return (
     <S.Container>
       <S.Header>
