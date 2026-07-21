@@ -1,7 +1,6 @@
-// import { SignupFlowProvider } from "./Signup.context";
-import type { ReactNode } from "react";
-import { useCallback, useMemo, useState } from "react";
+import { type ReactNode, useCallback, useMemo, useState } from "react";
 
+import { client } from "../../apis/client";
 import { SignupFormInputContext, type SignupFormInputContextType } from "./Signup.context";
 import SignupFormContent from "./SignupForm";
 
@@ -27,17 +26,66 @@ export const SignupFlowProvider = ({ children }: { readonly children: ReactNode 
     );
   }, [isNicknameChecked, isEmailVerified, password, passwordConfirm, isAgreed]);
 
-  const handleCheckNickname = useCallback(() => {
-    if (nickname.length > 0) setIsNicknameChecked(true);
+  const handleCheckNickname = useCallback(async () => {
+    if (nickname.trim().length === 0) {
+      return alert("닉네임을 입력해주세요.");
+    }
+
+    try {
+      const response = await client.get<{ data?: { available: boolean }; available?: boolean }>(
+        "/nickname-check",
+        {
+          params: { nickname },
+        },
+      );
+
+      const isAvailable = response.data?.data?.available ?? response.data?.available ?? false;
+
+      if (isAvailable) {
+        setIsNicknameChecked(true);
+        alert("사용 가능한 닉네임입니다.");
+      } else {
+        setIsNicknameChecked(false);
+        alert("이미 사용 중인 닉네임입니다. 다른 닉네임을 입력해주세요.");
+      }
+    } catch (error) {
+      console.error("닉네임 중복 확인 중 오류 발생:", error);
+      alert("닉네임 중복 확인에 실패했습니다. 다시 시도해주세요.");
+    }
   }, [nickname]);
 
-  const handleSendAuthCode = useCallback(() => {
-    if (email.length > 0) setIsEmailCodeSent(true);
+  // 1. 인증번호 발송 API 연동
+  const handleSendAuthCode = useCallback(async () => {
+    if (email.length === 0) return alert("이메일을 입력해주세요.");
+
+    try {
+      await client.post("/signup/send-code", { email });
+      setIsEmailCodeSent(true);
+      alert("인증번호가 발송되었습니다. 이메일을 확인해주세요.");
+    } catch (error) {
+      //409 Conflict (이미 존재하는 이메일) 등의 에러 대응
+      alert("인증번호 발송에 실패했습니다.");
+      console.error(error);
+    }
   }, [email]);
 
-  const handleVerifyAuthCode = useCallback(() => {
-    if (authCode.length > 0) setIsEmailVerified(true);
-  }, [authCode]);
+  // 2. 인증번호 검증 API 연동
+  const handleVerifyAuthCode = useCallback(async () => {
+    if (authCode.length !== 6) return alert("인증번호 6자리를 정확히 입력해주세요.");
+
+    try {
+      await client.post("/signup/verify-code", {
+        email,
+        code: authCode,
+      });
+      setIsEmailVerified(true);
+      alert("이메일 인증이 완료되었습니다.");
+    } catch (error) {
+      // 400 Bad Request (잘못되거나 만료된 코드) 대응
+      alert("잘못된 인증번호이거나 만료되었습니다.");
+      console.error(error);
+    }
+  }, [email, authCode]);
 
   const isAuthCodeReady = useMemo(() => {
     return authCode.length === 6;

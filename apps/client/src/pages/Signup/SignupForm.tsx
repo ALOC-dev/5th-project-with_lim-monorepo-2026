@@ -1,4 +1,4 @@
-import { type AxiosError } from "axios"; // 💡 axios 에러 타입을 위해 추가
+import { type AxiosError } from "axios";
 import { useNavigate } from "react-router-dom";
 
 import { requestSignup } from "../../apis/auth";
