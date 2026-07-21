@@ -8,13 +8,56 @@ export const AuthenticatedUserSchema = z.object({
 
 export type AuthenticatedUser = z.infer<typeof AuthenticatedUserSchema>;
 
+export const PasswordSchema = z
+  .string()
+  .min(8)
+  .max(20)
+  .regex(/^(?=.*[A-Za-z])(?=.*\d).+$/, "password must include letters and numbers");
+
 export const SignupRequestSchema = z.object({
   email: z.email(),
-  password: z.string().min(8),
+  password: PasswordSchema,
   nickname: z.string().min(1),
 });
 
 export type SignupRequest = z.infer<typeof SignupRequestSchema>;
+
+export const SendSignupCodeRequestSchema = z.object({
+  email: z.email(),
+});
+
+export type SendSignupCodeRequest = z.infer<typeof SendSignupCodeRequestSchema>;
+
+export const SendSignupCodeResponseDataSchema = z.object({
+  sent: z.literal(true),
+});
+
+export type SendSignupCodeResponseData = z.infer<typeof SendSignupCodeResponseDataSchema>;
+
+export const VerifySignupCodeRequestSchema = z.object({
+  email: z.email(),
+  code: z.string().length(6),
+});
+
+export type VerifySignupCodeRequest = z.infer<typeof VerifySignupCodeRequestSchema>;
+
+export const VerifySignupCodeResponseDataSchema = z.object({
+  verified: z.literal(true),
+});
+
+export type VerifySignupCodeResponseData = z.infer<typeof VerifySignupCodeResponseDataSchema>;
+
+export const NicknameCheckQuerySchema = z.object({
+  nickname: z.string().min(1),
+});
+
+export type NicknameCheckQuery = z.infer<typeof NicknameCheckQuerySchema>;
+
+export const NicknameCheckResponseDataSchema = z.object({
+  available: z.boolean(),
+});
+
+export type NicknameCheckResponseData = z.infer<typeof NicknameCheckResponseDataSchema>;
 
 export const LoginRequestSchema = z.object({
   email: z.email(),

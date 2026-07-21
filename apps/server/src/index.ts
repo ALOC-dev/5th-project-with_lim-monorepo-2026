@@ -31,7 +31,7 @@ type JobState = {
 };
 const jobStore = new Map<string, JobState>();
 
-const port = 3000;
+const port = process.env.PORT ? Number(process.env.PORT) : 3000;
 
 const formatServiceName = (name: string): string => name.trim().toUpperCase();
 
