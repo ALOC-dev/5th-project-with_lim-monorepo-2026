@@ -170,6 +170,9 @@ importers:
 
   packages/api-contracts:
     dependencies:
+      '@monorepo/recommendation-engine':
+        specifier: workspace:*
+        version: link:../recommendation-engine
       zod:
         specifier: ^4.4.1
         version: 4.4.1
