@@ -10,6 +10,7 @@ import cors from "cors";
 import express from "express";
 
 import authRouter from "./routes/auth.js";
+import placeRecommendationHistoriesRouter from "./routes/placeRecommendationHistories.js";
 import usersRouter from "./routes/users.js";
 
 const app = express();
@@ -17,6 +18,7 @@ app.use(cors());
 app.use(express.json());
 app.use(cookieParser());
 app.use("/api/auth", authRouter);
+app.use("/api/place-recommendation-histories", placeRecommendationHistoriesRouter);
 app.use("/api/users", usersRouter);
 
 type JobState = {
