@@ -3,8 +3,7 @@ import { EventEmitter } from "node:events";
 
 import {
   createApiResponse,
-  formatServiceName,
-  type RecommendationSseEvent,
+  type PlaceRecommendationSseEvent,
 } from "@monorepo/api-contracts";
 import {
   DEFAULT_ENGINE_CONFIG,
@@ -12,6 +11,7 @@ import {
   RecommendationEngine,
 } from "@monorepo/recommendation-engine";
 import { type UserInput, UserInputSchema } from "@monorepo/recommendation-engine/v1/contracts";
+import cookieParser from "cookie-parser";
 import cors from "cors";
 import express from "express";
 
@@ -20,20 +20,26 @@ import {
   presentRecommendationError,
   RECOMMENDATION_FAILURE_EVENT,
 } from "./recommendation/error-presentation.js";
+import authRouter from "./routes/auth.js";
+import usersRouter from "./routes/users.js";
 
 const { config, secrets } = parseServerEnvironment(process.env);
 
 const app = express();
 app.use(cors());
 app.use(express.json());
+app.use(cookieParser());
+app.use("/api/auth", authRouter);
+app.use("/api/users", usersRouter);
 
 type JobState = {
   userInput: UserInput;
   emitter: EventEmitter | null; // null = 엔진 아직 미시작
-  bufferedEvents: RecommendationSseEvent[];
+  bufferedEvents: PlaceRecommendationSseEvent[];
 };
 const jobStore = new Map<string, JobState>();
 
+const formatServiceName = (name: string): string => name.trim().toUpperCase();
 app.get("/health", (_req, res) => {
   // api 받아서 처리
   res.json(
@@ -55,7 +61,7 @@ app.post("/api/recommend", (req, res) => {
   const jobId = randomUUID();
   jobStore.set(jobId, { userInput: parsed.data, emitter: null, bufferedEvents: [] });
   res.json({ jobId });
-});
+}); //입력 검증
 
 app.get("/api/recommend/stream/:jobId", (req, res) => {
   const { jobId } = req.params;
@@ -87,7 +93,7 @@ app.get("/api/recommend/stream/:jobId", (req, res) => {
   }
 
   // 핸들러를 먼저 등록해야 동기 이벤트(input_validated)를 놓치지 않는다
-  const sseHandler = (event: RecommendationSseEvent) => {
+  const sseHandler = (event: PlaceRecommendationSseEvent) => {
     if (res.writableEnded) return;
     res.write(`event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`);
     if (event.type === "result" || event.type === "error") {
@@ -109,12 +115,13 @@ app.get("/api/recommend/stream/:jobId", (req, res) => {
   const isFirstConnection = jobState.bufferedEvents.length === 0;
   if (isFirstConnection) {
     const emitter = jobState.emitter;
-    const emitEvent = (event: RecommendationSseEvent) => {
+    const emitEvent = (event: PlaceRecommendationSseEvent) => {
       jobState.bufferedEvents.push(event);
       emitter.emit("sse", event);
     };
 
     const engine = new RecommendationEngine(jobState.userInput, DEFAULT_ENGINE_CONFIG, {
+      loggingActivated: true,
       onProgress: (step) => emitEvent({ type: "progress", step }),
       secrets,
     });

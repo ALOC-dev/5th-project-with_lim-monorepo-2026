@@ -1,11 +1,11 @@
-import type { RecommendationSseEvent } from "@monorepo/api-contracts";
+import type { PlaceRecommendationSseEvent } from "@monorepo/api-contracts";
 import type {
   EngineOutput,
   RecommendationEngineSecrets,
 } from "@monorepo/recommendation-engine";
 
 type EngineOutputError = Extract<EngineOutput, { readonly status: "ERROR" }>["error"];
-type PublicFailureEvent = Extract<RecommendationSseEvent, { readonly type: "error" }>;
+type PublicFailureEvent = Extract<PlaceRecommendationSseEvent, { readonly type: "error" }>;
 
 export type RecommendationErrorRecord = {
   readonly code: string;
