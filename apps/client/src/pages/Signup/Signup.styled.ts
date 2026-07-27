@@ -115,7 +115,7 @@ export const S = {
     }
   `,
 
-  ActionButton: styled.button`
+  ActionButton: styled.button<{ $isVerified?: boolean }>`
     display: flex;
     height: 56px;
     width: 116px;
@@ -124,12 +124,18 @@ export const S = {
     flex-shrink: 0;
     justify-content: center;
     align-items: center;
-    background-color: ${tokens.color.primary["500"]};
-    color: ${tokens.color.neutral["0"]};
+
+    // 상태에 따라 가입하기 버튼(비활성화 상태)과 동일한 색상 적용
+    background-color: ${({ $isVerified }) =>
+      $isVerified ? tokens.color.neutral["200"] : tokens.color.primary["500"]};
+    color: ${({ $isVerified }) =>
+      $isVerified ? tokens.color.neutral["700"] : tokens.color.neutral["0"]};
+
     font-size: 14px;
     font-weight: 700;
     line-height: 20px;
     cursor: pointer;
+    border: none;
   `,
 
   HelperText: styled.span`

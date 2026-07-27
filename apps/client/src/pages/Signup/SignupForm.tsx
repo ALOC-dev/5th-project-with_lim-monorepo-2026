@@ -1,8 +1,10 @@
 import { type AxiosError } from "axios";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { requestSignup } from "../../apis/auth";
 import { Icon } from "../../components/Icon/Icon";
+import Modal from "../../components/Modal/Modal";
 import { tokens } from "../../design-system/tokens.generated";
 import { useSignupFormInput } from "./Signup.context";
 import { S } from "./Signup.styled";
@@ -29,10 +31,12 @@ export default function SignupFormContent() {
     handleCheckNickname,
     handleSendAuthCode,
     handleVerifyAuthCode,
+    handleResetEmail,
   } = useSignupFormInput();
 
   const navigate = useNavigate();
 
+  const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isSignupReady) return;
@@ -55,6 +59,17 @@ export default function SignupFormContent() {
         err.response?.data?.error || "회원가입 중 오류가 발생했습니다. 다시 시도해 주세요.";
       alert(errorMessage);
     }
+  };
+
+  const handleEmailInputClick = () => {
+    if (isEmailVerified) {
+      setIsEmailModalOpen(true);
+    }
+  };
+
+  const handleConfirmEmailChange = () => {
+    handleResetEmail();
+    setIsEmailModalOpen(false);
   };
 
   return (
@@ -83,10 +98,15 @@ export default function SignupFormContent() {
               placeholder="name@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              disabled={isEmailVerified} // 인증 완료 시 수정 불가
+              readOnly={isEmailVerified}
+              onClick={handleEmailInputClick}
             />
-            <S.ActionButton type="button" onClick={handleSendAuthCode}>
-              {isEmailCodeSent ? "다시 받기" : "인증번호 받기"}
+            <S.ActionButton
+              type="button"
+              onClick={isEmailVerified ? handleEmailInputClick : handleSendAuthCode}
+              $isVerified={isEmailVerified}
+            >
+              {isEmailVerified ? "인증 완료" : isEmailCodeSent ? "다시 받기" : "인증번호 받기"}
             </S.ActionButton>
           </S.InputRow>
         </S.InputGroup>
@@ -148,8 +168,12 @@ export default function SignupFormContent() {
               value={nickname}
               onChange={(e) => setNickname(e.target.value)}
             />
-            <S.ActionButton type="button" onClick={handleCheckNickname}>
-              중복확인
+            <S.ActionButton
+              type="button"
+              onClick={handleCheckNickname}
+              $isVerified={isNicknameChecked}
+            >
+              {isNicknameChecked ? "중복확인 완료" : "중복확인"}
             </S.ActionButton>
           </S.InputRow>
         </S.InputGroup>
@@ -169,6 +193,22 @@ export default function SignupFormContent() {
           </S.AgreementText>
         </S.AgreementGroup>
       </S.Form>
+
+      <Modal
+        id="email-reset-modal"
+        isOpen={isEmailModalOpen}
+        close={() => setIsEmailModalOpen(false)}
+        title="이메일을 변경하시겠어요?"
+        description="인증은 다시 진행해야 합니다. 계속하시겠어요?"
+        secondaryAction={{
+          label: "취소",
+          onClick: () => setIsEmailModalOpen(false),
+        }}
+        primaryAction={{
+          label: "변경하기",
+          onClick: handleConfirmEmailChange,
+        }}
+      />
     </S.Container>
   );
 }

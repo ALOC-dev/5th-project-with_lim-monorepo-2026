@@ -19,12 +19,16 @@ export default function ForgotPasswordForm() {
 
   const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isAuthCodeReady) return;
 
-    handleVerifyAuthCode();
-    void navigate("/login/forgotpassword/reset");
+    try {
+      await handleVerifyAuthCode();
+      void navigate("/login/forgotpassword/reset");
+    } catch (error) {
+      console.error("인증 실패", error);
+    }
   };
 
   return (

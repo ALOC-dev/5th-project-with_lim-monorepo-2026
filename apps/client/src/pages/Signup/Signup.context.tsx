@@ -26,6 +26,7 @@ export type SignupFormInputContextType = {
   readonly handleCheckNickname: () => Promise<void>;
   readonly handleSendAuthCode: () => Promise<void>;
   readonly handleVerifyAuthCode: () => Promise<void>;
+  readonly handleResetEmail: () => void;
   readonly resetForm: () => void;
 };
 

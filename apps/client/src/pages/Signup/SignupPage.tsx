@@ -91,6 +91,12 @@ export const SignupFlowProvider = ({ children }: { readonly children: ReactNode 
     return authCode.length === 6;
   }, [authCode]);
 
+  const handleResetEmail = useCallback(() => {
+    setIsEmailCodeSent(false);
+    setIsEmailVerified(false);
+    setAuthCode("");
+  }, []);
+
   const resetForm = useCallback(() => {
     setNickname("");
     setEmail("");
@@ -125,6 +131,7 @@ export const SignupFlowProvider = ({ children }: { readonly children: ReactNode 
       handleCheckNickname,
       handleSendAuthCode,
       handleVerifyAuthCode,
+      handleResetEmail,
       resetForm,
     }),
     [
@@ -142,6 +149,7 @@ export const SignupFlowProvider = ({ children }: { readonly children: ReactNode 
       handleCheckNickname,
       handleSendAuthCode,
       handleVerifyAuthCode,
+      handleResetEmail,
       resetForm,
     ],
   );
