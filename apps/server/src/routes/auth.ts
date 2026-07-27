@@ -6,27 +6,134 @@ import {
   type ForgotPasswordResponseData,
   LoginRequestSchema,
   type LogoutResponseData,
+  NicknameCheckQuerySchema,
+  type NicknameCheckResponseData,
   type ResendVerificationEmailResponseData,
   ResetPasswordRequestSchema,
   type ResetPasswordResponseData,
+  SendSignupCodeRequestSchema,
+  type SendSignupCodeResponseData,
   SignupRequestSchema,
   VerifyEmailQuerySchema,
   type VerifyEmailResponseData,
+  VerifySignupCodeRequestSchema,
+  type VerifySignupCodeResponseData,
 } from "@monorepo/api-contracts";
 import bcrypt from "bcryptjs";
-import { and, eq, gt, isNull, or } from "drizzle-orm";
+import { and, desc, eq, gt, isNotNull, isNull, or } from "drizzle-orm";
 import { Router } from "express";
 import jwt from "jsonwebtoken";
 
 import { db } from "../db/client.js";
-import { emailVerifications, passwordResetTokens, users } from "../db/schema.js";
+import {
+  emailVerifications,
+  passwordResetTokens,
+  signupVerificationCodes,
+  users,
+} from "../db/schema.js";
 import { asyncHandler } from "../lib/asyncHandler.js";
 import { JWT_SECRET } from "../lib/env.js";
-import { sendPasswordResetEmail, sendVerificationEmail } from "../lib/resend.js";
-import { generateToken, hashToken } from "../lib/tokens.js";
+import {
+  sendPasswordResetEmail,
+  sendSignupVerificationCode,
+  sendVerificationEmail,
+} from "../lib/resend.js";
+import { generateToken, generateVerificationCode, hashToken } from "../lib/tokens.js";
 import { requireAuth } from "../middleware/auth.js";
 
 const router = Router();
+
+router.post(
+  "/signup/send-code",
+  asyncHandler(async (req, res) => {
+    const parsed = SendSignupCodeRequestSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json(createApiError("invalid input"));
+      return;
+    }
+
+    const [existingUser] = await db.select().from(users).where(eq(users.email, parsed.data.email));
+    if (existingUser) {
+      res.status(409).json(createApiError("email already exists"));
+      return;
+    }
+
+    const code = generateVerificationCode();
+    await db.insert(signupVerificationCodes).values({
+      email: parsed.data.email,
+      codeHash: hashToken(code),
+      expiresAt: new Date(Date.now() + 5 * 60 * 1000),
+    });
+
+    try {
+      await sendSignupVerificationCode(parsed.data.email, code);
+    } catch (err) {
+      console.error("failed to send signup verification code", err);
+      res.status(500).json(createApiError("failed to send email"));
+      return;
+    }
+
+    res.status(200).json(createApiResponse({ sent: true } satisfies SendSignupCodeResponseData));
+  }),
+);
+
+router.post(
+  "/signup/verify-code",
+  asyncHandler(async (req, res) => {
+    const parsed = VerifySignupCodeRequestSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json(createApiError("invalid input"));
+      return;
+    }
+
+    const [record] = await db
+      .select()
+      .from(signupVerificationCodes)
+      .where(
+        and(
+          eq(signupVerificationCodes.email, parsed.data.email),
+          eq(signupVerificationCodes.codeHash, hashToken(parsed.data.code)),
+          isNull(signupVerificationCodes.verifiedAt),
+          gt(signupVerificationCodes.expiresAt, new Date()),
+        ),
+      )
+      .orderBy(desc(signupVerificationCodes.createdAt));
+
+    if (!record) {
+      res.status(400).json(createApiError("invalid or expired code"));
+      return;
+    }
+
+    await db
+      .update(signupVerificationCodes)
+      .set({ verifiedAt: new Date() })
+      .where(eq(signupVerificationCodes.id, record.id));
+
+    res
+      .status(200)
+      .json(createApiResponse({ verified: true } satisfies VerifySignupCodeResponseData));
+  }),
+);
+
+router.get(
+  "/nickname-check",
+  asyncHandler(async (req, res) => {
+    const parsed = NicknameCheckQuerySchema.safeParse(req.query);
+    if (!parsed.success) {
+      res.status(400).json(createApiError("invalid input"));
+      return;
+    }
+
+    const [existing] = await db
+      .select()
+      .from(users)
+      .where(eq(users.nickname, parsed.data.nickname));
+
+    res
+      .status(200)
+      .json(createApiResponse({ available: !existing } satisfies NicknameCheckResponseData));
+  }),
+);
 
 router.post(
   "/signup",
@@ -34,6 +141,23 @@ router.post(
     const parsed = SignupRequestSchema.safeParse(req.body);
     if (!parsed.success) {
       res.status(400).json(createApiError("invalid input"));
+      return;
+    }
+
+    const [verification] = await db
+      .select()
+      .from(signupVerificationCodes)
+      .where(
+        and(
+          eq(signupVerificationCodes.email, parsed.data.email),
+          isNotNull(signupVerificationCodes.verifiedAt),
+          isNull(signupVerificationCodes.usedAt),
+        ),
+      )
+      .orderBy(desc(signupVerificationCodes.verifiedAt));
+
+    if (!verification) {
+      res.status(400).json(createApiError("email not verified"));
       return;
     }
 
@@ -60,6 +184,7 @@ router.post(
         email: parsed.data.email,
         passwordHash,
         nickname: parsed.data.nickname,
+        emailVerified: true,
       })
       .returning();
 
@@ -67,6 +192,11 @@ router.post(
       res.status(500).json(createApiError("failed to create user"));
       return;
     }
+
+    await db
+      .update(signupVerificationCodes)
+      .set({ usedAt: new Date() })
+      .where(eq(signupVerificationCodes.id, verification.id));
 
     const token = jwt.sign({ userId: newUser.id }, JWT_SECRET, { expiresIn: "7d" });
 
@@ -86,18 +216,6 @@ router.post(
         },
       } satisfies AuthenticatedUserResponseData),
     );
-
-    try {
-      const verifyToken = generateToken();
-      await db.insert(emailVerifications).values({
-        userId: newUser.id,
-        tokenHash: hashToken(verifyToken),
-        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
-      });
-      await sendVerificationEmail(newUser.email, verifyToken);
-    } catch (err) {
-      console.error("failed to send verification email", err);
-    }
   }),
 );
 
@@ -187,9 +305,7 @@ router.get(
 
     await db.update(users).set({ emailVerified: true }).where(eq(users.id, record.userId));
 
-    res.status(200).json(
-      createApiResponse({ verified: true } satisfies VerifyEmailResponseData),
-    );
+    res.status(200).json(createApiResponse({ verified: true } satisfies VerifyEmailResponseData));
   }),
 );
 
@@ -205,9 +321,13 @@ router.post(
     }
 
     if (user.emailVerified) {
-      res.status(200).json(
-        createApiResponse({ alreadyVerified: true } satisfies ResendVerificationEmailResponseData),
-      );
+      res
+        .status(200)
+        .json(
+          createApiResponse({
+            alreadyVerified: true,
+          } satisfies ResendVerificationEmailResponseData),
+        );
       return;
     }
 
@@ -226,9 +346,9 @@ router.post(
       return;
     }
 
-    res.status(200).json(
-      createApiResponse({ sent: true } satisfies ResendVerificationEmailResponseData),
-    );
+    res
+      .status(200)
+      .json(createApiResponse({ sent: true } satisfies ResendVerificationEmailResponseData));
   }),
 );
 
@@ -259,9 +379,7 @@ router.post(
       }
     }
 
-    res.status(200).json(
-      createApiResponse({ sent: true } satisfies ForgotPasswordResponseData),
-    );
+    res.status(200).json(createApiResponse({ sent: true } satisfies ForgotPasswordResponseData));
   }),
 );
 
@@ -299,9 +417,7 @@ router.post(
       .set({ usedAt: new Date() })
       .where(eq(passwordResetTokens.id, record.id));
 
-    res.status(200).json(
-      createApiResponse({ reset: true } satisfies ResetPasswordResponseData),
-    );
+    res.status(200).json(createApiResponse({ reset: true } satisfies ResetPasswordResponseData));
   }),
 );
 
