@@ -1,6 +1,11 @@
 import { z } from "zod";
 
-import { BudgetRangeSchema, LocationInputSchema, PartyTypeSchema } from "./common.contracts.js";
+import {
+  ActivityTypeSchema,
+  BudgetRangeSchema,
+  LocationInputSchema,
+  PartyTypeSchema,
+} from "./common.contracts.js";
 
 const dateIsoRegex = /^\d{4}-\d{2}-\d{2}$/;
 const time24hRegex = /^([01]\d|2[0-3]):[0-5]\d$/;
@@ -22,6 +27,7 @@ export const UserInputSchema = z
 
     numberOfPeople: z.number().int().positive(), // 인원 수
     partyType: PartyTypeSchema, // 인원 유형 Dropdown
+    activityType: ActivityTypeSchema.optional(),
     budgetPerPerson: BudgetRangeSchema, // 인당 예산 범위 [최소, 최대]
 
     userNaturalLanguageRequest: z.string().trim().min(1), // 사용자 자연어 요청

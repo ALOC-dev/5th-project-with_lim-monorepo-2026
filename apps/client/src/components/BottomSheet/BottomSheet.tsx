@@ -9,22 +9,23 @@ export type BottomSheetProps = {
   readonly id: string;
   readonly isOpen: boolean;
   readonly close: () => void;
+  readonly backdropTone?: "dimmed" | "none";
   readonly closeOnBackdropClick?: boolean;
   readonly children: ReactNode;
-  readonly handleType?: "drag" | "none";
+  readonly handleType?: "none" | "resizable";
   readonly height?: string;
 };
 
 const BOTTOM_SHEET_ANIMATION_DURATION_MS = 200;
-const THRESHOLD_TO_CLOSE = 20; // 드래그 후 닫히는 기준점 (px)
 
 const BottomSheet = ({
   id,
   isOpen,
   children,
   close,
+  backdropTone = "dimmed",
   closeOnBackdropClick = false,
-  handleType = "none",
+  handleType = "resizable",
   height = "auto",
 }: BottomSheetProps) => {
   const presence = useOverlayPresence({
@@ -38,7 +39,7 @@ const BottomSheet = ({
 
   const onHandlePointerDown = (e: PointerEvent<HTMLDivElement>) => {
     if (elementRef.current === null) return;
-    baseYRef.current = window.innerHeight - elementRef.current.offsetHeight;
+    baseYRef.current = elementRef.current.getBoundingClientRect().top;
     elementRef.current.style.top = `${baseYRef.current}px`;
 
     dragStartYRef.current = e.clientY;
@@ -61,14 +62,10 @@ const BottomSheet = ({
     if (elementRef.current === null) return;
 
     const delta = e.clientY - dragStartYRef.current;
+    const nextTop = Math.max(baseYRef.current + delta, 0);
 
-    if (delta > THRESHOLD_TO_CLOSE) {
-      dragStartYRef.current = null;
-      close();
-      return;
-    }
-
-    elementRef.current.style.top = `${baseYRef.current}px`;
+    baseYRef.current = nextTop;
+    elementRef.current.style.top = `${nextTop}px`;
 
     dragStartYRef.current = null;
   };
@@ -81,11 +78,12 @@ const BottomSheet = ({
     <OverlayShell
       id={id}
       presence={presence}
+      backdropTone={backdropTone}
       backdropHandler={closeOnBackdropClick ? close : () => {}}
       animationDurationMs={BOTTOM_SHEET_ANIMATION_DURATION_MS}
     >
       <S.Wrapper ref={elementRef} data-state={presence} $height={height}>
-        {handleType === "drag" && (
+        {handleType === "resizable" && (
           <S.HandleWrapper
             onPointerDown={onHandlePointerDown}
             onPointerMove={onHandlePointerMove}

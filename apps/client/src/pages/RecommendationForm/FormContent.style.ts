@@ -100,4 +100,11 @@ export const S = {
     margin-top: auto;
     padding-top: 24px;
   `,
+
+  SubmitErrorMessage: styled.p`
+    margin: 0 0 10px;
+    color: ${theme.tokens.color.primary["700"]};
+    font-size: 13px;
+    font-weight: 500;
+  `,
 };

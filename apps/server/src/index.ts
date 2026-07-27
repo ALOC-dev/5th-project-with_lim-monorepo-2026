@@ -1,16 +1,29 @@
 import { randomUUID } from "node:crypto";
 import { EventEmitter } from "node:events";
 
-import { createApiResponse, type PlaceRecommendationSseEvent } from "@monorepo/api-contracts";
-import { DEFAULT_ENGINE_CONFIG, RecommendationEngine } from "@monorepo/recommendation-engine";
-import type { UserInput } from "@monorepo/recommendation-engine/v1/contracts";
-import { UserInputSchema } from "@monorepo/recommendation-engine/v1/contracts";
+import {
+  createApiResponse,
+  type PlaceRecommendationSseEvent,
+} from "@monorepo/api-contracts";
+import {
+  DEFAULT_ENGINE_CONFIG,
+  type EngineOutput,
+  RecommendationEngine,
+} from "@monorepo/recommendation-engine";
+import { type UserInput, UserInputSchema } from "@monorepo/recommendation-engine/v1/contracts";
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import express from "express";
 
+import { parseServerEnvironment } from "./config/env.js";
+import {
+  presentRecommendationError,
+  RECOMMENDATION_FAILURE_EVENT,
+} from "./recommendation/error-presentation.js";
 import authRouter from "./routes/auth.js";
 import usersRouter from "./routes/users.js";
+
+const { config, secrets } = parseServerEnvironment(process.env);
 
 const app = express();
 app.use(cors());
@@ -26,10 +39,7 @@ type JobState = {
 };
 const jobStore = new Map<string, JobState>();
 
-const port = process.env.PORT ? Number(process.env.PORT) : 3000;
-
 const formatServiceName = (name: string): string => name.trim().toUpperCase();
-
 app.get("/health", (_req, res) => {
   // api 받아서 처리
   res.json(
@@ -63,9 +73,7 @@ app.get("/api/recommend/stream/:jobId", (req, res) => {
   res.flushHeaders();
 
   if (!jobState) {
-    res.write(
-      `event: error\ndata: ${JSON.stringify({ type: "error", message: "job not found" })}\n\n`,
-    );
+    res.write(`event: error\ndata: ${JSON.stringify(RECOMMENDATION_FAILURE_EVENT)}\n\n`);
     res.end();
     return;
   }
@@ -115,28 +123,41 @@ app.get("/api/recommend/stream/:jobId", (req, res) => {
     const engine = new RecommendationEngine(jobState.userInput, DEFAULT_ENGINE_CONFIG, {
       loggingActivated: true,
       onProgress: (step) => emitEvent({ type: "progress", step }),
-      secrets: {
-        openAiApiKey: process.env.OPENAI_API_KEY,
-        kakaoRestApiKey: process.env.KAKAO_REST_API_KEY,
-        tmapAppKey: process.env.TMAP_APP_KEY,
-        naverSearchClientId: process.env.NAVER_SEARCH_CLIENT_ID ?? process.env.NAVER_CLIENT_ID,
-        naverSearchClientSecret:
-          process.env.NAVER_SEARCH_CLIENT_SECRET ?? process.env.NAVER_CLIENT_SECRET,
-      },
+      secrets,
     });
 
-    engine
+    const emitFailure = (failure: unknown) => {
+      const presentation = presentRecommendationError(failure, secrets);
+      console.error(
+        JSON.stringify({
+          event: "recommendation.process.failure",
+          ...presentation.internal,
+        }),
+      );
+      emitEvent(presentation.publicEvent);
+    };
+
+    void engine
       .process()
-      .then((result) => {
-        if (result.status === "SUCCESS") {
-          emitEvent({ type: "result", data: result.userOutput });
-        } else {
-          emitEvent({ type: "error", message: result.error.message });
+      .then((result: EngineOutput) => {
+        switch (result.status) {
+          case "SUCCESS":
+            emitEvent({ type: "result", data: result.userOutput });
+            break;
+          case "ERROR":
+            emitFailure(result.error);
+            break;
+          default: {
+            const exhaustive: never = result;
+            void exhaustive;
+            throw new TypeError("Unexpected recommendation engine output");
+          }
         }
-        setTimeout(() => jobStore.delete(jobId), 5000);
       })
-      .catch(() => {
-        emitEvent({ type: "error", message: "An unexpected error occurred" });
+      .catch((error: unknown) => {
+        emitFailure(error);
+      })
+      .finally(() => {
         setTimeout(() => jobStore.delete(jobId), 5000);
       });
   }
@@ -147,6 +168,6 @@ app.get("/api/recommend/stream/:jobId", (req, res) => {
   });
 });
 
-app.listen(port, () => {
-  console.log(`Server is running on http://localhost:${port}`);
+app.listen(config.port, () => {
+  console.log(`Server is running on http://localhost:${config.port}`);
 });

@@ -19,6 +19,9 @@ export type LocationInput = z.infer<typeof LocationInputSchema>;
 export const PartyTypeSchema = z.enum(["FAMILY", "FRIENDS", "LOVERS", "COLLEAGUES"]);
 export type PartyType = z.infer<typeof PartyTypeSchema>;
 
+export const ActivityTypeSchema = z.enum(["MEAL", "CAFE", "DRINK", "ACTIVITY"]);
+export type ActivityType = z.infer<typeof ActivityTypeSchema>;
+
 export const BudgetRangeSchema = z
   .tuple([nonNegativeFiniteNumberSchema, nonNegativeFiniteNumberSchema]) // 예산 범위 [최소, 최대]
   .refine(([min, max]) => min <= max, {
