@@ -18,8 +18,6 @@ export default function ResetPasswordFormContent() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!isResetReady) return;
-
-    // console.log("비밀번호 변경 완료:", { password });
     alert("비밀번호가 성공적으로 변경되었습니다.");
     void navigate("/login");
   };

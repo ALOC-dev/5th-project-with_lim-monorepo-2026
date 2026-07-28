@@ -46,8 +46,6 @@ const ForgotPasswordFlowProvider = ({ children }: { readonly children: ReactNode
     try {
       await requestVerifyPasswordCode({ email, code: authCode });
 
-      // (참고: 기존 코드에 setIsEmailVerified(true)가 없었으나 문맥상 필요할 수 있습니다.
-
       alert("이메일 인증이 완료되었습니다.");
     } catch (error) {
       const errorMessage = toApiClientErrorMessage(error);

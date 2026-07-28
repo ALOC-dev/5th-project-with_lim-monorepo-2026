@@ -22,9 +22,7 @@ export default function LoginFormContent() {
 
       if (response.success) {
         alert("로그인에 성공했습니다!");
-        // AuthContext의 isAuthenticated가 true로 바꿈
         login();
-        // replace: true를 넣으면, 로그인 성공 후 뒤로가기를 눌러도 다시 로그인 페이지로 오지 않게 막아줍니다.
         void navigate("/place/recommendation/form", { replace: true });
       }
     } catch (error) {

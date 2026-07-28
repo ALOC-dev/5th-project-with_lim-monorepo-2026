@@ -82,7 +82,7 @@ export default function SignupFormContent() {
         password,
         nickname,
       });
-      // 백엔드 응답 구조에 따라 성공 여부를 확인합니다.
+      // 백엔드 응답 구조에 따라 성공 여부를 확인.
       if (data.success) {
         alert("회원가입에 성공했습니다!");
         void navigate("/login");
@@ -151,7 +151,7 @@ export default function SignupFormContent() {
                 isEmailVerified
                   ? "disabled"
                   : isEmailCodeSent
-                    ? "secondary" // 다시 받기 시
+                    ? "secondary" // 다시 받기
                     : "primary" // 기본 상태
               }
             >
