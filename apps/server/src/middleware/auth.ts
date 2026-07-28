@@ -6,7 +6,7 @@ import { z } from "zod";
 import { JWT_SECRET } from "../lib/env.js";
 
 const JwtPayloadSchema = z.object({
-  userId: z.string(),
+  userId: z.string(), //userID로 JWT 토큰 생성
 });
 
 export const requireAuth = (req: Request, res: Response, next: NextFunction) => {
