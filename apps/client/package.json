@@ -19,7 +19,6 @@
     "@monorepo/api-contracts": "workspace:*",
     "@monorepo/recommendation-engine": "workspace:*",
     "@tanstack/react-query": "^5.101.2",
-    "axios": "^1.18.1",
     "ky": "^2.0.2",
     "modern-css-reset": "^1.4.0",
     "rc-slider": "^11.1.9",

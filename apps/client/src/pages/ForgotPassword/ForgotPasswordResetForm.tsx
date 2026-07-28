@@ -8,6 +8,9 @@ import { S } from "./ForgotPassword.styled";
 export default function ResetPasswordFormContent() {
   const { password, passwordConfirm, setPassword, setPasswordConfirm } = useForgotPasswordInput();
 
+  const isPasswordMismatch = passwordConfirm.length > 0 && password !== passwordConfirm;
+  const isPasswordMatch = passwordConfirm.length > 0 && password === passwordConfirm;
+
   const navigate = useNavigate();
 
   const isResetReady = password.length >= 8 && password === passwordConfirm;
@@ -71,7 +74,13 @@ export default function ResetPasswordFormContent() {
             value={passwordConfirm}
             onChange={(e) => setPasswordConfirm(e.target.value)}
           />
-          <S.HelperText>비밀번호와 똑같이 입력해 주세요.</S.HelperText>
+          {isPasswordMismatch ? (
+            <S.HelperText $state="error">비밀번호가 일치하지 않습니다.</S.HelperText>
+          ) : isPasswordMatch ? (
+            <S.HelperText $state="success">비밀번호가 일치합니다.</S.HelperText>
+          ) : (
+            <S.HelperText>비밀번호와 똑같이 입력해 주세요.</S.HelperText>
+          )}
         </S.InputGroup>
 
         <S.SubmitButton type="submit" disabled={!isResetReady}>
@@ -80,8 +89,7 @@ export default function ResetPasswordFormContent() {
       </S.Form>
 
       <S.Footer>
-        <S.FooterText>로그인 화면으로 돌아가기</S.FooterText>
-        <S.LoginLink to="/login">로그인</S.LoginLink>
+        <S.LoginLink to="/login">로그인 화면으로 돌아가기</S.LoginLink>
       </S.Footer>
     </S.Container>
   );

@@ -9,6 +9,7 @@ const serverApiBaseUrl =
 export const serverApi = ky.create({
   prefix: serverApiBaseUrl,
   timeout: 10_000,
+  credentials: "include",
   retry: {
     limit: 1,
     methods: ["get"],

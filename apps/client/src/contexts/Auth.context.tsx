@@ -5,7 +5,7 @@ import {
 } from "@monorepo/api-contracts";
 import { createContext, type ReactNode, useContext, useEffect, useState } from "react";
 
-import { client } from "../apis/client";
+import { requestGetMe } from "../apis/users";
 
 const meResponseSchema = createApiResponseSchema(AuthenticatedUserResponseDataSchema);
 
@@ -27,11 +27,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const initializeAuth = async () => {
       try {
-        // 백엔드에 쿠키 유효한지 확인 요청
-        const response = await client.get("http://localhost:3000/api/users/me");
+        const data = await requestGetMe();
 
-        // 백엔드에서 받은 데이터가 약속한 규격에 맞는지 확인
-        const result = meResponseSchema.parse(response.data);
+        const result = meResponseSchema.parse(data);
 
         if (!result.success) {
           throw new Error(result.error || "인증 실패");

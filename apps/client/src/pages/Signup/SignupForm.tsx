@@ -1,8 +1,8 @@
-import { type AxiosError } from "axios";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { requestSignup } from "../../apis/auth";
+import { toApiClientErrorMessage } from "../../apis/errors";
 import { Icon } from "../../components/Icon/Icon";
 import Modal from "../../components/Modal/Modal";
 import { tokens } from "../../design-system/tokens.generated";
@@ -32,32 +32,64 @@ export default function SignupFormContent() {
     handleSendAuthCode,
     handleVerifyAuthCode,
     handleResetEmail,
+    handleResetNickname,
   } = useSignupFormInput();
 
   const navigate = useNavigate();
 
+  const isPasswordMismatch = passwordConfirm.length > 0 && password !== passwordConfirm;
+  const isPasswordMatch = passwordConfirm.length > 0 && password === passwordConfirm;
+
   const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
+  const [isNicknameModalOpen, setIsNicknameModalOpen] = useState(false);
+
+  // 타이머 상태 추가
+  const [timeLeft, setTimeLeft] = useState(300);
+
+  // 이메일이 발송되었고 아직 인증되지 않았을 때 타이머 시작
+  useEffect(() => {
+    let timer: ReturnType<typeof setInterval>;
+    if (isEmailCodeSent && !isEmailVerified && timeLeft > 0) {
+      timer = setInterval(() => {
+        setTimeLeft((prev) => prev - 1);
+      }, 1000);
+    }
+    return () => clearInterval(timer);
+  }, [isEmailCodeSent, isEmailVerified, timeLeft]);
+
+  // 시간을 00:00 포맷으로 변환하는 함수
+  const formatTime = (seconds: number) => {
+    const minutes = Math.floor(seconds / 60)
+      .toString()
+      .padStart(2, "0");
+    const remainingSeconds = (seconds % 60).toString().padStart(2, "0");
+    return `${minutes}:${remainingSeconds}`;
+  };
+
+  // 인증번호 받기 버튼 클릭 시 타이머 초기화 래핑 함수
+  const handleSendCodeWithTimer = async () => {
+    setTimeLeft(300); // 클릭할 때마다 5분으로 리셋
+    await handleSendAuthCode();
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isSignupReady) return;
 
     try {
-      const response = await requestSignup({
+      const data = await requestSignup({
         email,
         password,
         nickname,
       });
       // 백엔드 응답 구조에 따라 성공 여부를 확인합니다.
-      if (response.success) {
+      if (data.success) {
         alert("회원가입에 성공했습니다!");
         void navigate("/login");
       }
     } catch (error) {
-      //error를 AxiosError 타입으로 정의하여 안전하게 접근
-      const err = error as AxiosError<{ error?: string }>;
-      const errorMessage =
-        err.response?.data?.error || "회원가입 중 오류가 발생했습니다. 다시 시도해 주세요.";
-      alert(errorMessage);
+      const errorMessage = toApiClientErrorMessage(error);
+      alert(`회원가입 중 오류가 발생해습니다: ${errorMessage}`);
     }
   };
 
@@ -70,6 +102,17 @@ export default function SignupFormContent() {
   const handleConfirmEmailChange = () => {
     handleResetEmail();
     setIsEmailModalOpen(false);
+  };
+
+  const handleNicknameInputClick = () => {
+    if (isNicknameChecked) {
+      setIsNicknameModalOpen(true);
+    }
+  };
+
+  const handleConfirmNicknameChange = () => {
+    handleResetNickname();
+    setIsNicknameModalOpen(false);
   };
 
   return (
@@ -103,35 +146,55 @@ export default function SignupFormContent() {
             />
             <S.ActionButton
               type="button"
-              onClick={isEmailVerified ? handleEmailInputClick : handleSendAuthCode}
-              $isVerified={isEmailVerified}
+              onClick={isEmailVerified ? handleEmailInputClick : handleSendCodeWithTimer}
+              $variant={
+                isEmailVerified
+                  ? "disabled"
+                  : isEmailCodeSent
+                    ? "secondary" // 다시 받기 시
+                    : "primary" // 기본 상태
+              }
             >
               {isEmailVerified ? "인증 완료" : isEmailCodeSent ? "다시 받기" : "인증번호 받기"}
             </S.ActionButton>
           </S.InputRow>
+
+          {isEmailCodeSent && !isEmailVerified && (
+            <S.HelperText $state="error">
+              인증번호가 발송되었습니다. 이메일을 확인해주세요.
+            </S.HelperText>
+          )}
         </S.InputGroup>
 
         {isEmailCodeSent && !isEmailVerified && (
           <S.InputGroup>
             <S.Label htmlFor="authCode">인증번호</S.Label>
 
-            <S.Input
-              type="text"
-              id="authCode"
-              maxLength={6}
-              value={authCode}
-              onChange={(e) => setAuthCode(e.target.value)}
-            />
+            <S.InputRow>
+              <S.Input
+                type="text"
+                id="authCode"
+                placeholder="6자리 숫자"
+                maxLength={6}
+                value={authCode}
+                onChange={(e) => setAuthCode(e.target.value)}
+              />
+              <S.ActionButton
+                type="button"
+                disabled={!isAuthCodeReady || timeLeft === 0}
+                onClick={handleVerifyAuthCode}
+              >
+                인증하기
+              </S.ActionButton>
+            </S.InputRow>
 
-            <S.HelperText>인증번호 6자리를 확인해 주세요.</S.HelperText>
-
-            <S.SubmitButton
-              type="button"
-              disabled={!isAuthCodeReady}
-              onClick={handleVerifyAuthCode}
-            >
-              인증하기
-            </S.SubmitButton>
+            {timeLeft > 0 ? (
+              <S.HelperText>남은 시간 {formatTime(timeLeft)}</S.HelperText>
+            ) : (
+              <S.HelperText $state="error">
+                인증 시간이 만료되었습니다. 다시 시도해 주세요.
+              </S.HelperText>
+            )}
           </S.InputGroup>
         )}
         <S.InputGroup>
@@ -155,7 +218,13 @@ export default function SignupFormContent() {
             value={passwordConfirm}
             onChange={(e) => setPasswordConfirm(e.target.value)}
           />
-          <S.HelperText>비밀번호와 똑같이 입력해 주세요.</S.HelperText>
+          {isPasswordMismatch ? (
+            <S.HelperText $state="error">비밀번호가 일치하지 않습니다.</S.HelperText>
+          ) : isPasswordMatch ? (
+            <S.HelperText $state="success">비밀번호가 일치합니다.</S.HelperText>
+          ) : (
+            <S.HelperText>비밀번호와 똑같이 입력해 주세요.</S.HelperText>
+          )}
         </S.InputGroup>
 
         <S.InputGroup>
@@ -167,11 +236,14 @@ export default function SignupFormContent() {
               placeholder="예: limeojin"
               value={nickname}
               onChange={(e) => setNickname(e.target.value)}
+              readOnly={isNicknameChecked}
+              onClick={handleNicknameInputClick}
             />
             <S.ActionButton
               type="button"
               onClick={handleCheckNickname}
-              $isVerified={isNicknameChecked}
+              $variant={isNicknameChecked ? "disabled" : "primary"}
+              disabled={isNicknameChecked}
             >
               {isNicknameChecked ? "중복확인 완료" : "중복확인"}
             </S.ActionButton>
@@ -207,6 +279,22 @@ export default function SignupFormContent() {
         primaryAction={{
           label: "변경하기",
           onClick: handleConfirmEmailChange,
+        }}
+      />
+
+      <Modal
+        id="nickname-reset-modal"
+        isOpen={isNicknameModalOpen}
+        close={() => setIsNicknameModalOpen(false)}
+        title="닉네임을 변경하시겠어요?"
+        description="중복 확인을 다시 진행해야 합니다. 계속하시겠어요?"
+        secondaryAction={{
+          label: "취소",
+          onClick: () => setIsNicknameModalOpen(false),
+        }}
+        primaryAction={{
+          label: "변경하기",
+          onClick: handleConfirmNicknameChange,
         }}
       />
     </S.Container>

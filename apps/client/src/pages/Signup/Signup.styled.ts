@@ -21,6 +21,7 @@ export const S = {
 
   StatusBarMock: styled.div`
     display: flex;
+    ${tokens.typography.utility.meta};
     justify-content: space-between;
     align-items: center;
     width: 100%;
@@ -49,11 +50,12 @@ export const S = {
     cursor: pointer;
   `,
 
-  Title: styled.h1`
+  Title: styled.div`
+    ${tokens.typography.utility.screenTitle}
     font-size: 16px;
     font-weight: 600;
-    color: ${tokens.color.neutral["900"]};
     line-height: 22px;
+    color: ${tokens.color.neutral["900"]};
     margin: 0;
   `,
 
@@ -75,11 +77,11 @@ export const S = {
   `,
 
   Label: styled.label`
-    font-family: "Noto Sans KR";
+    ${tokens.typography.label.sm}
     font-size: 13px;
-    font-weight: 500;
-    color: ${tokens.color.neutral["900"]};
     line-height: 18px;
+    font-weight: 700;
+    color: ${tokens.color.neutral["900"]};
   `,
 
   InputRow: styled.div`
@@ -103,11 +105,15 @@ export const S = {
     border: 1px solid ${tokens.color.neutral["200"]};
     background: ${tokens.color.neutral["0"]};
     color: ${tokens.color.neutral["900"]};
-    font-size: 14px;
+    ${tokens.typography.body.md};
+    font-size: 16px;
+    font-weight: 400;
+    line-height: 22px;
     transition: border-color 0.2s ease;
 
+    outline: none;
     &:focus {
-      border-color: ${tokens.color.primary["500"]}; // 포커스 효과
+      border-color: ${tokens.color.primary["500"]};
     }
 
     &::placeholder {
@@ -115,7 +121,7 @@ export const S = {
     }
   `,
 
-  ActionButton: styled.button<{ $isVerified?: boolean }>`
+  ActionButton: styled.button<{ $variant?: "primary" | "secondary" | "disabled" }>`
     display: flex;
     height: 56px;
     width: 116px;
@@ -125,26 +131,40 @@ export const S = {
     justify-content: center;
     align-items: center;
 
-    // 상태에 따라 가입하기 버튼(비활성화 상태)과 동일한 색상 적용
-    background-color: ${({ $isVerified }) =>
-      $isVerified ? tokens.color.neutral["200"] : tokens.color.primary["500"]};
-    color: ${({ $isVerified }) =>
-      $isVerified ? tokens.color.neutral["700"] : tokens.color.neutral["0"]};
+    background-color: ${({ $variant }) => {
+      if ($variant === "secondary") return tokens.color.neutral["0"];
+      if ($variant === "disabled") return tokens.color.neutral["200"];
+      return tokens.color.primary["500"];
+    }};
 
+    color: ${({ $variant }) => {
+      if ($variant === "secondary") return tokens.color.neutral["900"];
+      if ($variant === "disabled") return tokens.color.neutral["700"];
+      return tokens.color.neutral["0"];
+    }};
+
+    border: ${({ $variant }) =>
+      $variant === "secondary" ? `1px solid ${tokens.color.neutral["200"]}` : "none"};
+
+    ${tokens.typography.utility.cta};
     font-size: 14px;
     font-weight: 700;
     line-height: 20px;
-    cursor: pointer;
-    border: none;
+    cursor: ${({ $variant }) => ($variant === "disabled" ? "not-allowed" : "pointer")};
   `,
 
-  HelperText: styled.span`
+  HelperText: styled.span<{ $state?: "default" | "success" | "error" }>`
     width: 100%;
     flex-shrink: 0;
+    ${tokens.typography.body.xs};
     font-size: 13px;
     font-weight: 400;
     line-height: 20px;
-    color: ${tokens.color.neutral["700"]};
+    color: ${({ $state }) => {
+      if ($state === "success") return tokens.color.tertiary["500"];
+      if ($state === "error") return tokens.color.primary["700"];
+      return tokens.color.neutral["700"];
+    }};
   `,
 
   SubmitButton: styled.button<{ disabled?: boolean }>`
@@ -161,6 +181,7 @@ export const S = {
     color: ${({ disabled }) =>
       disabled ? tokens.color.neutral["700"] : tokens.color.neutral["0"]};
 
+    ${tokens.typography.utility.cta};
     font-size: 14px;
     font-weight: 700;
     cursor: ${({ disabled }) => (disabled ? "not-allowed" : "pointer")};
@@ -185,7 +206,7 @@ export const S = {
 
   AgreementText: styled.label`
     color: ${tokens.color.neutral["700"]};
-    font-family: "Noto Sans KR";
+    ${tokens.typography.body.xs};
     font-size: 13px;
     font-style: normal;
     font-weight: 400;

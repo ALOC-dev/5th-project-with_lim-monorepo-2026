@@ -1,28 +1,66 @@
 // src/apis/auth.ts
-import type { ApiResponse } from "@monorepo/api-contracts";
+import type {
+  ApiResponse,
+  AuthenticatedUserResponseData,
+  LoginRequest,
+  NicknameCheckResponseData,
+  SendSignupCodeRequest,
+  SendSignupCodeResponseData,
+  SignupRequest,
+  VerifySignupCodeRequest,
+  VerifySignupCodeResponseData,
+} from "@monorepo/api-contracts";
 
-import { client } from "./client";
+import { serverApi } from "./base";
 
-export type AuthUserResponse = {
-  user: {
-    id: string;
-    email: string;
-    nickname: string;
-  };
+// 회원가입 API
+export const requestSignup = async (payload: SignupRequest) => {
+  const response = await serverApi
+    .post("api/auth/signup", { json: payload })
+    .json<ApiResponse<AuthenticatedUserResponseData>>();
+  return response;
 };
 
-// 1. 회원가입 API (이메일, 비밀번호, 닉네임 전송)
-export const requestSignup = async (payload: {
-  email: string;
-  password: string;
-  nickname: string;
-}) => {
-  const response = await client.post<ApiResponse<AuthUserResponse>>("/signup", payload);
-  return response.data;
+// 로그인 API
+export const requestLogin = async (payload: LoginRequest) => {
+  const response = await serverApi
+    .post("api/auth/login", { json: payload })
+    .json<ApiResponse<AuthenticatedUserResponseData>>();
+  return response;
 };
 
-// 2. 로그인 API (이메일, 비밀번호 전송)
-export const requestLogin = async (payload: { email: string; password: string }) => {
-  const response = await client.post<ApiResponse<AuthUserResponse>>("/login", payload);
-  return response.data;
+// 닉네임 중복 확인 API
+export const requestNicknameCheck = async (nickname: string) => {
+  const response = await serverApi
+    .get("api/auth/nickname-check", { searchParams: { nickname } })
+    .json<ApiResponse<NicknameCheckResponseData>>();
+  return response;
+};
+
+// 인증번호 발송 API
+export const requestSendSignupCode = async (payload: SendSignupCodeRequest) => {
+  const response = await serverApi
+    .post("api/auth/signup/send-code", { json: payload })
+    .json<ApiResponse<SendSignupCodeResponseData>>();
+  return response;
+};
+
+// 인증번호 검증 API
+export const requestVerifySignupCode = async (payload: VerifySignupCodeRequest) => {
+  const response = await serverApi
+    .post("api/auth/signup/verify-code", { json: payload })
+    .json<ApiResponse<VerifySignupCodeResponseData>>();
+  return response;
+};
+
+// 비밀번호 재설정 폼 인증번호 발송 API
+export const requestSendPasswordCode = async (payload: { email: string }) => {
+  const response = await serverApi.post("api/auth/password/send-code", { json: payload }).json();
+  return response;
+};
+
+// 비밀번호 재설정 폼 인증번호 검증 API
+export const requestVerifyPasswordCode = async (payload: { email: string; code: string }) => {
+  const response = await serverApi.post("api/auth/password/verify-code", { json: payload }).json();
+  return response;
 };

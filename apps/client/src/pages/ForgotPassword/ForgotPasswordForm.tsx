@@ -106,8 +106,7 @@ export default function ForgotPasswordForm() {
           </>
         )}
         <S.Footer isBottomFixed>
-          <S.FooterText>비밀번호가 기억났나요?</S.FooterText>
-          <S.LoginLink to="/login">로그인</S.LoginLink>
+          <S.LoginLink to="/login">로그인 화면으로 돌아가기</S.LoginLink>
         </S.Footer>
       </S.Form>
     </S.Container>

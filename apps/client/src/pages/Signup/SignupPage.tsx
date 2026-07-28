@@ -1,6 +1,10 @@
 import { type ReactNode, useCallback, useMemo, useState } from "react";
 
-import { client } from "../../apis/client";
+import {
+  requestNicknameCheck,
+  requestSendSignupCode,
+  requestVerifySignupCode,
+} from "../../apis/auth";
 import { SignupFormInputContext, type SignupFormInputContextType } from "./Signup.context";
 import SignupFormContent from "./SignupForm";
 
@@ -32,16 +36,9 @@ export const SignupFlowProvider = ({ children }: { readonly children: ReactNode 
     }
 
     try {
-      const response = await client.get<{ data?: { available: boolean }; available?: boolean }>(
-        "/nickname-check",
-        {
-          params: { nickname },
-        },
-      );
+      const response = await requestNicknameCheck(nickname);
 
-      const isAvailable = response.data?.data?.available ?? response.data?.available ?? false;
-
-      if (isAvailable) {
+      if (response.success && response.data?.available) {
         setIsNicknameChecked(true);
         alert("사용 가능한 닉네임입니다.");
       } else {
@@ -54,34 +51,27 @@ export const SignupFlowProvider = ({ children }: { readonly children: ReactNode 
     }
   }, [nickname]);
 
-  // 1. 인증번호 발송 API 연동
   const handleSendAuthCode = useCallback(async () => {
     if (email.length === 0) return alert("이메일을 입력해주세요.");
 
     try {
-      await client.post("/signup/send-code", { email });
+      await requestSendSignupCode({ email });
       setIsEmailCodeSent(true);
       alert("인증번호가 발송되었습니다. 이메일을 확인해주세요.");
     } catch (error) {
-      //409 Conflict (이미 존재하는 이메일) 등의 에러 대응
       alert("인증번호 발송에 실패했습니다.");
       console.error(error);
     }
   }, [email]);
 
-  // 2. 인증번호 검증 API 연동
   const handleVerifyAuthCode = useCallback(async () => {
     if (authCode.length !== 6) return alert("인증번호 6자리를 정확히 입력해주세요.");
 
     try {
-      await client.post("/signup/verify-code", {
-        email,
-        code: authCode,
-      });
+      await requestVerifySignupCode({ email, code: authCode });
       setIsEmailVerified(true);
       alert("이메일 인증이 완료되었습니다.");
     } catch (error) {
-      // 400 Bad Request (잘못되거나 만료된 코드) 대응
       alert("잘못된 인증번호이거나 만료되었습니다.");
       console.error(error);
     }
@@ -95,6 +85,10 @@ export const SignupFlowProvider = ({ children }: { readonly children: ReactNode 
     setIsEmailCodeSent(false);
     setIsEmailVerified(false);
     setAuthCode("");
+  }, []);
+
+  const handleResetNickname = useCallback(() => {
+    setIsNicknameChecked(false);
   }, []);
 
   const resetForm = useCallback(() => {
@@ -132,6 +126,7 @@ export const SignupFlowProvider = ({ children }: { readonly children: ReactNode 
       handleSendAuthCode,
       handleVerifyAuthCode,
       handleResetEmail,
+      handleResetNickname,
       resetForm,
     }),
     [
@@ -150,6 +145,7 @@ export const SignupFlowProvider = ({ children }: { readonly children: ReactNode 
       handleSendAuthCode,
       handleVerifyAuthCode,
       handleResetEmail,
+      handleResetNickname,
       resetForm,
     ],
   );
