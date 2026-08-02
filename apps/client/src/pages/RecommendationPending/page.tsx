@@ -1,40 +1,82 @@
-import { keyframes } from "@emotion/react";
-import styled from "@emotion/styled";
-import { useEffect, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { EngineOutputSchema, UserInputSchema } from "@monorepo/recommendation-engine/v1/contracts";
+import { useQueryClient } from "@tanstack/react-query";
+import { useEffect, useMemo, useState } from "react";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 
-import { tokens } from "../../design-system/tokens.generated";
-import { typography } from "../../design-system/typography.generated";
+import {
+  getRecommendationStreamUrl,
+  RecommendationErrorSseEventSchema,
+  RecommendationProgressSseEventSchema,
+  type RecommendationProgressStep,
+  RecommendationResultSseEventSchema,
+} from "../../apis/server/recommendation";
+import { getRecommendationResultQueryKey } from "../RecommendationResult/wrappers/RecommendationResult.query-key";
+import { type RecommendationPendingStepStatus, S } from "./RecommendationPending.styled";
 
-type StepStatus = "pending" | "active" | "done";
+type StepStatus = RecommendationPendingStepStatus;
 
-const STEP_LABELS: Record<string, string> = {
-  input_validated: "입력 검증 완료",
+const STEP_LABELS = {
   discovering: "장소 후보 탐색 중",
   enriching: "장소 정보 수집 중",
+  evaluating: "장소 후보 평가 중",
+  input_validated: "입력 검증 완료",
   scoring: "AI 점수 계산 중",
+} satisfies Record<RecommendationProgressStep, string>;
+
+const STEP_KEYS = [
+  "input_validated",
+  "discovering",
+  "evaluating",
+  "enriching",
+  "scoring",
+] as const satisfies readonly RecommendationProgressStep[];
+
+const INITIAL_STEPS = {
+  discovering: "pending",
+  enriching: "pending",
+  evaluating: "pending",
+  input_validated: "pending",
+  scoring: "pending",
+} satisfies Record<RecommendationProgressStep, StepStatus>;
+
+const getUserInputFromLocationState = (state: unknown) => {
+  if (!isRecord(state)) {
+    return null;
+  }
+
+  const parseResult = UserInputSchema.safeParse(state.userInput);
+  return parseResult.success ? parseResult.data : null;
 };
 
-const STEP_KEYS = ["input_validated", "discovering", "enriching", "scoring"] as const;
+const isRecord = (value: unknown): value is Readonly<Record<string, unknown>> => {
+  return typeof value === "object" && value !== null;
+};
+
+const parseSseMessageData = (event: MessageEvent<string>): unknown => {
+  return JSON.parse(event.data);
+};
 
 const RecommendationPendingPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
   const jobId = searchParams.get("jobId");
+  const userInput = useMemo(() => getUserInputFromLocationState(location.state), [location.state]);
 
-  const [steps, setSteps] = useState<Record<string, StepStatus>>({
-    input_validated: "pending",
-    discovering: "pending",
-    enriching: "pending",
-    scoring: "pending",
-  });
+  const [steps, setSteps] = useState<Record<RecommendationProgressStep, StepStatus>>(INITIAL_STEPS);
   const [elapsed, setElapsed] = useState(0); // 현재 단계 경과 시간(초)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!jobId) return;
-    const es = new EventSource(`http://localhost:3000/api/recommend/stream/${jobId}`);
+    if (jobId === null || userInput === null) {
+      setErrorMessage("추천 요청 정보를 찾을 수 없습니다.");
+      return;
+    }
 
-    const queue: string[] = [];
+    const es = new EventSource(getRecommendationStreamUrl(jobId));
+
+    const queue: RecommendationProgressStep[] = [];
     let processing = false;
     let stepStartTime = Date.now();
     let elapsedTimer: ReturnType<typeof setInterval> | null = null;
@@ -48,12 +90,30 @@ const RecommendationPendingPage = () => {
       }, 1000);
     };
 
+    const stopElapsedTimer = () => {
+      if (elapsedTimer !== null) {
+        clearInterval(elapsedTimer);
+      }
+    };
+
+    const fail = (message: string) => {
+      stopElapsedTimer();
+      setErrorMessage(message);
+      es.close();
+    };
+
     const processQueue = () => {
       if (processing || queue.length === 0) return;
       processing = true;
 
-      const step = queue.shift()!;
-      const stepIndex = STEP_KEYS.indexOf(step as (typeof STEP_KEYS)[number]);
+      const step = queue.shift();
+
+      if (step === undefined) {
+        processing = false;
+        return;
+      }
+
+      const stepIndex = STEP_KEYS.indexOf(step);
 
       setSteps((prev) => {
         const next = { ...prev };
@@ -71,31 +131,116 @@ const RecommendationPendingPage = () => {
       }, 600);
     };
 
-    es.addEventListener("progress", (e) => {
-      const data = JSON.parse(e.data as string) as { step: string };
-      queue.push(data.step);
-      processQueue();
+    es.addEventListener("progress", (event: MessageEvent<string>) => {
+      try {
+        const parseResult = RecommendationProgressSseEventSchema.safeParse(
+          parseSseMessageData(event),
+        );
+
+        if (!parseResult.success) {
+          fail("추천 진행 상태를 읽지 못했습니다.");
+          return;
+        }
+
+        queue.push(parseResult.data.step);
+        processQueue();
+      } catch (error) {
+        if (error instanceof Error) {
+          fail(error.message);
+          return;
+        }
+
+        fail("추천 진행 상태를 읽지 못했습니다.");
+      }
     });
 
-    es.addEventListener("heartbeat", () => {});
-
-    es.addEventListener("result", (e) => {
-      const eventData = JSON.parse(e.data as string) as { data: unknown };
-      if (elapsedTimer) clearInterval(elapsedTimer);
-      es.close();
-      void navigate("/place/recommendation/result", { state: { result: eventData.data } });
+    es.addEventListener("heartbeat", () => {
+      // 연결 유지 확인용 — 별도 처리 불필요
     });
 
-    es.addEventListener("error", () => {
-      if (elapsedTimer) clearInterval(elapsedTimer);
-      es.close();
+    es.addEventListener("result", (event: MessageEvent<string>) => {
+      try {
+        const sseParseResult = RecommendationResultSseEventSchema.safeParse(
+          parseSseMessageData(event),
+        );
+
+        if (!sseParseResult.success) {
+          fail("추천 결과 형식이 올바르지 않습니다.");
+          return;
+        }
+
+        const outputParseResult = EngineOutputSchema.safeParse({
+          status: "SUCCESS",
+          userInput,
+          userOutput: sseParseResult.data.data,
+        });
+
+        if (!outputParseResult.success) {
+          fail("추천 결과를 화면에 표시할 수 없습니다.");
+          return;
+        }
+
+        stopElapsedTimer();
+        es.close();
+        queryClient.setQueryData(getRecommendationResultQueryKey(jobId), outputParseResult.data);
+        void navigate(`/place/recommendation/result/${encodeURIComponent(jobId)}`, {
+          replace: true,
+          state: { result: outputParseResult.data },
+        });
+      } catch (error) {
+        if (error instanceof Error) {
+          fail(error.message);
+          return;
+        }
+
+        fail("추천 결과를 읽지 못했습니다.");
+      }
+    });
+
+    es.addEventListener("error", (event) => {
+      if (event instanceof MessageEvent) {
+        try {
+          const parseResult = RecommendationErrorSseEventSchema.safeParse(
+            parseSseMessageData(event),
+          );
+
+          if (parseResult.success) {
+            fail(parseResult.data.message);
+            return;
+          }
+        } catch (error) {
+          if (error instanceof Error) {
+            fail(error.message);
+            return;
+          }
+
+          fail("추천 결과를 만드는 중 문제가 발생했습니다.");
+          return;
+        }
+      }
+
+      fail("추천 결과를 만드는 중 문제가 발생했습니다.");
     });
 
     return () => {
-      if (elapsedTimer) clearInterval(elapsedTimer);
+      stopElapsedTimer();
       es.close();
     };
-  }, [jobId, navigate]);
+  }, [jobId, navigate, queryClient, userInput]);
+
+  if (errorMessage !== null) {
+    return (
+      <S.Page>
+        <S.Body>
+          <S.Title>추천 결과를 만들지 못했어요</S.Title>
+          <S.Subtitle>{errorMessage}</S.Subtitle>
+          <S.BackButton type="button" onClick={() => navigate("/place/recommendation/form")}>
+            폼으로 돌아가기
+          </S.BackButton>
+        </S.Body>
+      </S.Page>
+    );
+  }
 
   return (
     <S.Page>
@@ -107,7 +252,7 @@ const RecommendationPendingPage = () => {
         </S.Subtitle>
         <S.StepList>
           {STEP_KEYS.map((key) => (
-            <S.StepItem key={key} $status={steps[key] ?? "pending"}>
+            <S.StepItem key={key} $status={steps[key]}>
               {steps[key] === "done" ? "✓" : steps[key] === "active" ? "▶" : "○"} {STEP_LABELS[key]}
               {steps[key] === "active" && elapsed > 0 && <S.Elapsed>{elapsed}초</S.Elapsed>}
             </S.StepItem>
@@ -119,72 +264,3 @@ const RecommendationPendingPage = () => {
 };
 
 export default RecommendationPendingPage;
-
-const spin = keyframes`
-  from { transform: rotate(0deg); }
-  to   { transform: rotate(360deg); }
-`;
-
-const S = {
-  Page: styled.main`
-    min-height: 100vh;
-    background: ${tokens.color.neutral[50]};
-    display: flex;
-    align-items: flex-start;
-    padding: 80px 24px 40px;
-  `,
-  Body: styled.div`
-    width: 100%;
-    max-width: 390px;
-    display: flex;
-    flex-direction: column;
-    gap: 0;
-  `,
-  Spinner: styled.div`
-    width: 64px;
-    height: 64px;
-    border-radius: 50%;
-    border: 4px solid ${tokens.color.primary[500]};
-    border-top-color: transparent;
-    animation: ${spin} 1s linear infinite;
-    margin-bottom: 24px;
-  `,
-  Title: styled.h1`
-    margin: 0 0 12px;
-    color: ${tokens.color.neutral[900]};
-    ${typography.title.lg}
-  `,
-  Subtitle: styled.p`
-    margin: 0 0 24px;
-    color: ${tokens.color.secondary[500]};
-    white-space: pre-line;
-    ${typography.body.sm}
-  `,
-  StepList: styled.ul`
-    list-style: none;
-    padding: 0;
-    margin: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-  `,
-  StepItem: styled.li<{ $status: StepStatus }>`
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    color: ${({ $status }) =>
-      $status === "pending" ? tokens.color.secondary[500] : tokens.color.primary[500]};
-    opacity: ${({ $status }) => ($status === "done" ? 0.5 : 1)};
-    font-weight: ${({ $status }) => ($status === "active" ? 700 : 400)};
-    transition:
-      color 0.3s ease,
-      opacity 0.3s ease,
-      font-weight 0.1s ease;
-    ${typography.body.md}
-  `,
-  Elapsed: styled.span`
-    margin-left: auto;
-    color: ${tokens.color.secondary[500]};
-    ${typography.body.xs}
-  `,
-};

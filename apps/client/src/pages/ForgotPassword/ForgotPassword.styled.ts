@@ -15,43 +15,36 @@ export const S = {
   `,
 
   Header: styled.header`
-    display: flex;
-    width: 100%;
-    padding: 18px 24px 6px 24px;
-    flex-direction: column;
-    gap: 4px;
-    background: ${tokens.color.neutral["50"]};
-    box-sizing: border-box;
+    background-color: ${tokens.color.neutral[50]};
+    height: 96px;
   `,
-
   StatusBarMock: styled.div`
     display: flex;
     justify-content: space-between;
-    align-items: center;
-    width: 100%;
-    ${tokens.typography.utility.meta};
-    font-size: 13px;
-    font-weight: 500;
-    color: ${tokens.color.neutral["900"]};
+    padding: 14px 20px;
+    ${tokens.typography.body.sm}
+    font-weight: 600;
   `,
-
   NavBar: styled.div`
     display: flex;
     align-items: center;
+    padding: 12px 20px;
     gap: 12px;
-    width: 100%;
   `,
 
   BackButton: styled.button`
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 24px;
-    height: 24px;
     background: none;
     border: none;
     padding: 0;
     cursor: pointer;
+    color: ${tokens.color.neutral["900"]};
+    svg {
+      width: 24px;
+      height: 24px;
+    }
   `,
 
   Title: styled.label`

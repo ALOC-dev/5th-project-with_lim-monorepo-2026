@@ -10,44 +10,35 @@ export const S = {
   `,
 
   Header: styled.header`
-    display: flex;
-    width: 100%;
-    padding: 18px 24px 6px 24px;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 4px;
-    background: ${tokens.color.neutral["50"]};
+    background-color: ${tokens.color.neutral[50]};
+    height: 96px;
   `,
-
   StatusBarMock: styled.div`
     display: flex;
-    ${tokens.typography.utility.meta};
     justify-content: space-between;
-    align-items: center;
-    width: 100%;
-    font-size: 13px;
+    padding: 14px 20px;
+    ${tokens.typography.body.sm}
     font-weight: 600;
-    color: ${tokens.color.neutral["900"]};
   `,
-
   NavBar: styled.div`
     display: flex;
     align-items: center;
+    padding: 12px 20px;
     gap: 12px;
-    width: 100%;
   `,
-
   BackButton: styled.button`
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 10px;
-    width: 24px;
-    height: 24px;
     background: none;
     border: none;
     padding: 0;
     cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    svg {
+      width: 24px;
+      height: 24px;
+    }
   `,
 
   Title: styled.div`

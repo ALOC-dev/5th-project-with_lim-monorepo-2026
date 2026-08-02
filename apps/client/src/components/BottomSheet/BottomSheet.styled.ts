@@ -36,11 +36,17 @@ export const S = {
     bottom: 0;
     left: 0;
     right: 0;
+    width: 100%;
     height: ${({ $height }) => $height};
     max-height: calc(100dvh - 24px);
     overflow: hidden;
     background-color: ${tokens.color.neutral[50]};
     border-radius: 16px 16px 0 0;
+    pointer-events: auto;
+
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior-y: none;
 
     transform: translateY(100%);
     opacity: 0;
@@ -71,7 +77,9 @@ export const S = {
     min-height: 0;
     flex: 1;
     flex-direction: column;
-    padding: 32px 24px 20px;
+    padding: 16px 24px 20px;
+    overflow-x: hidden;
+    overflow-y: auto;
   `,
   HandleWrapper: styled.div`
     display: flex;

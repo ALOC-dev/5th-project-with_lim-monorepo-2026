@@ -1,8 +1,10 @@
 import { Resend } from "resend";
 
+import { FRONTEND_URL } from "./env.js";
+
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-const FROM = "onboarding@resend.dev";
+const FROM = "noreply@sai42.app";
 
 const send = async (payload: Parameters<typeof resend.emails.send>[0]) => {
   const { error } = await resend.emails.send(payload);
@@ -34,12 +36,13 @@ export const sendSignupVerificationCode = async (to: string, code: string) => {
 };
 
 export const sendPasswordResetEmail = async (to: string, token: string) => {
+  const resetUrl = `${FRONTEND_URL}/login/forgotpassword/reset?token=${token}`;
+
   await send({
     from: FROM,
     to,
     subject: "비밀번호 재설정",
-    html: `<p>아래 토큰으로 비밀번호를 재설정할 수 있습니다. (1시간 이내 유효)</p>
-<p>토큰: <code>${token}</code></p>
-<p>POST /api/auth/reset-password 에 { token, newPassword } 형태로 요청하세요.</p>`,
+    html: `<p>아래 링크를 클릭하면 비밀번호를 재설정할 수 있습니다. (1시간 이내 유효)</p>
+<p><a href="${resetUrl}">${resetUrl}</a></p>`,
   });
 };

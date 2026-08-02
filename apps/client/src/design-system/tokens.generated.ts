@@ -28,6 +28,9 @@ export const tokens = {
       "700": "#3D3D3A",
       "900": "#141413",
     },
+    warning: {
+      "500": "#D94B3D",
+    },
   },
   typography: {
     title: {

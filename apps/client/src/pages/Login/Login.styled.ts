@@ -7,8 +7,8 @@ export const S = {
   Container: styled.main`
     display: flex;
     flex-direction: column;
-    width: 100%;
-    margin: 0 auto;
+    /* width: 100%;
+    margin: 0 auto; */
     background-color: ${tokens.color.neutral["50"]};
     box-sizing: border-box;
     position: relative;
@@ -18,7 +18,7 @@ export const S = {
   Header: styled.header`
     display: flex;
     width: 100%;
-    padding: 18px 24px 6px 24px;
+    /* padding: 18px 24px 6px 24px; */
     flex-direction: column;
     align-items: flex-start;
     gap: 4px;
@@ -32,15 +32,16 @@ export const S = {
     align-items: center;
     width: 100%;
     ${tokens.typography.utility.meta};
+    padding: 14px 20px;
     font-size: 13px;
-    font-weight: 500;
+    font-weight: 600;
     line-height: 18px;
-    padding-bottom: 4px;
     color: ${tokens.color.neutral["900"]};
   `,
 
   Title: styled.label`
     ${tokens.typography.utility.screenTitle}
+    padding: 12px 20px;
     font-size: 16px;
     font-weight: 600;
     line-height: 22px;

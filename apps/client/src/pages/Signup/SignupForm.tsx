@@ -5,7 +5,6 @@ import { requestSignup } from "../../apis/auth";
 import { toApiClientErrorMessage } from "../../apis/errors";
 import { Icon } from "../../components/Icon/Icon";
 import Modal from "../../components/Modal/Modal";
-import { tokens } from "../../design-system/tokens.generated";
 import { useSignupFormInput } from "./Signup.context";
 import { S } from "./Signup.styled";
 
@@ -37,16 +36,18 @@ export default function SignupFormContent() {
 
   const navigate = useNavigate();
 
+  // ✨ 비밀번호 유효성 검사 로직 추가 (영문, 숫자 포함 8~20자)
+  const isPasswordValid =
+    /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d!@#$%^&*()_+~`\-={}[\]:;"'<>,.?/]{8,20}$/.test(password);
+
   const isPasswordMismatch = passwordConfirm.length > 0 && password !== passwordConfirm;
   const isPasswordMatch = passwordConfirm.length > 0 && password === passwordConfirm;
 
   const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
   const [isNicknameModalOpen, setIsNicknameModalOpen] = useState(false);
 
-  // 타이머 상태 추가
   const [timeLeft, setTimeLeft] = useState(300);
 
-  // 이메일이 발송되었고 아직 인증되지 않았을 때 타이머 시작
   useEffect(() => {
     let timer: ReturnType<typeof setInterval>;
     if (isEmailCodeSent && !isEmailVerified && timeLeft > 0) {
@@ -57,7 +58,6 @@ export default function SignupFormContent() {
     return () => clearInterval(timer);
   }, [isEmailCodeSent, isEmailVerified, timeLeft]);
 
-  // 시간을 00:00 포맷으로 변환하는 함수
   const formatTime = (seconds: number) => {
     const minutes = Math.floor(seconds / 60)
       .toString()
@@ -66,14 +66,20 @@ export default function SignupFormContent() {
     return `${minutes}:${remainingSeconds}`;
   };
 
-  // 인증번호 받기 버튼 클릭 시 타이머 초기화 래핑 함수
   const handleSendCodeWithTimer = async () => {
-    setTimeLeft(300); // 클릭할 때마다 5분으로 리셋
+    setTimeLeft(300);
     await handleSendAuthCode();
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // ✨ 비밀번호 유효성 검사 통과 못하면 제출 방지
+    if (!isPasswordValid) {
+      alert("비밀번호 형식을 확인해 주세요.");
+      return;
+    }
+
     if (!isSignupReady) return;
 
     try {
@@ -82,7 +88,7 @@ export default function SignupFormContent() {
         password,
         nickname,
       });
-      // 백엔드 응답 구조에 따라 성공 여부를 확인.
+
       if (data.success) {
         alert("회원가입에 성공했습니다!");
         void navigate("/login");
@@ -125,7 +131,7 @@ export default function SignupFormContent() {
 
         <S.NavBar>
           <S.BackButton type="button" onClick={() => navigate(-1)}>
-            <Icon name="back-arrow" size={24} color={tokens.color.neutral["900"]} />
+            <Icon name="back-arrow" />
           </S.BackButton>
           <S.Title>회원가입</S.Title>
         </S.NavBar>
@@ -147,13 +153,7 @@ export default function SignupFormContent() {
             <S.ActionButton
               type="button"
               onClick={isEmailVerified ? handleEmailInputClick : handleSendCodeWithTimer}
-              $variant={
-                isEmailVerified
-                  ? "disabled"
-                  : isEmailCodeSent
-                    ? "secondary" // 다시 받기
-                    : "primary" // 기본 상태
-              }
+              $variant={isEmailVerified ? "disabled" : isEmailCodeSent ? "secondary" : "primary"}
             >
               {isEmailVerified ? "인증 완료" : isEmailCodeSent ? "다시 받기" : "인증번호 받기"}
             </S.ActionButton>
@@ -197,6 +197,7 @@ export default function SignupFormContent() {
             )}
           </S.InputGroup>
         )}
+
         <S.InputGroup>
           <S.Label htmlFor="password">비밀번호</S.Label>
           <S.Input
@@ -206,7 +207,14 @@ export default function SignupFormContent() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
-          <S.HelperText>영문과 숫자를 반드시 포함해 주세요.</S.HelperText>
+          {/* ✨ 비밀번호 입력 상태에 따른 안내 문구 조건부 렌더링 */}
+          {password.length > 0 && !isPasswordValid ? (
+            <S.HelperText $state="error">
+              영문과 숫자를 모두 포함하여 8~20자로 입력해 주세요.
+            </S.HelperText>
+          ) : (
+            <S.HelperText>영문과 숫자를 반드시 포함해 주세요.</S.HelperText>
+          )}
         </S.InputGroup>
 
         <S.InputGroup>
@@ -250,7 +258,8 @@ export default function SignupFormContent() {
           </S.InputRow>
         </S.InputGroup>
 
-        <S.SubmitButton type="submit" disabled={!isSignupReady}>
+        {/* ✨ 비밀번호 유효성 검사까지 통과해야 가입 버튼 활성화되도록 추가 검증 */}
+        <S.SubmitButton type="submit" disabled={!isSignupReady || !isPasswordValid}>
           가입하기
         </S.SubmitButton>
         <S.AgreementGroup>
@@ -266,6 +275,7 @@ export default function SignupFormContent() {
         </S.AgreementGroup>
       </S.Form>
 
+      {/* 모달 영역 생략 (기존과 동일) */}
       <Modal
         id="email-reset-modal"
         isOpen={isEmailModalOpen}

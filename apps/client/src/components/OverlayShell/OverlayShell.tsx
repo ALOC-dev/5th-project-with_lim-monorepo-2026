@@ -34,6 +34,7 @@ type OverlayShellProps = {
   readonly id: string;
   readonly presence: OverlayPresence;
   readonly backdropHandler: () => void;
+  readonly backdropTone?: "dimmed" | "none";
   readonly animationDurationMs: number;
   readonly children: ReactNode;
 };
@@ -48,6 +49,7 @@ const OverlayShell = ({
   children,
   animationDurationMs,
   backdropHandler,
+  backdropTone = "dimmed",
 }: OverlayShellProps) => {
   const portalContainer = useMemo(() => {
     const container = document.createElement("div");
@@ -77,7 +79,12 @@ const OverlayShell = ({
   };
 
   const eleToRender = (
-    <S.Root $animationDurationMs={animationDurationMs} data-state={presence} onClick={onClick}>
+    <S.Root
+      $animationDurationMs={animationDurationMs}
+      data-backdrop-tone={backdropTone}
+      data-state={presence}
+      onClick={onClick}
+    >
       {children}
     </S.Root>
   );
@@ -107,6 +114,11 @@ const S = {
 
     background-color: transparent;
     transition: background-color var(--overlay-animation-duration) ease;
+
+    &[data-backdrop-tone="none"] {
+      pointer-events: none;
+      --overlay-backdrop-open-background-color: transparent;
+    }
 
     &[data-state="opening"] {
       background-color: var(--overlay-backdrop-open-background-color);

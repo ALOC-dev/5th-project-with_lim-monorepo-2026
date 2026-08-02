@@ -1,7 +1,6 @@
 import { useNavigate } from "react-router-dom";
 
 import { Icon } from "../../components/Icon/Icon";
-import { tokens } from "../../design-system/tokens.generated";
 import { useForgotPasswordInput } from "./ForgotPassword.context";
 import { S } from "./ForgotPassword.styled";
 
@@ -41,7 +40,7 @@ export default function ForgotPasswordForm() {
 
         <S.NavBar>
           <S.BackButton type="button" onClick={() => navigate(-1)}>
-            <Icon name="back-arrow" size={24} color={tokens.color.neutral["900"]} />
+            <Icon name="back-arrow" />
           </S.BackButton>
           <S.Title>비밀번호 재설정</S.Title>
         </S.NavBar>
