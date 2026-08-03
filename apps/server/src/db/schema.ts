@@ -20,11 +20,12 @@ export const emailVerifications = pgTable('email_verifications', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
-export const passwordResetTokens = pgTable('password_reset_tokens', {
+export const passwordResetCodes = pgTable('password_reset_codes', {
   id: uuid('id').primaryKey().defaultRandom(),
-  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  tokenHash: text('token_hash').notNull(),
+  email: text('email').notNull(),
+  codeHash: text('code_hash').notNull(),
   expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  verifiedAt: timestamp('verified_at', { withTimezone: true }),
   usedAt: timestamp('used_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
@@ -51,4 +52,4 @@ export type User = typeof users.$inferSelect;
 export type PlaceRecommendationHistory = typeof placeRecommendationHistories.$inferSelect;
 export type SavedPlace = typeof savedPlaces.$inferSelect;
 export type EmailVerification = typeof emailVerifications.$inferSelect;
-export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
+export type PasswordResetCode = typeof passwordResetCodes.$inferSelect;

@@ -8,6 +8,12 @@ export const AuthenticatedUserSchema = z.object({
 
 export type AuthenticatedUser = z.infer<typeof AuthenticatedUserSchema>;
 
+export const PasswordSchema = z
+  .string()
+  .min(8)
+  .max(20)
+  .regex(/^(?=.*[A-Za-z])(?=.*\d).+$/, "password must include letters and numbers");
+
 export const SignupRequestSchema = z.object({
   email: z.email(),
   password: z.string().min(8),
@@ -29,9 +35,26 @@ export const ForgotPasswordRequestSchema = z.object({
 
 export type ForgotPasswordRequest = z.infer<typeof ForgotPasswordRequestSchema>;
 
+export const VerifyForgotPasswordCodeRequestSchema = z.object({
+  email: z.email(),
+  code: z.string().length(6),
+});
+
+export type VerifyForgotPasswordCodeRequest = z.infer<
+  typeof VerifyForgotPasswordCodeRequestSchema
+>;
+
+export const VerifyForgotPasswordCodeResponseDataSchema = z.object({
+  verified: z.literal(true),
+});
+
+export type VerifyForgotPasswordCodeResponseData = z.infer<
+  typeof VerifyForgotPasswordCodeResponseDataSchema
+>;
+
 export const ResetPasswordRequestSchema = z.object({
-  token: z.string().min(1),
-  newPassword: z.string().min(8),
+  email: z.email(),
+  newPassword: PasswordSchema,
 });
 
 export type ResetPasswordRequest = z.infer<typeof ResetPasswordRequestSchema>;
