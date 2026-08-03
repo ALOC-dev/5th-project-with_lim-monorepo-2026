@@ -1,0 +1,38 @@
+{
+  "name": "@monorepo/course-recommendation-engine",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/v1/index.ts",
+  "types": "./src/v1/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/v1/index.ts",
+      "import": "./src/v1/index.ts"
+    },
+    "./v1": {
+      "types": "./src/v1/index.ts",
+      "import": "./src/v1/index.ts"
+    },
+    "./v1/contracts": {
+      "types": "./src/v1/contracts.ts",
+      "import": "./src/v1/contracts.ts"
+    }
+  },
+  "files": [
+    "src"
+  ],
+  "scripts": {
+    "test": "node --import tsx src/v1/course-engine.test.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@monorepo/recommendation-engine": "workspace:*",
+    "zod": "^4.4.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.17",
+    "tsx": "^4.19.3"
+  }
+}
