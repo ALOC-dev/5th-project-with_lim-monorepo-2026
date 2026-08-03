@@ -30,6 +30,16 @@ export const passwordResetCodes = pgTable('password_reset_codes', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
+export const signupVerificationCodes = pgTable('signup_verification_codes', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  email: text('email').notNull(),
+  codeHash: text('code_hash').notNull(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  verifiedAt: timestamp('verified_at', { withTimezone: true }),
+  usedAt: timestamp('used_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const placeRecommendationHistories = pgTable('place_recommendation_histories', {
   id: uuid('id').primaryKey().defaultRandom(),
   userIds: uuid('user_ids').array().notNull().default(sql`'{}'`),
@@ -53,3 +63,4 @@ export type PlaceRecommendationHistory = typeof placeRecommendationHistories.$in
 export type SavedPlace = typeof savedPlaces.$inferSelect;
 export type EmailVerification = typeof emailVerifications.$inferSelect;
 export type PasswordResetCode = typeof passwordResetCodes.$inferSelect;
+export type SignupVerificationCode = typeof signupVerificationCodes.$inferSelect;

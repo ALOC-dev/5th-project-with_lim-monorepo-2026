@@ -31,7 +31,7 @@ const MapModeContent = () => {
     };
   }, [location.lat, location.lng]);
 
-  const updateAddressFromMapCenter = async (map: kakao.maps.Map): Promise<void> => {
+  const updateAddressFromMapCenter = async (map: kakao.maps.Map) => {
     const coordinates = getMapCenterCoordinates(map);
 
     if (isSameCoordinates(coordinates, latestReverseGeocodeCoordinatesRef.current)) {
@@ -135,7 +135,8 @@ const MapModeContent = () => {
           style={{ width: "100%", height: "100%" }}
           onIdle={updateAddressFromMapCenter}
           center={location}
-          minLevel={3}
+          minLevel={10}
+          maxLevel={3}
         >
           <MapMarker position={location} />
         </Map>

@@ -82,12 +82,16 @@ const RecommendationCard = ({
         {item.priceRangePerPerson[1].toLocaleString()}원
       </S.Budget>
       <S.Links>
-        <S.Link href={item.referenceUrls.kakaoMap} target="_blank" rel="noopener noreferrer">
-          카카오맵
-        </S.Link>
-        <S.Link href={item.referenceUrls.naverMap} target="_blank" rel="noopener noreferrer">
-          네이버맵
-        </S.Link>
+        {item.referenceUrls.kakaoMap !== undefined && (
+          <S.Link href={item.referenceUrls.kakaoMap} target="_blank" rel="noopener noreferrer">
+            카카오맵
+          </S.Link>
+        )}
+        {item.referenceUrls.naverMap !== undefined && (
+          <S.Link href={item.referenceUrls.naverMap} target="_blank" rel="noopener noreferrer">
+            네이버맵
+          </S.Link>
+        )}
       </S.Links>
     </S.CardFooter>
   </S.Card>
