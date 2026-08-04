@@ -4,3 +4,4 @@ export * from "./services/rest/favorites.js";
 export * from "./services/rest/health.js";
 export * from "./services/rest/users.js";
 export * from "./services/sse/place-recommendation.js";
+export * from "./services/rest/savedPlaces.js";

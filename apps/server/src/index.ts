@@ -22,6 +22,7 @@ import {
 } from "./recommendation/error-presentation.js";
 import authRouter from "./routes/auth.js";
 import favoritesRouter from "./routes/favorites.js";
+import savedPlacesRouter from "./routes/savedPlaces.js";
 import usersRouter from "./routes/users.js";
 
 const { config, secrets } = parseServerEnvironment(process.env);
@@ -32,6 +33,7 @@ app.use(express.json());
 app.use(cookieParser());
 app.use("/api/auth", authRouter);
 app.use("/api/favorites", favoritesRouter);
+app.use("/api/saved-places", savedPlacesRouter);
 app.use("/api/users", usersRouter);
 
 type JobState = {
