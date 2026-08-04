@@ -2,7 +2,10 @@ import styled from "@emotion/styled";
 
 import { theme } from "../../../../../../design-system/theme.generated";
 import { useLocationSearchHistory } from "../../../../hooks/useLocationSearchHistory";
-import { useRecommendationFormInput } from "../../../../RecommendationForm.context";
+import {
+  useRecommendationFormInput,
+  useRecommendationFormUi,
+} from "../../../../RecommendationForm.context";
 import type { Location } from "../../LocationSelection.context";
 import { useLocationSelection } from "../../LocationSelection.context";
 
@@ -25,18 +28,26 @@ const getLocationDisplay = (location: Location) => {
 };
 
 const QueryResultItem = ({ location }: QueryResultItemProps) => {
-  const { setLocation } = useRecommendationFormInput();
-  const { openMapMode, setQuery } = useLocationSelection();
+  const { locations, setLocations } = useRecommendationFormInput();
+  const { closeSheet } = useRecommendationFormUi();
+  const { setQuery } = useLocationSelection();
   const { insertItem } = useLocationSearchHistory();
   const { mainText, subText } = getLocationDisplay(location);
+
   const selectLocation = () => {
+    if (locations.length >= 8) {
+      alert("출발지는 최대 8개까지만 선택할 수 있습니다.");
+      return;
+    }
+
     insertItem({
       type: "location",
       location,
     });
-    setLocation(location);
+
+    setLocations((prev) => [...prev, location]);
     setQuery("");
-    openMapMode();
+    closeSheet();
   };
 
   return (

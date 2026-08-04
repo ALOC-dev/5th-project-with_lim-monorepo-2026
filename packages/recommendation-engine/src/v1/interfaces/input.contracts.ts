@@ -14,7 +14,7 @@ export const ScheduleInputSchema = z
   .object({
     dateISO: z.string().regex(dateIsoRegex), // 날짜 (ISO 형식, 예: "2026-04-10")
     time24h: z.string().regex(time24hRegex), // 시각 (24시간 형식, 예: "19:00")
-    stayDurationMinutes: z.number().int().positive(), // 체류 시간(분), 예: 120
+    stayDurationMinutes: z.number().int().positive().optional(), // 체류 시간(분), 예: 120
   })
   .strict();
 
@@ -25,10 +25,10 @@ export const UserInputSchema = z
     schedule: ScheduleInputSchema,
     location: LocationInputSchema,
 
-    numberOfPeople: z.number().int().positive(), // 인원 수
-    partyType: PartyTypeSchema, // 인원 유형 Dropdown
+    numberOfPeople: z.number().int().positive().optional(), // 인원 수
+    partyType: PartyTypeSchema.optional(), // 인원 유형 Dropdown
     activityType: ActivityTypeSchema.optional(),
-    budgetPerPerson: BudgetRangeSchema, // 인당 예산 범위 [최소, 최대]
+    budgetPerPerson: BudgetRangeSchema.optional(), // 인당 예산 범위 [최소, 최대]
 
     userNaturalLanguageRequest: z.string().trim().min(1), // 사용자 자연어 요청
   })

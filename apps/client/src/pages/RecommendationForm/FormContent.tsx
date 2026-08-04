@@ -4,12 +4,15 @@ import {
   PartyTypeSchema,
 } from "@monorepo/recommendation-engine/v1/contracts";
 import { useMutation } from "@tanstack/react-query";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { createRecommendationJob } from "../../apis/server/recommendation";
 import { Button } from "../../components/Button";
 import { Dropdown, type DropdownOption } from "../../components/Dropdown";
+import { Icon } from "../../components/Icon/Icon";
 import { Input } from "../../components/Input";
+import Modal from "../../components/Modal/Modal";
 import { RangeSlider } from "../../components/Rangeslider";
 import { S } from "./FormContent.style";
 import { dispatchRecommendationRequest } from "./input";
@@ -29,16 +32,27 @@ const PARTY_OPTIONS: DropdownOption[] = [
   { label: "동료", value: "COLLEAGUES" },
 ];
 
+const ALPHABETS = ["A", "B", "C", "D", "E", "F", "G", "H"];
+
 const formatCurrency = (value: number) => {
   return new Intl.NumberFormat("ko-KR").format(value) + "원";
 };
 
+const getDayOfWeek = (year: number, month: number, day: number) => {
+  const days = ["일", "월", "화", "수", "목", "금", "토"];
+  return days[new Date(year, month - 1, day).getDay()];
+};
+
 const FormContent = () => {
   const {
-    location,
+    locations,
+    setLocations,
     date,
     time24h,
     setTime24h,
+    userNaturalLanguageRequest,
+    setUserNaturalLanguageRequest,
+
     stayDurationMinutes,
     setStayDurationMinutes,
     numberOfPeople,
@@ -49,20 +63,32 @@ const FormContent = () => {
     setActivityType,
     budgetPerPerson,
     setBudgetPerPerson,
-    userNaturalLanguageRequest,
-    setUserNaturalLanguageRequest,
+
+    isStayDurationEnabled,
+    setIsStayDurationEnabled,
+    isActivityTypeEnabled,
+    setIsActivityTypeEnabled,
+    isNumberOfPeopleEnabled,
+    setIsNumberOfPeopleEnabled,
+    isPartyTypeEnabled,
+    setIsPartyTypeEnabled,
+    isBudgetEnabled,
+    setIsBudgetEnabled,
+
     buildUserInput,
   } = useRecommendationFormInput();
 
   const { openSheet } = useRecommendationFormUi();
   const navigate = useNavigate();
+
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+
   const recommendationMutation = useMutation({
     mutationFn: createRecommendationJob,
     onSuccess: (response, submittedUserInput) => {
       if (!response.success) {
         return;
       }
-
       void navigate(
         `/place/recommendation/pending?jobId=${encodeURIComponent(response.data.jobId)}`,
         {
@@ -73,168 +99,257 @@ const FormContent = () => {
   });
 
   const formattedDate = date
-    ? `${date.year}-${String(date.month).padStart(2, "0")}-${String(date.day).padStart(2, "0")}`
+    ? `${date.year}-${String(date.month).padStart(2, "0")}-${String(date.day).padStart(2, "0")} (${getDayOfWeek(date.year, date.month, date.day)})`
     : "";
+
   const formUserInput = buildUserInput();
   const canSubmit = formUserInput !== null && !recommendationMutation.isPending;
   const submitErrorMessage =
     recommendationMutation.data?.success === false ? recommendationMutation.data.error : null;
 
-  const submitRecommendation = () => {
+  const handleRecommendationClick = () => {
     const userInput = buildUserInput();
+    if (userInput === null) return;
+    setIsConfirmModalOpen(true);
+  };
 
-    if (userInput === null) {
-      return;
-    }
+  const handleConfirmSubmit = () => {
+    setIsConfirmModalOpen(false);
+    const userInput = buildUserInput();
+    if (userInput === null) return;
 
     dispatchRecommendationRequest(userInput, (requestInput) => {
       recommendationMutation.mutate(requestInput);
     });
   };
 
+  const handleRemoveLocation = (indexToRemove: number) => {
+    setLocations((prev) => prev.filter((_, idx) => idx !== indexToRemove));
+  };
+
   return (
     <S.RootContainer>
-      <S.HeaderWrapper>
-        <S.Title>1. 폼 입력</S.Title>
-      </S.HeaderWrapper>
-
+      <S.Header>
+        <S.NavBar>
+          <S.BackButton type="button" onClick={() => navigate(-1)}>
+            <Icon name="back-arrow" />
+          </S.BackButton>
+          <S.Title>장소 추천</S.Title>
+        </S.NavBar>
+      </S.Header>
       <S.ScrollContent>
-        <S.FormRow>
-          <S.FormLabel htmlFor="form-date">날짜</S.FormLabel>
-          <Input
-            id="form-date"
-            value={formattedDate}
-            placeholder=""
-            onClick={() => openSheet("date")}
-            readOnly
-            style={{ cursor: "pointer" }}
-          />
-        </S.FormRow>
+        <S.RequiredNotice>*필수 입력</S.RequiredNotice>
 
-        <S.FlexRow $gap="12px">
+        <S.FlexRow>
           <S.FlexColumn>
-            <S.FormLabel htmlFor="form-time">시각</S.FormLabel>
+            <S.FormLabel htmlFor="form-date" $required>
+              날짜
+            </S.FormLabel>
+            <S.DateInputWrapper onClick={() => openSheet("date")}>
+              <Input id="form-date" value={formattedDate} placeholder="" readOnly />
+            </S.DateInputWrapper>
+          </S.FlexColumn>
+
+          <S.FlexColumn>
+            <S.FormLabel htmlFor="form-time" $required>
+              시각
+            </S.FormLabel>
             <Input
               id="form-time"
               value={time24h || ""}
               onChange={(e) => setTime24h(e.target.value)}
-              placeholder=""
+              placeholder="예: 18:30"
             />
           </S.FlexColumn>
+        </S.FlexRow>
 
-          <S.FlexColumn>
-            <S.FormLabel htmlFor="form-duration">머무는 시간</S.FormLabel>
+        <S.LocationSection>
+          <S.LocationHeader>
+            <S.FormLabel $required>출발지</S.FormLabel>
+            <S.LocationCount>출발지 {locations.length} / 8</S.LocationCount>
+          </S.LocationHeader>
+          <S.LocationList>
+            {locations.map((loc, idx) => (
+              <S.LocationItem key={idx}>
+                <S.LocationBadge>{ALPHABETS[idx]}</S.LocationBadge>
+                <S.LocationText>{loc.roadNameAddress}</S.LocationText>
+                <S.RemoveButton type="button" onClick={() => handleRemoveLocation(idx)}>
+                  ✕
+                </S.RemoveButton>
+              </S.LocationItem>
+            ))}
+          </S.LocationList>
+          {locations.length < 8 && (
+            <S.AddLocationButton type="button" onClick={() => openSheet("location")}>
+              + 출발지 추가
+            </S.AddLocationButton>
+          )}
+        </S.LocationSection>
+
+        <S.TextareaContainer>
+          <S.FormLabel as="span" $required>
+            요청사항
+          </S.FormLabel>
+          <S.StyledTextarea
+            value={userNaturalLanguageRequest}
+            onChange={(e) => setUserNaturalLanguageRequest(e.target.value)}
+            placeholder="예 : 대화하기 좋은 저녁 식사 장소를 추천해주세요."
+          />
+        </S.TextareaContainer>
+
+        <S.OptionalSection>
+          <S.OptionalRow>
+            <S.Checkbox
+              type="checkbox"
+              checked={isStayDurationEnabled}
+              onChange={(e) => {
+                setIsStayDurationEnabled(e.target.checked);
+                if (!e.target.checked) setStayDurationMinutes(null);
+              }}
+            />
+            <S.OptionalLabel>머무는 시간</S.OptionalLabel>
             <Input
-              id="form-duration"
               value={stayDurationMinutes || ""}
               onChange={(e) => {
                 const onlyNumber = e.target.value.replace(/[^0-9]/g, "");
                 setStayDurationMinutes(onlyNumber ? Number(onlyNumber) : null);
+                if (onlyNumber) setIsStayDurationEnabled(true);
               }}
-              placeholder=""
+              placeholder="예: 120 (분)"
             />
-          </S.FlexColumn>
-        </S.FlexRow>
+          </S.OptionalRow>
 
-        <S.FormRow>
-          <S.FormLabel htmlFor="form-location">위치</S.FormLabel>
-          <Input
-            id="form-location"
-            value={location.roadNameAddress || ""}
-            placeholder=""
-            onClick={() => openSheet("location")}
-            readOnly
-            style={{ cursor: "pointer" }}
-          />
-        </S.FormRow>
+          <S.OptionalRow>
+            <S.Checkbox
+              type="checkbox"
+              checked={isActivityTypeEnabled}
+              onChange={(e) => {
+                setIsActivityTypeEnabled(e.target.checked);
+                if (!e.target.checked) setActivityType(null);
+              }}
+            />
+            <S.OptionalLabel>활동 유형</S.OptionalLabel>
+            <Dropdown
+              value={activityType || undefined}
+              onChange={(val) => {
+                const res = ActivityTypeSchema.safeParse(val);
+                if (res.success) {
+                  setActivityType(res.data);
+                  setIsActivityTypeEnabled(true);
+                }
+              }}
+              options={ACTIVITY_OPTIONS}
+              placeholder="선택"
+            />
+          </S.OptionalRow>
 
-        <S.FormRow>
-          <S.FormLabel as="span">활동 유형</S.FormLabel>
-          <Dropdown
-            value={activityType || undefined}
-            onChange={(selectedValue) => {
-              const parseResult = ActivityTypeSchema.safeParse(selectedValue);
-              if (parseResult.success) {
-                setActivityType(parseResult.data);
-              }
-            }}
-            options={ACTIVITY_OPTIONS}
-            placeholder="선택"
-          />
-        </S.FormRow>
-
-        <S.FlexRow $gap="16px">
-          <S.FlexColumn>
-            <S.FormLabel htmlFor="form-people">인원</S.FormLabel>
+          <S.OptionalRow>
+            <S.Checkbox
+              type="checkbox"
+              checked={isNumberOfPeopleEnabled}
+              onChange={(e) => {
+                setIsNumberOfPeopleEnabled(e.target.checked);
+                if (!e.target.checked) setNumberOfPeople(null);
+              }}
+            />
+            <S.OptionalLabel>인원</S.OptionalLabel>
             <Input
-              id="form-people"
               value={numberOfPeople || ""}
               onChange={(e) => {
                 const onlyNumber = e.target.value.replace(/[^0-9]/g, "");
                 setNumberOfPeople(onlyNumber ? Number(onlyNumber) : null);
+                if (onlyNumber) setIsNumberOfPeopleEnabled(true);
               }}
-              placeholder=""
+              placeholder="예 : 3 (명)"
             />
-          </S.FlexColumn>
+          </S.OptionalRow>
 
-          <S.FlexColumn>
-            <S.FormLabel as="span">관계 유형</S.FormLabel>
+          <S.OptionalRow>
+            <S.Checkbox
+              type="checkbox"
+              checked={isPartyTypeEnabled}
+              onChange={(e) => {
+                setIsPartyTypeEnabled(e.target.checked);
+                if (!e.target.checked) setPartyType(null);
+              }}
+            />
+            <S.OptionalLabel>관계 유형</S.OptionalLabel>
             <Dropdown
               value={partyType || undefined}
               options={PARTY_OPTIONS}
-              placeholder="선택"
               onChange={(val) => {
-                const parseResult = PartyTypeSchema.safeParse(val);
-                if (parseResult.success) {
-                  setPartyType(parseResult.data);
+                const res = PartyTypeSchema.safeParse(val);
+                if (res.success) {
+                  setPartyType(res.data);
+                  setIsPartyTypeEnabled(true);
                 }
               }}
+              placeholder="선택"
             />
-          </S.FlexColumn>
-        </S.FlexRow>
+          </S.OptionalRow>
 
-        <S.BudgetContainer>
-          <S.BudgetTextWrapper>
-            <S.FormLabel as="span">1인당 예산</S.FormLabel>
-            <S.BudgetValue>
-              {budgetPerPerson
-                ? `${formatCurrency(budgetPerPerson[0])} ~ ${formatCurrency(budgetPerPerson[1])}`
-                : "금액을 설정해주세요"}
-            </S.BudgetValue>
-          </S.BudgetTextWrapper>
-
-          <RangeSlider
-            min={0}
-            max={150000}
-            step={5000}
-            value={budgetPerPerson || [20000, 40000]}
-            onChange={(newValue) => {
-              const parseResult = BudgetRangeSchema.safeParse(newValue);
-              if (parseResult.success) {
-                setBudgetPerPerson(parseResult.data);
-              }
-            }}
-          />
-        </S.BudgetContainer>
-
-        <S.TextareaContainer>
-          <S.FormLabel as="span">요청사항</S.FormLabel>
-          <S.StyledTextarea
-            value={userNaturalLanguageRequest}
-            onChange={(e) => setUserNaturalLanguageRequest(e.target.value)}
-            placeholder="대화하기 좋은 저녁 식사 장소 추천"
-          />
-        </S.TextareaContainer>
+          <S.OptionalRow>
+            <S.Checkbox
+              type="checkbox"
+              checked={isBudgetEnabled}
+              onChange={(e) => {
+                setIsBudgetEnabled(e.target.checked);
+                if (!e.target.checked) setBudgetPerPerson(null);
+              }}
+            />
+            <S.OptionalLabel>예산</S.OptionalLabel>
+            <S.BudgetWrapper $disabled={!isBudgetEnabled}>
+              <S.BudgetAmountText>
+                {formatCurrency(budgetPerPerson?.[0] ?? 20000)} ~{" "}
+                {formatCurrency(budgetPerPerson?.[1] ?? 40000)}
+              </S.BudgetAmountText>
+              <RangeSlider
+                min={0}
+                max={150000}
+                step={5000}
+                value={budgetPerPerson || [20000, 40000]}
+                onChange={(newValue) => {
+                  const res = BudgetRangeSchema.safeParse(newValue);
+                  if (res.success) {
+                    setBudgetPerPerson(res.data);
+                    setIsBudgetEnabled(true);
+                  }
+                }}
+              />
+            </S.BudgetWrapper>
+          </S.OptionalRow>
+        </S.OptionalSection>
 
         <S.ButtonWrapper>
           {submitErrorMessage !== null && (
             <S.SubmitErrorMessage role="alert">{submitErrorMessage}</S.SubmitErrorMessage>
           )}
-          <Button type="button" width="100%" disabled={!canSubmit} onClick={submitRecommendation}>
+          <Button
+            type="button"
+            width="100%"
+            disabled={!canSubmit}
+            onClick={handleRecommendationClick}
+          >
             {recommendationMutation.isPending ? "추천 요청 중..." : "추천 받기"}
           </Button>
         </S.ButtonWrapper>
       </S.ScrollContent>
+
+      <Modal
+        id="recommendation-confirm-modal"
+        isOpen={isConfirmModalOpen}
+        close={() => setIsConfirmModalOpen(false)}
+        title="진행하시겠어요?"
+        description="추천 조건으로 다음 단계로 이동합니다."
+        secondaryAction={{
+          label: "취소",
+          onClick: () => setIsConfirmModalOpen(false),
+        }}
+        primaryAction={{
+          label: "진행",
+          onClick: handleConfirmSubmit,
+        }}
+      />
     </S.RootContainer>
   );
 };

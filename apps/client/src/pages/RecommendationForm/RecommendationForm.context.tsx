@@ -21,25 +21,41 @@ export type RecommendationFormDate = CalendarDate;
 export type RecommendationFormSheet = "location" | "date";
 
 export type RecommendationFormInputContextType = {
-  readonly location: RecommendationFormLocation;
+  readonly locations: RecommendationFormLocation[];
   readonly date: RecommendationFormDate | null;
   readonly time24h: string | null;
+  readonly userNaturalLanguageRequest: string;
+
+  // 선택 입력 항목들
   readonly stayDurationMinutes: number | null;
   readonly numberOfPeople: number | null;
   readonly partyType: PartyType | null;
   readonly activityType: ActivityType | null;
   readonly budgetPerPerson: BudgetRange | null;
-  readonly userNaturalLanguageRequest: string;
 
-  readonly setLocation: Dispatch<SetStateAction<RecommendationFormLocation>>;
+  // 선택 입력 활성화(체크박스) 상태
+  readonly isStayDurationEnabled: boolean;
+  readonly isActivityTypeEnabled: boolean;
+  readonly isNumberOfPeopleEnabled: boolean;
+  readonly isPartyTypeEnabled: boolean;
+  readonly isBudgetEnabled: boolean;
+
+  readonly setLocations: Dispatch<SetStateAction<RecommendationFormLocation[]>>;
   readonly setDate: Dispatch<SetStateAction<RecommendationFormDate | null>>;
   readonly setTime24h: Dispatch<SetStateAction<string | null>>;
+  readonly setUserNaturalLanguageRequest: Dispatch<SetStateAction<string>>;
+
   readonly setStayDurationMinutes: Dispatch<SetStateAction<number | null>>;
   readonly setNumberOfPeople: Dispatch<SetStateAction<number | null>>;
   readonly setPartyType: Dispatch<SetStateAction<PartyType | null>>;
   readonly setActivityType: Dispatch<SetStateAction<ActivityType | null>>;
   readonly setBudgetPerPerson: Dispatch<SetStateAction<BudgetRange | null>>;
-  readonly setUserNaturalLanguageRequest: Dispatch<SetStateAction<string>>;
+
+  readonly setIsStayDurationEnabled: Dispatch<SetStateAction<boolean>>;
+  readonly setIsActivityTypeEnabled: Dispatch<SetStateAction<boolean>>;
+  readonly setIsNumberOfPeopleEnabled: Dispatch<SetStateAction<boolean>>;
+  readonly setIsPartyTypeEnabled: Dispatch<SetStateAction<boolean>>;
+  readonly setIsBudgetEnabled: Dispatch<SetStateAction<boolean>>;
 
   readonly resetForm: () => void;
   readonly buildUserInput: () => UserInput | null;
@@ -63,7 +79,6 @@ export const useRecommendationFormInput = () => {
   if (!context) {
     throw new Error("useRecommendationFormInput must be used within RecommendationFlowProvider");
   }
-
   return context;
 };
 
@@ -72,6 +87,5 @@ export const useRecommendationFormUi = () => {
   if (!context) {
     throw new Error("useRecommendationFormUi must be used within RecommendationFlowProvider");
   }
-
   return context;
 };

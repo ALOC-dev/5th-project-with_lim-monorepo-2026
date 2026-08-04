@@ -10,10 +10,10 @@ import type { CalendarDate } from "./utils/calendarDayViewModel";
 import { toDateISO } from "./utils/calendarDayViewModel";
 
 export type RecommendationFormInput = {
-  readonly location: {
+  readonly locations: readonly {
     readonly lat: number;
     readonly lng: number;
-  };
+  }[];
   readonly date: CalendarDate | null;
   readonly time24h: string | null;
   readonly stayDurationMinutes: number | null;
@@ -28,33 +28,30 @@ export const buildRecommendationUserInput = (input: RecommendationFormInput): Us
   if (
     input.date === null ||
     input.time24h === null ||
-    input.stayDurationMinutes === null ||
-    input.numberOfPeople === null ||
-    !input.partyType ||
-    !input.activityType ||
-    !input.budgetPerPerson
+    input.locations.length === 0 || // 출발지가 최소 1개 이상인지 확인
+    input.userNaturalLanguageRequest.trim() === "" // 요청사항이 비어있는지 확인
   ) {
     return null;
   }
 
-  const parseResult = UserInputSchema.safeParse({
+  const payload = {
     schedule: {
       dateISO: toDateISO(input.date),
       time24h: input.time24h,
-      stayDurationMinutes: input.stayDurationMinutes,
+      ...(input.stayDurationMinutes !== null && { stayDurationMinutes: input.stayDurationMinutes }),
     },
-    location: [
-      {
-        lat: input.location.lat,
-        lng: input.location.lng,
-      },
-    ],
-    numberOfPeople: input.numberOfPeople,
-    partyType: input.partyType,
-    activityType: input.activityType,
-    budgetPerPerson: input.budgetPerPerson,
+    location: input.locations.map((loc) => ({
+      lat: loc.lat,
+      lng: loc.lng,
+    })),
+    ...(input.numberOfPeople !== null && { numberOfPeople: input.numberOfPeople }),
+    ...(input.partyType !== null && { partyType: input.partyType }),
+    ...(input.activityType !== null && { activityType: input.activityType }),
+    ...(input.budgetPerPerson !== null && { budgetPerPerson: input.budgetPerPerson }),
     userNaturalLanguageRequest: input.userNaturalLanguageRequest,
-  });
+  };
+
+  const parseResult = UserInputSchema.safeParse(payload);
 
   return parseResult.success ? parseResult.data : null;
 };

@@ -31,19 +31,38 @@ const assertNever = (value: never): never => {
 };
 
 const HistoryItem = ({ item }: HistoryItemProps) => {
-  const { setLocation } = useRecommendationFormInput();
+  const { setLocations } = useRecommendationFormInput();
   const { openMapMode, setQuery } = useLocationSelection();
   const { deleteItem, promoteItem } = useLocationSearchHistory();
+
   const selectQuery = (query: string) => {
     promoteItem(item);
     setQuery(query);
   };
+
   const selectLocation = (location: Location) => {
     promoteItem(item);
-    setLocation(location);
+
+    setLocations((prev) => {
+      if (prev.length >= 8) {
+        return prev;
+      }
+
+      return [
+        ...prev,
+        {
+          lat: location.lat,
+          lng: location.lng,
+          roadNameAddress: location.roadNameAddress,
+          placeName: location.placeName,
+        },
+      ];
+    });
+
     setQuery("");
     openMapMode();
   };
+
   const deleteHistoryItem = () => {
     deleteItem(item);
   };

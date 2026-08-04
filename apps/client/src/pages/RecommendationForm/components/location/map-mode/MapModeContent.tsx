@@ -14,22 +14,35 @@ type AddressRequestStatus = "loading" | "resolved" | "failed";
 const CENTER_CHANGE_THRESHOLD = 0.000001;
 
 const MapModeContent = () => {
-  const { location, setLocation } = useRecommendationFormInput();
+  const { locations, setLocations } = useRecommendationFormInput();
   const { closeSheet } = useRecommendationFormUi();
   const [addressRequestStatus, setAddressRequestStatus] =
     useState<AddressRequestStatus>("resolved");
+
+  // 초기 지도의 중심 좌표 계산
+  const lastLocation = locations[locations.length - 1];
+  const initialLat = lastLocation?.lat ?? 37.5665; // 값이 없으면 서울시청 위도
+  const initialLng = lastLocation?.lng ?? 126.978; // 값이 없으면 서울시청 경도
+
+  const [currentSelectedLocation, setCurrentSelectedLocation] = useState({
+    lat: initialLat,
+    lng: initialLng,
+    placeName: "",
+    roadNameAddress: "",
+  });
+
   const latestReverseGeocodeRequestIdRef = useRef(0);
   const latestReverseGeocodeCoordinatesRef = useRef<ReverseGeocodeCoordinates>({
-    lat: location.lat,
-    lng: location.lng,
+    lat: initialLat,
+    lng: initialLng,
   });
 
   useEffect(() => {
     latestReverseGeocodeCoordinatesRef.current = {
-      lat: location.lat,
-      lng: location.lng,
+      lat: initialLat,
+      lng: initialLng,
     };
-  }, [location.lat, location.lng]);
+  }, [initialLat, initialLng]);
 
   const updateAddressFromMapCenter = async (map: kakao.maps.Map) => {
     const coordinates = getMapCenterCoordinates(map);
@@ -43,8 +56,9 @@ const MapModeContent = () => {
     latestReverseGeocodeCoordinatesRef.current = coordinates;
 
     setAddressRequestStatus("loading");
-    setLocation((currentLocation) => ({
-      ...currentLocation,
+
+    setCurrentSelectedLocation((prev) => ({
+      ...prev,
       lat: coordinates.lat,
       lng: coordinates.lng,
     }));
@@ -57,7 +71,7 @@ const MapModeContent = () => {
 
     switch (result.kind) {
       case "place":
-        setLocation({
+        setCurrentSelectedLocation({
           lat: coordinates.lat,
           lng: coordinates.lng,
           placeName: result.placeName,
@@ -66,9 +80,10 @@ const MapModeContent = () => {
         setAddressRequestStatus("resolved");
         return;
       case "address":
-        setLocation({
+        setCurrentSelectedLocation({
           lat: coordinates.lat,
           lng: coordinates.lng,
+          placeName: "",
           roadNameAddress: result.roadNameAddress,
         });
         setAddressRequestStatus("resolved");
@@ -88,8 +103,8 @@ const MapModeContent = () => {
       case "resolved":
         return {
           kind: "resolved",
-          placeName: location.placeName,
-          roadNameAddress: location.roadNameAddress,
+          placeName: currentSelectedLocation.placeName,
+          roadNameAddress: currentSelectedLocation.roadNameAddress,
         } as const;
       case "loading":
         return {
@@ -111,7 +126,7 @@ const MapModeContent = () => {
   const canCompleteSelection = (() => {
     switch (addressRequestStatus) {
       case "resolved":
-        return true;
+        return !!currentSelectedLocation.roadNameAddress;
       case "loading":
       case "failed":
         return false;
@@ -124,6 +139,13 @@ const MapModeContent = () => {
 
   const handleCompleteSelection = () => {
     if (canCompleteSelection) {
+      setLocations((prev) => {
+        if (prev.length >= 8) {
+          alert("출발지는 최대 8개까지만 선택할 수 있습니다.");
+          return prev;
+        }
+        return [...prev, currentSelectedLocation];
+      });
       closeSheet();
     }
   };
@@ -134,11 +156,13 @@ const MapModeContent = () => {
         <Map
           style={{ width: "100%", height: "100%" }}
           onIdle={updateAddressFromMapCenter}
-          center={location}
+          center={{ lat: currentSelectedLocation.lat, lng: currentSelectedLocation.lng }}
           minLevel={10}
           maxLevel={3}
         >
-          <MapMarker position={location} />
+          <MapMarker
+            position={{ lat: currentSelectedLocation.lat, lng: currentSelectedLocation.lng }}
+          />
         </Map>
         <S.CenterMarker aria-hidden />
       </S.MapFrame>
