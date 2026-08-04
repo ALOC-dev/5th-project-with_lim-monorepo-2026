@@ -60,11 +60,11 @@ export const resolveCandidateReferenceUrls = async (
     existingKakaoMap === undefined
       ? await resolveKakaoMapReferenceUrl(evidence, {
           kakaoRestApiKey: options.kakaoRestApiKey,
-        })
+        }).catch(() => undefined)
       : undefined;
   const naverMapMatch =
     existingNaverMap === undefined
-      ? await resolveNaverMapReferenceUrl(evidence, options)
+      ? await resolveNaverMapReferenceUrl(evidence, options).catch(() => undefined)
       : undefined;
   const kakaoMap = existingKakaoMap ?? kakaoMapMatch?.url;
   const naverMap = existingNaverMap ?? naverMapMatch?.url;
