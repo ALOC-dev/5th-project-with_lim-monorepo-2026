@@ -143,7 +143,7 @@ export const createAgenticWebEnrichmentClient = ({
       browserPromise ??= Promise.resolve().then(() =>
         loadPlaywright().chromium.launch({
           headless,
-          args: ["--disable-dev-shm-usage"],
+          args: ["--disable-dev-shm-usage", "--no-sandbox"],
         }),
       );
       return browserPromise;

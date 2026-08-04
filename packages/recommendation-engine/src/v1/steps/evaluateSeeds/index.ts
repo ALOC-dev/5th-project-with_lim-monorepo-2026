@@ -458,7 +458,7 @@ const resolveReferenceUrlsForEvidences = async (
     browserPromise ??= Promise.resolve().then(() =>
       loadPlaywright().chromium.launch({
         headless: true,
-        args: ["--disable-dev-shm-usage"],
+        args: ["--disable-dev-shm-usage", "--no-sandbox"],
       }),
     );
     return browserPromise;
