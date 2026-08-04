@@ -141,7 +141,10 @@ export const createAgenticWebEnrichmentClient = ({
     let browserPromise: Promise<PlaywrightBrowser> | undefined;
     const getBrowser = (): Promise<PlaywrightBrowser> => {
       browserPromise ??= Promise.resolve().then(() =>
-        loadPlaywright().chromium.launch({ headless }),
+        loadPlaywright().chromium.launch({
+          headless,
+          args: ["--disable-dev-shm-usage"],
+        }),
       );
       return browserPromise;
     };
