@@ -1,8 +1,10 @@
+import type { PlaceRecommendationItem, UserInput, UserOutput } from '@monorepo/recommendation-engine/v1/contracts';
 import { sql } from 'drizzle-orm';
 import {
   boolean,
   check,
   integer,
+  jsonb,
   numeric,
   pgTable,
   text,
@@ -37,6 +39,26 @@ export const signupVerificationCodes = pgTable('signup_verification_codes', {
   expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
   verifiedAt: timestamp('verified_at', { withTimezone: true }),
   usedAt: timestamp('used_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// 장소 추천 요청/결과 기록 (입력·결과 보존, 요청 회복)
+export const placeRecommendationHistories = pgTable('place_recommendation_histories', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userIds: uuid('user_ids').array().notNull().default(sql`'{}'`),
+  input: jsonb('input').$type<UserInput>().notNull(),
+  output: jsonb('output').$type<UserOutput>(),
+  errorCode: text('error_code'),
+  errorMessage: text('error_message'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// 추천 결과에서 저장(하트)한 장소 스냅샷
+export const savedPlaces = pgTable('saved_places', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').notNull().references(() => users.id),
+  historyId: uuid('history_id').references(() => placeRecommendationHistories.id, { onDelete: 'set null' }),
+  placeData: jsonb('place_data').$type<PlaceRecommendationItem>().notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -119,6 +141,8 @@ export const coursePlaces = pgTable(
 );
 
 export type User = typeof users.$inferSelect;
+export type PlaceRecommendationHistory = typeof placeRecommendationHistories.$inferSelect;
+export type SavedPlace = typeof savedPlaces.$inferSelect;
 export type PasswordResetCode = typeof passwordResetCodes.$inferSelect;
 export type SignupVerificationCode = typeof signupVerificationCodes.$inferSelect;
 export type FavoritePlace = typeof favoritePlaces.$inferSelect;
