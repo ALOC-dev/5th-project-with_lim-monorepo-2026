@@ -12,10 +12,7 @@ export default function FavoritePlacesContent() {
   return (
     <S.Container>
       <S.Header>
-        <S.StatusBarMock>
-          <span>9:41</span>
-          <span>•••</span>
-        </S.StatusBarMock>
+        <S.StatusBarMock></S.StatusBarMock>
         <S.NavBar>
           <S.BackButton type="button" onClick={() => navigate(-1)}>
             <Icon name="back-arrow" />
@@ -57,7 +54,6 @@ export default function FavoritePlacesContent() {
                 <S.Card key={item.id}>
                   <S.DateLabel>{item.date}</S.DateLabel>
 
-                  {/* 2. 장소 정보(좌)와 하트/점수(우)를 CardBody로 묶어서 양끝 정렬 */}
                   <S.CardBody>
                     <S.PlaceInfo>
                       <S.PlaceTitle>{item.title}</S.PlaceTitle>

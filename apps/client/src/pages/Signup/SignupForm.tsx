@@ -36,7 +36,6 @@ export default function SignupFormContent() {
 
   const navigate = useNavigate();
 
-  // ✨ 비밀번호 유효성 검사 로직 추가 (영문, 숫자 포함 8~20자)
   const isPasswordValid =
     /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d!@#$%^&*()_+~`\-={}[\]:;"'<>,.?/]{8,20}$/.test(password);
 
@@ -74,7 +73,6 @@ export default function SignupFormContent() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // ✨ 비밀번호 유효성 검사 통과 못하면 제출 방지
     if (!isPasswordValid) {
       alert("비밀번호 형식을 확인해 주세요.");
       return;
@@ -124,10 +122,7 @@ export default function SignupFormContent() {
   return (
     <S.Container>
       <S.Header>
-        <S.StatusBarMock>
-          <span>9:41</span>
-          <span>•••</span>
-        </S.StatusBarMock>
+        <S.StatusBarMock></S.StatusBarMock>
 
         <S.NavBar>
           <S.BackButton type="button" onClick={() => navigate(-1)}>
@@ -155,7 +150,7 @@ export default function SignupFormContent() {
               onClick={isEmailVerified ? handleEmailInputClick : handleSendCodeWithTimer}
               $variant={isEmailVerified ? "disabled" : isEmailCodeSent ? "secondary" : "primary"}
             >
-              {isEmailVerified ? "인증 완료" : isEmailCodeSent ? "다시 받기" : "인증번호 받기"}
+              {isEmailVerified ? "이메일 변경" : isEmailCodeSent ? "다시 받기" : "인증번호 받기"}
             </S.ActionButton>
           </S.InputRow>
 
@@ -166,37 +161,40 @@ export default function SignupFormContent() {
           )}
         </S.InputGroup>
 
-        {isEmailCodeSent && !isEmailVerified && (
-          <S.InputGroup>
-            <S.Label htmlFor="authCode">인증번호</S.Label>
+        <S.InputGroup>
+          <S.Label htmlFor="authCode">인증번호</S.Label>
+          <S.InputRow>
+            <S.Input
+              type="text"
+              id="authCode"
+              placeholder="6자리 숫자"
+              maxLength={6}
+              value={authCode}
+              onChange={(e) => setAuthCode(e.target.value)}
+              disabled={!isEmailCodeSent || isEmailVerified}
+            />
+            <S.ActionButton
+              type="button"
+              disabled={!isEmailCodeSent || !isAuthCodeReady || timeLeft === 0 || isEmailVerified}
+              onClick={handleVerifyAuthCode}
+              $variant={isEmailVerified ? "disabled" : "primary"}
+            >
+              {isEmailVerified ? "인증 완료" : "인증하기"}
+            </S.ActionButton>
+          </S.InputRow>
 
-            <S.InputRow>
-              <S.Input
-                type="text"
-                id="authCode"
-                placeholder="6자리 숫자"
-                maxLength={6}
-                value={authCode}
-                onChange={(e) => setAuthCode(e.target.value)}
-              />
-              <S.ActionButton
-                type="button"
-                disabled={!isAuthCodeReady || timeLeft === 0}
-                onClick={handleVerifyAuthCode}
-              >
-                인증하기
-              </S.ActionButton>
-            </S.InputRow>
-
-            {timeLeft > 0 ? (
-              <S.HelperText>남은 시간 {formatTime(timeLeft)}</S.HelperText>
-            ) : (
-              <S.HelperText $state="error">
-                인증 시간이 만료되었습니다. 다시 시도해 주세요.
-              </S.HelperText>
-            )}
-          </S.InputGroup>
-        )}
+          {!isEmailCodeSent && !isEmailVerified ? (
+            <S.HelperText>이메일 인증번호를 발송해 주세요.</S.HelperText>
+          ) : isEmailVerified ? (
+            <S.HelperText $state="error">이메일 인증이 완료되었습니다.</S.HelperText>
+          ) : timeLeft > 0 ? (
+            <S.HelperText>남은 시간 {formatTime(timeLeft)}</S.HelperText>
+          ) : (
+            <S.HelperText $state="error">
+              인증 시간이 만료되었습니다. 다시 시도해 주세요.
+            </S.HelperText>
+          )}
+        </S.InputGroup>
 
         <S.InputGroup>
           <S.Label htmlFor="password">비밀번호</S.Label>
@@ -207,7 +205,6 @@ export default function SignupFormContent() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
-          {/* ✨ 비밀번호 입력 상태에 따른 안내 문구 조건부 렌더링 */}
           {password.length > 0 && !isPasswordValid ? (
             <S.HelperText $state="error">
               영문과 숫자를 모두 포함하여 8~20자로 입력해 주세요.
@@ -258,10 +255,6 @@ export default function SignupFormContent() {
           </S.InputRow>
         </S.InputGroup>
 
-        {/* ✨ 비밀번호 유효성 검사까지 통과해야 가입 버튼 활성화되도록 추가 검증 */}
-        <S.SubmitButton type="submit" disabled={!isSignupReady || !isPasswordValid}>
-          가입하기
-        </S.SubmitButton>
         <S.AgreementGroup>
           <S.Checkbox
             type="checkbox"
@@ -273,9 +266,11 @@ export default function SignupFormContent() {
             서비스 이용약관과 개인정보 처리방침에 동의합니다.
           </S.AgreementText>
         </S.AgreementGroup>
+        <S.SubmitButton type="submit" disabled={!isSignupReady || !isPasswordValid}>
+          가입하기
+        </S.SubmitButton>
       </S.Form>
 
-      {/* 모달 영역 생략 (기존과 동일) */}
       <Modal
         id="email-reset-modal"
         isOpen={isEmailModalOpen}

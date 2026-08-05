@@ -3,9 +3,7 @@ import { Resend } from "resend";
 import { FRONTEND_URL } from "./env.js";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
-
 const FROM = "noreply@sai42.app";
-
 const send = async (payload: Parameters<typeof resend.emails.send>[0]) => {
   const { error } = await resend.emails.send(payload);
   if (error) {

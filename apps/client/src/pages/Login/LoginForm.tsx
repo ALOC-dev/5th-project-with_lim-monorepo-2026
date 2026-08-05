@@ -36,10 +36,7 @@ export default function LoginFormContent() {
   return (
     <S.Container>
       <S.Header>
-        <S.StatusBarMock>
-          <span>9:41</span>
-          <span>•••</span>
-        </S.StatusBarMock>
+        <S.StatusBarMock></S.StatusBarMock>
         <S.Title>로그인</S.Title>
       </S.Header>
 
