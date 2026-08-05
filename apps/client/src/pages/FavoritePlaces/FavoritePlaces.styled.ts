@@ -93,7 +93,6 @@ export const S = {
     animation: ${pulse} 1.5s ease-in-out infinite;
   `,
 
-  /* 빈 화면 (Empty State) UI */
   EmptyStateWrapper: styled.div`
     flex: 1;
     display: flex;
@@ -141,7 +140,6 @@ export const S = {
     height: 52px;
   `,
 
-  /* 찜한 장소 리스트 (Card) UI */
   Card: styled.div`
     padding: 16px;
     background-color: ${tokens.color.neutral[0]};
@@ -187,10 +185,13 @@ export const S = {
     align-items: center;
     gap: 8px;
   `,
-  IconButton: styled.button`
-    background-color: ${tokens.color.primary[500]};
-    color: ${tokens.color.neutral[0]};
-    border: none;
+  IconButton: styled.button<{ $isFavorited?: boolean }>`
+    background-color: ${({ $isFavorited = true }) =>
+      $isFavorited ? tokens.color.primary[500] : tokens.color.neutral[0]};
+    color: ${({ $isFavorited = true }) =>
+      $isFavorited ? tokens.color.neutral[0] : tokens.color.neutral[700]};
+    border: ${({ $isFavorited = true }) =>
+      $isFavorited ? "none" : `1px solid ${tokens.color.neutral[200]}`};
     border-radius: 50%;
     width: 32px;
     height: 32px;

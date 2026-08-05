@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { Icon } from "../../components/Icon/Icon";
@@ -8,6 +9,14 @@ export default function FavoritePlacesContent() {
   const { favoriteList, isLoading, handleToggleFavorite, handleGoToRecommendations } =
     useFavoritePlaces();
   const navigate = useNavigate();
+
+  const [displayList, setDisplayList] = useState(favoriteList);
+  const [isSnapshotTaken, setIsSnapshotTaken] = useState(false);
+
+  if (!isLoading && !isSnapshotTaken) {
+    setDisplayList(favoriteList);
+    setIsSnapshotTaken(true);
+  }
 
   return (
     <S.Container>
@@ -35,7 +44,7 @@ export default function FavoritePlacesContent() {
               ))}
             </S.List>
           </>
-        ) : favoriteList.length === 0 ? (
+        ) : displayList.length === 0 ? (
           <S.EmptyStateWrapper>
             <S.EmptyIconWrapper>
               <Icon name="heart-outline" />
@@ -50,31 +59,39 @@ export default function FavoritePlacesContent() {
           <>
             <S.NoticeText>저장한 장소를 다시 확인합니다.</S.NoticeText>
             <S.List>
-              {favoriteList.map((item) => (
-                <S.Card key={item.id}>
-                  <S.DateLabel>{item.date}</S.DateLabel>
+              {displayList.map((item) => {
+                const isFavorited = favoriteList.some((fav) => fav.id === item.id);
 
-                  <S.CardBody>
-                    <S.PlaceInfo>
-                      <S.PlaceTitle>{item.title}</S.PlaceTitle>
-                      <S.PlaceCategory>{item.category}</S.PlaceCategory>
-                    </S.PlaceInfo>
+                return (
+                  <S.Card key={item.id}>
+                    <S.DateLabel>{item.date}</S.DateLabel>
 
-                    <S.RightControls>
-                      <S.IconButton type="button" onClick={() => handleToggleFavorite(item.id)}>
-                        <Icon name="heart-filled" size={18} />
-                      </S.IconButton>
-                      <S.ScoreBadge>{item.score}점</S.ScoreBadge>
-                    </S.RightControls>
-                  </S.CardBody>
+                    <S.CardBody>
+                      <S.PlaceInfo>
+                        <S.PlaceTitle>{item.title}</S.PlaceTitle>
+                        <S.PlaceCategory>{item.category}</S.PlaceCategory>
+                      </S.PlaceInfo>
 
-                  <S.TagsRow>
-                    {item.tags.map((tag, idx) => (
-                      <S.Tag key={idx}>{tag}</S.Tag>
-                    ))}
-                  </S.TagsRow>
-                </S.Card>
-              ))}
+                      <S.RightControls>
+                        <S.IconButton
+                          type="button"
+                          $isFavorited={isFavorited}
+                          onClick={() => handleToggleFavorite(item.id)}
+                        >
+                          <Icon name={isFavorited ? "heart-filled" : "heart-outline"} size={18} />
+                        </S.IconButton>
+                        <S.ScoreBadge>{item.score}점</S.ScoreBadge>
+                      </S.RightControls>
+                    </S.CardBody>
+
+                    <S.TagsRow>
+                      {item.tags.map((tag, idx) => (
+                        <S.Tag key={idx}>{tag}</S.Tag>
+                      ))}
+                    </S.TagsRow>
+                  </S.Card>
+                );
+              })}
             </S.List>
           </>
         )}
