@@ -24,10 +24,7 @@ export default function ResetPasswordFormContent() {
   return (
     <S.Container>
       <S.Header>
-        <S.StatusBarMock>
-          <span>9:41</span>
-          <span>•••</span>
-        </S.StatusBarMock>
+        <S.StatusBarMock></S.StatusBarMock>
 
         <S.NavBar>
           <S.BackButton type="button" onClick={() => navigate(-1)}>
