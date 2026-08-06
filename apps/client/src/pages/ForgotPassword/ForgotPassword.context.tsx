@@ -5,7 +5,6 @@ export type ForgotPasswordContextType = {
   readonly email: string;
   readonly authCode: string;
   readonly isEmailCodeSent: boolean;
-  readonly isEmailVerified: boolean;
 
   readonly setEmail: Dispatch<SetStateAction<string>>;
   readonly setAuthCode: Dispatch<SetStateAction<string>>;
@@ -14,13 +13,13 @@ export type ForgotPasswordContextType = {
 
   readonly password: string;
   readonly passwordConfirm: string;
-  readonly isResetReady: boolean;
 
   readonly isAuthCodeReady: boolean;
 
   readonly setPassword: Dispatch<SetStateAction<string>>;
   readonly setPasswordConfirm: Dispatch<SetStateAction<string>>;
 
+  readonly handleResetPassword: () => Promise<void>;
   readonly resetForm: () => void;
 };
 

@@ -1,9 +1,10 @@
-// src/apis/auth.ts
 import type {
   ApiResponse,
   AuthenticatedUserResponseData,
   LoginRequest,
   NicknameCheckResponseData,
+  ResetPasswordRequest,
+  ResetPasswordResponseData,
   SendSignupCodeRequest,
   SendSignupCodeResponseData,
   SignupRequest,
@@ -64,5 +65,13 @@ export const requestVerifyPasswordCode = async (payload: { email: string; code: 
   const response = await serverApi
     .post("api/auth/forgot-password/verify-code", { json: payload })
     .json();
+  return response;
+};
+
+// 새 비밀번호 설정 API
+export const requestResetPassword = async (payload: ResetPasswordRequest) => {
+  const response = await serverApi
+    .post("api/auth/reset-password", { json: payload })
+    .json<ApiResponse<ResetPasswordResponseData>>();
   return response;
 };

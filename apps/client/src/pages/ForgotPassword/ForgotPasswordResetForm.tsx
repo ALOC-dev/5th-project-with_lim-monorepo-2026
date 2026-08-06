@@ -4,48 +4,62 @@ import { Icon } from "../../components/Icon/Icon";
 import { useForgotPasswordInput } from "./ForgotPassword.context";
 import { S } from "./ForgotPassword.styled";
 
-export default function ResetPasswordFormContent() {
-  const { password, passwordConfirm, setPassword, setPasswordConfirm } = useForgotPasswordInput();
+export default function ResetPasswordForm() {
+  const { password, setPassword, passwordConfirm, setPasswordConfirm, handleResetPassword } =
+    useForgotPasswordInput();
+
+  const navigate = useNavigate();
+
+  const isPasswordValid =
+    /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d!@#$%^&*()_+~`\-={}[\]:;"'<>,.?/]{8,20}$/.test(password);
 
   const isPasswordMismatch = passwordConfirm.length > 0 && password !== passwordConfirm;
   const isPasswordMatch = passwordConfirm.length > 0 && password === passwordConfirm;
 
-  const navigate = useNavigate();
+  const isResetReady = isPasswordValid && isPasswordMatch;
 
-  const isResetReady = password.length >= 8 && password === passwordConfirm;
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!isPasswordValid) {
+      alert("비밀번호 형식을 확인해 주세요.");
+      return;
+    }
+
     if (!isResetReady) return;
-    alert("비밀번호가 성공적으로 변경되었습니다.");
-    void navigate("/login");
+
+    try {
+      await handleResetPassword();
+      void navigate("/login");
+    } catch (error) {
+      console.error("비밀번호 변경 실패", error);
+    }
   };
 
   return (
     <S.Container>
       <S.Header>
         <S.StatusBarMock></S.StatusBarMock>
-
         <S.NavBar>
           <S.BackButton type="button" onClick={() => navigate(-1)}>
             <Icon name="back-arrow" />
           </S.BackButton>
-          <S.Title>새 비밀번호</S.Title>
+          <S.Title>새 비밀번호 설정</S.Title>
         </S.NavBar>
       </S.Header>
 
       <S.Form onSubmit={handleSubmit}>
-        <S.TitleSection>
+        <S.IntroSection>
           <S.Badge>인증 완료</S.Badge>
           <S.Heading>
-            새 비밀번호를
+            새로운 비밀번호를
             <br />
-            설정해 주세요
+            입력해 주세요
           </S.Heading>
-          <S.HelperText>
+          <S.Description>
             이전과 다른 비밀번호를 사용하면 계정을 더 안전하게 보호할 수 있습니다.
-          </S.HelperText>
-        </S.TitleSection>
+          </S.Description>
+        </S.IntroSection>
 
         <S.InputGroup>
           <S.Label htmlFor="password">새 비밀번호</S.Label>
@@ -56,7 +70,13 @@ export default function ResetPasswordFormContent() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
-          <S.HelperText>영문과 숫자를 반드시 포함해 주세요.</S.HelperText>
+          {password.length > 0 && !isPasswordValid ? (
+            <S.HelperText $state="error">
+              영문과 숫자를 모두 포함하여 8~20자로 입력해 주세요.
+            </S.HelperText>
+          ) : (
+            <S.HelperText>영문과 숫자를 반드시 포함해 주세요.</S.HelperText>
+          )}
         </S.InputGroup>
 
         <S.InputGroup>
@@ -78,13 +98,9 @@ export default function ResetPasswordFormContent() {
         </S.InputGroup>
 
         <S.SubmitButton type="submit" disabled={!isResetReady}>
-          비밀번호 재설정
+          비밀번호 변경하기
         </S.SubmitButton>
       </S.Form>
-
-      <S.Footer>
-        <S.LoginLink to="/login">로그인 화면으로 돌아가기</S.LoginLink>
-      </S.Footer>
     </S.Container>
   );
 }
