@@ -74,6 +74,7 @@ export const S = {
   Title: styled.h2`
     ${typography.title.lg}
     color: ${tokens.color.neutral[900]};
+    word-break: keep-all;
   `,
   Description: styled.p`
     ${typography.body.xs}

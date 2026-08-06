@@ -15,46 +15,41 @@ export const S = {
   `,
 
   Header: styled.header`
-    display: flex;
-    width: 100%;
-    padding: 18px 24px 6px 24px;
-    flex-direction: column;
-    gap: 4px;
-    background: ${tokens.color.neutral["50"]};
-    box-sizing: border-box;
+    background-color: ${tokens.color.neutral[50]};
+    height: 96px;
   `,
-
   StatusBarMock: styled.div`
     display: flex;
     justify-content: space-between;
-    align-items: center;
-    width: 100%;
-    font-size: 14px;
+    padding: 14px 20px;
+    ${tokens.typography.body.sm}
     font-weight: 600;
-    color: ${tokens.color.neutral["900"]};
   `,
-
   NavBar: styled.div`
     display: flex;
     align-items: center;
+    padding: 12px 20px;
     gap: 12px;
-    width: 100%;
   `,
 
   BackButton: styled.button`
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 24px;
-    height: 24px;
     background: none;
     border: none;
     padding: 0;
     cursor: pointer;
+    color: ${tokens.color.neutral["900"]};
+    svg {
+      width: 24px;
+      height: 24px;
+    }
   `,
 
-  Title: styled.h1`
-    font-size: 18px;
+  Title: styled.label`
+    ${tokens.typography.utility.screenTitle};
+    font-size: 16px;
     font-weight: 600;
     line-height: 22px;
     color: ${tokens.color.neutral["900"]};
@@ -79,8 +74,9 @@ export const S = {
   `,
 
   Label: styled.label`
+    ${tokens.typography.label.sm}
     font-size: 13px;
-    font-weight: 500;
+    font-weight: 700;
     line-height: 18px;
     color: ${tokens.color.neutral["900"]};
   `,
@@ -100,9 +96,10 @@ export const S = {
     border-radius: 12px;
     border: 1.5px solid ${tokens.color.neutral["200"]};
     background-color: ${tokens.color.neutral["0"]};
-    font-size: 16px;
+    ${tokens.typography.label.sm}
+    font-size: 14px;
     font-weight: 400;
-    line-height: 24px;
+    line-height: 22px;
     outline: none;
     color: ${tokens.color.neutral["900"]};
     transition: border-color 0.2s ease;
@@ -117,11 +114,18 @@ export const S = {
     }
   `,
 
-  HelperText: styled.span`
+  HelperText: styled.span<{ $state?: "default" | "success" | "error" }>`
+    width: 100%;
+    flex-shrink: 0;
+    ${tokens.typography.body.xs};
     font-size: 13px;
     font-weight: 400;
     line-height: 20px;
-    color: ${tokens.color.neutral["700"]};
+    color: ${({ $state }) => {
+      if ($state === "success") return tokens.color.tertiary["500"];
+      if ($state === "error") return tokens.color.primary["700"];
+      return tokens.color.neutral["700"];
+    }};
   `,
 
   HelperTextError: styled.span`
@@ -131,7 +135,7 @@ export const S = {
     color: ${tokens.color.primary["500"]};
   `,
 
-  ActionButton: styled.button`
+  ActionButton: styled.button<{ $variant?: "primary" | "secondary" | "disabled" }>`
     display: flex;
     height: 56px;
     width: 116px;
@@ -140,13 +144,27 @@ export const S = {
     flex-shrink: 0;
     justify-content: center;
     align-items: center;
-    background-color: ${tokens.color.primary["500"]};
-    border: none;
-    color: ${tokens.color.neutral["0"]};
+
+    background-color: ${({ $variant }) => {
+      if ($variant === "secondary") return tokens.color.neutral["0"];
+      if ($variant === "disabled") return tokens.color.neutral["200"];
+      return tokens.color.primary["500"];
+    }};
+
+    color: ${({ $variant }) => {
+      if ($variant === "secondary") return tokens.color.neutral["900"];
+      if ($variant === "disabled") return tokens.color.neutral["700"];
+      return tokens.color.neutral["0"];
+    }};
+
+    border: ${({ $variant }) =>
+      $variant === "secondary" ? `1px solid ${tokens.color.neutral["200"]}` : "none"};
+
+    ${tokens.typography.utility.cta};
     font-size: 14px;
     font-weight: 700;
     line-height: 20px;
-    cursor: pointer;
+    cursor: ${({ $variant }) => ($variant === "disabled" ? "not-allowed" : "pointer")};
   `,
 
   SubmitButton: styled.button<{ disabled?: boolean }>`
@@ -161,8 +179,10 @@ export const S = {
       disabled ? tokens.color.neutral["200"] : tokens.color.primary["500"]};
     color: ${({ disabled }) =>
       disabled ? tokens.color.neutral["700"] : tokens.color.neutral["0"]};
+    ${tokens.typography.utility.cta};
     font-size: 14px;
     font-weight: 700;
+    line-height: 20px;
     cursor: ${({ disabled }) => (disabled ? "not-allowed" : "pointer")};
     margin-top: 16px;
   `,
@@ -177,16 +197,10 @@ export const S = {
     margin-top: ${({ isBottomFixed }) => (isBottomFixed ? "auto" : "0")};
   `,
 
-  FooterText: styled.span`
-    font-size: 14px;
-    font-weight: 400;
-    line-height: 22px;
-    color: ${tokens.color.neutral["700"]};
-  `,
-
   LoginLink: styled(Link)`
-    font-size: 14px;
-    font-weight: 500;
+    ${tokens.typography.utility.cta}
+    font-size: 13px;
+    font-weight: 700;
     line-height: 20px;
     padding: 0 8px;
     color: ${tokens.color.primary["500"]};
@@ -204,7 +218,8 @@ export const S = {
     margin-bottom: 16px;
   `,
 
-  Heading: styled.h2`
+  Heading: styled.label`
+    ${tokens.typography.title.lg};
     font-size: 28px;
     font-weight: 700;
     line-height: 36px;
@@ -212,7 +227,8 @@ export const S = {
     margin: 0;
   `,
 
-  Description: styled.p`
+  Description: styled.label`
+    ${tokens.typography.body.xs};
     font-size: 13px;
     font-weight: 400;
     line-height: 20px;
@@ -232,6 +248,7 @@ export const S = {
   `,
 
   InfoTitle: styled.strong`
+    ${tokens.typography.title.xs}
     font-size: 13px;
     font-weight: 700;
     line-height: 18px;
@@ -239,6 +256,7 @@ export const S = {
   `,
 
   InfoText: styled.span`
+    ${tokens.typography.body.xs}
     font-size: 12px;
     font-weight: 400;
     line-height: 18px;
@@ -253,9 +271,10 @@ export const S = {
   `,
 
   Badge: styled.span`
+    ${tokens.typography.utility.cta}
     color: ${tokens.color.primary["500"]};
-    font-size: 13px;
-    font-weight: 500;
-    line-height: 18px;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 16px;
   `,
 };

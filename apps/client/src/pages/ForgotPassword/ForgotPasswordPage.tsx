@@ -2,6 +2,8 @@ import type { ReactNode } from "react";
 import { useCallback, useMemo, useState } from "react";
 import { Outlet } from "react-router-dom";
 
+import { requestSendPasswordCode, requestVerifyPasswordCode } from "../../apis/auth";
+import { toApiClientErrorMessage } from "../../apis/errors";
 import { ForgotPasswordContext, type ForgotPasswordContextType } from "./ForgotPassword.context";
 
 const ForgotPasswordFlowProvider = ({ children }: { readonly children: ReactNode }) => {
@@ -21,13 +23,37 @@ const ForgotPasswordFlowProvider = ({ children }: { readonly children: ReactNode
     return authCode.length === 6;
   }, [authCode]);
 
-  const handleSendAuthCode = useCallback(() => {
-    if (email.length > 0) setIsEmailCodeSent(true);
+  const handleSendAuthCode = useCallback(async () => {
+    if (email.length === 0) return alert("이메일을 입력해주세요.");
+
+    try {
+      await requestSendPasswordCode({ email });
+      setIsEmailCodeSent(true);
+      alert("인증번호가 발송되었습니다. 이메일을 확인해주세요.");
+    } catch (error) {
+      const errorMessage = toApiClientErrorMessage(error);
+      alert(`인증번호 발송에 실패했습니다. (${errorMessage})`);
+      console.error(error);
+    }
   }, [email]);
 
-  const handleVerifyAuthCode = useCallback(() => {
-    if (authCode.length > 0) setIsEmailVerified(true);
-  }, [authCode]);
+  const handleVerifyAuthCode = useCallback(async () => {
+    if (authCode.length !== 6) {
+      alert("인증번호 6자리를 정확히 입력해주세요.");
+      throw new Error("Invalid Code Length");
+    }
+
+    try {
+      await requestVerifyPasswordCode({ email, code: authCode });
+
+      alert("이메일 인증이 완료되었습니다.");
+    } catch (error) {
+      const errorMessage = toApiClientErrorMessage(error);
+      alert(`잘못된 인증번호이거나 만료되었습니다. (${errorMessage})`);
+      console.error(error);
+      throw error;
+    }
+  }, [email, authCode]);
 
   const resetForm = useCallback(() => {
     setEmail("");

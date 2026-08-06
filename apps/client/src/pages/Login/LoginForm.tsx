@@ -1,21 +1,42 @@
+import { type AxiosError } from "axios";
+import { useNavigate } from "react-router-dom";
+
+import { requestLogin } from "../../apis/auth";
+import { useAuth } from "../../contexts/Auth.context";
 import { useLoginFormInput } from "./Login.context";
 import { S } from "./Login.styled";
 
 export default function LoginFormContent() {
-  const { email, password, isLoginReady, setEmail, setPassword, resetForm } = useLoginFormInput();
+  const { email, password, isLoginReady, setEmail, setPassword } = useLoginFormInput();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const navigate = useNavigate();
+
+  const { login } = useAuth();
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isLoginReady) return;
-    // console.log("Login attempt:", { email, password });
+
+    try {
+      const response = await requestLogin({ email, password });
+
+      if (response.success) {
+        alert("로그인에 성공했습니다!");
+        login();
+        void navigate("/place/recommendation/form", { replace: true });
+      }
+    } catch (error) {
+      const err = error as AxiosError<{ error?: string }>;
+      const errorMessage =
+        err.response?.data?.error || "로그인 중 오류가 발생했습니다. 다시 시도해 주세요.";
+      alert(errorMessage);
+    }
   };
+
   return (
     <S.Container>
       <S.Header>
-        <S.StatusBarMock>
-          <span>9:41</span>
-          <span>•••</span>
-        </S.StatusBarMock>
+        <S.StatusBarMock></S.StatusBarMock>
         <S.Title>로그인</S.Title>
       </S.Header>
 

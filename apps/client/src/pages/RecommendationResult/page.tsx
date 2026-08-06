@@ -1,21 +1,25 @@
-import styled from '@emotion/styled';
-import { useLocation, useNavigate } from 'react-router-dom';
+import styled from "@emotion/styled";
+import type {
+  PlaceRecommendationItem,
+  UserOutput,
+} from "@monorepo/recommendation-engine/v1/contracts";
+import { useLocation, useNavigate } from "react-router-dom";
 
-import { tokens } from '../../design-system/tokens.generated';
-import { typography } from '../../design-system/typography.generated';
-import type { UserOutput, PlaceRecommendationItem } from '@monorepo/recommendation-engine/v1/contracts';
+import { tokens } from "../../design-system/tokens.generated";
+import { typography } from "../../design-system/typography.generated";
 
 const RecommendationResultPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const result = location.state?.result as UserOutput | undefined;
+  const state = location.state as { result?: UserOutput } | null;
+  const result = state?.result;
 
   if (!result) {
     return (
       <S.Page>
         <S.Empty>
           <S.EmptyText>결과 데이터가 없습니다.</S.EmptyText>
-          <S.BackButton onClick={() => navigate('/place/recommendation/form')}>
+          <S.BackButton onClick={() => navigate("/place/recommendation/form")}>
             처음으로
           </S.BackButton>
         </S.Empty>
@@ -35,7 +39,7 @@ const RecommendationResultPage = () => {
         ))}
       </S.List>
       <S.Footer>
-        <S.BackButton onClick={() => navigate('/place/recommendation/form')}>
+        <S.BackButton onClick={() => navigate("/place/recommendation/form")}>
           다시 추천받기
         </S.BackButton>
       </S.Footer>
@@ -43,13 +47,7 @@ const RecommendationResultPage = () => {
   );
 };
 
-const RecommendationCard = ({
-  item,
-  rank,
-}: {
-  item: PlaceRecommendationItem;
-  rank: number;
-}) => (
+const RecommendationCard = ({ item, rank }: { item: PlaceRecommendationItem; rank: number }) => (
   <S.Card>
     <S.CardHeader>
       <S.Rank>{rank}</S.Rank>
@@ -137,7 +135,7 @@ const S = {
     display: flex;
     flex-direction: column;
     gap: 12px;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
   `,
   CardHeader: styled.div`
     display: flex;
@@ -222,7 +220,9 @@ const S = {
     color: ${tokens.color.primary[500]};
     ${typography.body.xs}
     text-decoration: none;
-    &:hover { text-decoration: underline; }
+    &:hover {
+      text-decoration: underline;
+    }
   `,
   Footer: styled.div`
     width: 100%;

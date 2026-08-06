@@ -1,0 +1,66 @@
+// src/apis/auth.ts
+import type {
+  ApiResponse,
+  AuthenticatedUserResponseData,
+  LoginRequest,
+  NicknameCheckResponseData,
+  SendSignupCodeRequest,
+  SendSignupCodeResponseData,
+  SignupRequest,
+  VerifySignupCodeRequest,
+  VerifySignupCodeResponseData,
+} from "@monorepo/api-contracts";
+
+import { serverApi } from "./base";
+
+// 회원가입 API
+export const requestSignup = async (payload: SignupRequest) => {
+  const response = await serverApi
+    .post("api/auth/signup", { json: payload })
+    .json<ApiResponse<AuthenticatedUserResponseData>>();
+  return response;
+};
+
+// 로그인 API
+export const requestLogin = async (payload: LoginRequest) => {
+  const response = await serverApi
+    .post("api/auth/login", { json: payload })
+    .json<ApiResponse<AuthenticatedUserResponseData>>();
+  return response;
+};
+
+// 닉네임 중복 확인 API
+export const requestNicknameCheck = async (nickname: string) => {
+  const response = await serverApi
+    .get("api/auth/nickname-check", { searchParams: { nickname } })
+    .json<ApiResponse<NicknameCheckResponseData>>();
+  return response;
+};
+
+// 인증번호 발송 API
+export const requestSendSignupCode = async (payload: SendSignupCodeRequest) => {
+  const response = await serverApi
+    .post("api/auth/signup/send-code", { json: payload })
+    .json<ApiResponse<SendSignupCodeResponseData>>();
+  return response;
+};
+
+// 인증번호 검증 API
+export const requestVerifySignupCode = async (payload: VerifySignupCodeRequest) => {
+  const response = await serverApi
+    .post("api/auth/signup/verify-code", { json: payload })
+    .json<ApiResponse<VerifySignupCodeResponseData>>();
+  return response;
+};
+
+// 비밀번호 재설정 폼 인증번호 발송 API
+export const requestSendPasswordCode = async (payload: { email: string }) => {
+  const response = await serverApi.post("api/auth/password/send-code", { json: payload }).json();
+  return response;
+};
+
+// 비밀번호 재설정 폼 인증번호 검증 API
+export const requestVerifyPasswordCode = async (payload: { email: string; code: string }) => {
+  const response = await serverApi.post("api/auth/password/verify-code", { json: payload }).json();
+  return response;
+};

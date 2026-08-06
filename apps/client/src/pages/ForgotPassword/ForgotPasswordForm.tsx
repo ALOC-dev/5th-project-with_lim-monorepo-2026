@@ -1,7 +1,6 @@
 import { useNavigate } from "react-router-dom";
 
 import { Icon } from "../../components/Icon/Icon";
-import { tokens } from "../../design-system/tokens.generated";
 import { useForgotPasswordInput } from "./ForgotPassword.context";
 import { S } from "./ForgotPassword.styled";
 
@@ -19,25 +18,26 @@ export default function ForgotPasswordForm() {
 
   const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isAuthCodeReady) return;
 
-    handleVerifyAuthCode();
-    void navigate("/login/forgotpassword/reset");
+    try {
+      await handleVerifyAuthCode();
+      void navigate("/login/forgotpassword/reset");
+    } catch (error) {
+      console.error("인증 실패", error);
+    }
   };
 
   return (
     <S.Container>
       <S.Header>
-        <S.StatusBarMock>
-          <span>9:41</span>
-          <span>•••</span>
-        </S.StatusBarMock>
+        <S.StatusBarMock></S.StatusBarMock>
 
         <S.NavBar>
           <S.BackButton type="button" onClick={() => navigate(-1)}>
-            <Icon name="back-arrow" size={24} color={tokens.color.neutral["900"]} />
+            <Icon name="back-arrow" />
           </S.BackButton>
           <S.Title>비밀번호 재설정</S.Title>
         </S.NavBar>
@@ -102,8 +102,7 @@ export default function ForgotPasswordForm() {
           </>
         )}
         <S.Footer isBottomFixed>
-          <S.FooterText>비밀번호가 기억났나요?</S.FooterText>
-          <S.LoginLink to="/login">로그인</S.LoginLink>
+          <S.LoginLink to="/login">로그인 화면으로 돌아가기</S.LoginLink>
         </S.Footer>
       </S.Form>
     </S.Container>

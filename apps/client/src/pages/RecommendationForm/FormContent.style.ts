@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 
-import { theme } from "../../design-system/theme.generated";
+import { tokens } from "../../design-system/tokens.generated";
 
 export const S = {
   RootContainer: styled.div`
@@ -8,7 +8,37 @@ export const S = {
     flex-direction: column;
     height: 100%;
   `,
+  Header: styled.header`
+    background-color: ${tokens.color.neutral[50]};
+    height: 96px;
+  `,
+  StatusBarMock: styled.div`
+    display: flex;
+    justify-content: space-between;
+    padding: 14px 20px;
+    ${tokens.typography.body.sm}
+    font-weight: 600;
+  `,
+  NavBar: styled.div`
+    display: flex;
+    align-items: center;
+    padding: 12px 20px;
+    gap: 12px;
+  `,
+  BackButton: styled.button`
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 
+    svg {
+      width: 24px;
+      height: 24px;
+    }
+  `,
   HeaderWrapper: styled.div`
     padding: 18px 24px;
   `,
@@ -17,7 +47,7 @@ export const S = {
     font-size: 16px;
     font-weight: bold;
     margin: 0;
-    color: ${theme.tokens.color.neutral["900"]};
+    color: ${tokens.color.neutral["900"]};
   `,
 
   ScrollContent: styled.div`
@@ -37,7 +67,7 @@ export const S = {
 
   FormLabel: styled.label`
     font-size: 13px;
-    color: ${theme.tokens.color.neutral["700"]};
+    color: ${tokens.color.neutral["700"]};
     font-weight: 500;
 
     &[htmlFor="form-date"] {
@@ -73,7 +103,7 @@ export const S = {
   BudgetValue: styled.span`
     font-size: 14px;
     font-weight: bold;
-    color: ${theme.tokens.color.neutral["700"]};
+    color: ${tokens.color.neutral["700"]};
   `,
 
   TextareaContainer: styled.div`
@@ -103,7 +133,7 @@ export const S = {
 
   SubmitErrorMessage: styled.p`
     margin: 0 0 10px;
-    color: ${theme.tokens.color.primary["700"]};
+    color: ${tokens.color.primary["700"]};
     font-size: 13px;
     font-weight: 500;
   `,
