@@ -21,6 +21,7 @@ import {
   RECOMMENDATION_FAILURE_EVENT,
 } from "./recommendation/error-presentation.js";
 import authRouter from "./routes/auth.js";
+import favoritesRouter from "./routes/favorites.js";
 import usersRouter from "./routes/users.js";
 
 const { config, secrets } = parseServerEnvironment(process.env);
@@ -35,6 +36,7 @@ app.use(
 app.use(express.json());
 app.use(cookieParser());
 app.use("/api/auth", authRouter);
+app.use("/api/favorites", favoritesRouter);
 app.use("/api/users", usersRouter);
 
 type JobState = {

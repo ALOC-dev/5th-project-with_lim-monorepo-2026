@@ -8,14 +8,13 @@ import {
   type LogoutResponseData,
   NicknameCheckQuerySchema,
   type NicknameCheckResponseData,
-  type ResendVerificationEmailResponseData,
   ResetPasswordRequestSchema,
   type ResetPasswordResponseData,
   SendSignupCodeRequestSchema,
   type SendSignupCodeResponseData,
   SignupRequestSchema,
-  VerifyEmailQuerySchema,
-  type VerifyEmailResponseData,
+  VerifyForgotPasswordCodeRequestSchema,
+  type VerifyForgotPasswordCodeResponseData,
   VerifySignupCodeRequestSchema,
   type VerifySignupCodeResponseData,
 } from "@monorepo/api-contracts";
@@ -26,20 +25,14 @@ import jwt from "jsonwebtoken";
 
 import { db } from "../db/client.js";
 import {
-  emailVerifications,
-  passwordResetTokens,
+  passwordResetCodes,
   signupVerificationCodes,
   users,
 } from "../db/schema.js";
 import { asyncHandler } from "../lib/asyncHandler.js";
 import { JWT_SECRET } from "../lib/env.js";
-import {
-  sendPasswordResetEmail,
-  sendSignupVerificationCode,
-  sendVerificationEmail,
-} from "../lib/resend.js";
-import { generateToken, generateVerificationCode, hashToken } from "../lib/tokens.js";
-import { requireAuth } from "../middleware/auth.js";
+import { sendPasswordResetCode, sendSignupVerificationCode } from "../lib/resend.js";
+import { generateVerificationCode, hashToken } from "../lib/tokens.js";
 
 const router = Router();
 
@@ -273,85 +266,6 @@ router.post("/logout", (req, res) => {
   res.status(200).json(createApiResponse({ success: true } satisfies LogoutResponseData));
 });
 
-router.get(
-  "/verify-email",
-  asyncHandler(async (req, res) => {
-    const parsed = VerifyEmailQuerySchema.safeParse(req.query);
-    if (!parsed.success) {
-      res.status(400).json(createApiError("invalid token"));
-      return;
-    }
-
-    const [record] = await db
-      .select()
-      .from(emailVerifications)
-      .where(
-        and(
-          eq(emailVerifications.tokenHash, hashToken(parsed.data.token)),
-          isNull(emailVerifications.usedAt),
-          gt(emailVerifications.expiresAt, new Date()),
-        ),
-      );
-
-    if (!record) {
-      res.status(400).json(createApiError("invalid or expired token"));
-      return;
-    }
-
-    await db
-      .update(emailVerifications)
-      .set({ usedAt: new Date() })
-      .where(eq(emailVerifications.id, record.id));
-
-    await db.update(users).set({ emailVerified: true }).where(eq(users.id, record.userId));
-
-    res.status(200).json(createApiResponse({ verified: true } satisfies VerifyEmailResponseData));
-  }),
-);
-
-router.post(
-  "/verify-email/resend",
-  requireAuth,
-  asyncHandler(async (req, res) => {
-    const [user] = await db.select().from(users).where(eq(users.id, req.userId));
-
-    if (!user) {
-      res.status(404).json(createApiError("not found"));
-      return;
-    }
-
-    if (user.emailVerified) {
-      res
-        .status(200)
-        .json(
-          createApiResponse({
-            alreadyVerified: true,
-          } satisfies ResendVerificationEmailResponseData),
-        );
-      return;
-    }
-
-    const verifyToken = generateToken();
-    await db.insert(emailVerifications).values({
-      userId: user.id,
-      tokenHash: hashToken(verifyToken),
-      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
-    });
-
-    try {
-      await sendVerificationEmail(user.email, verifyToken);
-    } catch (err) {
-      console.error("failed to send verification email", err);
-      res.status(500).json(createApiError("failed to send email"));
-      return;
-    }
-
-    res
-      .status(200)
-      .json(createApiResponse({ sent: true } satisfies ResendVerificationEmailResponseData));
-  }),
-);
-
 router.post(
   "/forgot-password",
   asyncHandler(async (req, res) => {
@@ -365,21 +279,59 @@ router.post(
 
     // 이메일 존재 여부와 무관하게 항상 같은 응답 (계정 존재 여부 스캔 방지)
     if (user) {
-      const resetToken = generateToken();
-      await db.insert(passwordResetTokens).values({
-        userId: user.id,
-        tokenHash: hashToken(resetToken),
-        expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+      const code = generateVerificationCode();
+      await db.insert(passwordResetCodes).values({
+        email: user.email,
+        codeHash: hashToken(code),
+        expiresAt: new Date(Date.now() + 5 * 60 * 1000),
       });
 
       try {
-        await sendPasswordResetEmail(user.email, resetToken);
+        await sendPasswordResetCode(user.email, code);
       } catch (err) {
         console.error("failed to send password reset email", err);
       }
     }
 
     res.status(200).json(createApiResponse({ sent: true } satisfies ForgotPasswordResponseData));
+  }),
+);
+
+router.post(
+  "/forgot-password/verify-code",
+  asyncHandler(async (req, res) => {
+    const parsed = VerifyForgotPasswordCodeRequestSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json(createApiError("invalid input"));
+      return;
+    }
+
+    const [record] = await db
+      .select()
+      .from(passwordResetCodes)
+      .where(
+        and(
+          eq(passwordResetCodes.email, parsed.data.email),
+          eq(passwordResetCodes.codeHash, hashToken(parsed.data.code)),
+          isNull(passwordResetCodes.verifiedAt),
+          gt(passwordResetCodes.expiresAt, new Date()),
+        ),
+      )
+      .orderBy(desc(passwordResetCodes.createdAt));
+
+    if (!record) {
+      res.status(400).json(createApiError("invalid or expired code"));
+      return;
+    }
+
+    await db
+      .update(passwordResetCodes)
+      .set({ verifiedAt: new Date() })
+      .where(eq(passwordResetCodes.id, record.id));
+
+    res.status(200).json(
+      createApiResponse({ verified: true } satisfies VerifyForgotPasswordCodeResponseData),
+    );
   }),
 );
 
@@ -392,30 +344,38 @@ router.post(
       return;
     }
 
-    const [record] = await db
+    const [verification] = await db
       .select()
-      .from(passwordResetTokens)
+      .from(passwordResetCodes)
       .where(
         and(
-          eq(passwordResetTokens.tokenHash, hashToken(parsed.data.token)),
-          isNull(passwordResetTokens.usedAt),
-          gt(passwordResetTokens.expiresAt, new Date()),
+          eq(passwordResetCodes.email, parsed.data.email),
+          isNotNull(passwordResetCodes.verifiedAt),
+          isNull(passwordResetCodes.usedAt),
         ),
-      );
+      )
+      .orderBy(desc(passwordResetCodes.verifiedAt));
 
-    if (!record) {
-      res.status(400).json(createApiError("invalid or expired token"));
+    if (!verification) {
+      res.status(400).json(createApiError("email not verified"));
+      return;
+    }
+
+    const [user] = await db.select().from(users).where(eq(users.email, parsed.data.email));
+
+    if (!user) {
+      res.status(400).json(createApiError("invalid request"));
       return;
     }
 
     const passwordHash = await bcrypt.hash(parsed.data.newPassword, 10);
 
-    await db.update(users).set({ passwordHash }).where(eq(users.id, record.userId));
+    await db.update(users).set({ passwordHash }).where(eq(users.id, user.id));
 
     await db
-      .update(passwordResetTokens)
+      .update(passwordResetCodes)
       .set({ usedAt: new Date() })
-      .where(eq(passwordResetTokens.id, record.id));
+      .where(eq(passwordResetCodes.id, verification.id));
 
     res.status(200).json(createApiResponse({ reset: true } satisfies ResetPasswordResponseData));
   }),
