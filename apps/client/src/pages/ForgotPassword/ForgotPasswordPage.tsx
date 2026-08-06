@@ -29,7 +29,7 @@ const ForgotPasswordFlowProvider = ({ children }: { readonly children: ReactNode
     try {
       await requestSendPasswordCode({ email });
       setIsEmailCodeSent(true);
-      alert("인증번호가 발송되었습니다. 이메일을 확인해주세요.");
+      alert("가입된 계정이라면 인증번호가 발송됩니다. 이메일함을 확인해 주세요.");
     } catch (error) {
       const errorMessage = toApiClientErrorMessage(error);
       alert(`인증번호 발송에 실패했습니다. (${errorMessage})`);
