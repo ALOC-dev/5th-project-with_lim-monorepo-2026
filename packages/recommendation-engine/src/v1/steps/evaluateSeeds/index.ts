@@ -456,7 +456,10 @@ const resolveReferenceUrlsForEvidences = async (
   const scrapeRequests = new Map<string, Promise<UrlScrapeResult>>();
   const getBrowser = (): Promise<PlaywrightBrowser> => {
     browserPromise ??= Promise.resolve().then(() =>
-      loadPlaywright().chromium.launch({ headless: true }),
+      loadPlaywright().chromium.launch({
+        headless: true,
+        args: ["--disable-dev-shm-usage", "--no-sandbox"],
+      }),
     );
     return browserPromise;
   };
