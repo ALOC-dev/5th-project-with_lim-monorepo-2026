@@ -1,6 +1,14 @@
 import { createBrowserRouter, Navigate } from "react-router-dom";
 
 import FavoritePlacesPage from "./pages/FavoritePlaces/FavoritePlacesPage";
+import {
+  CourseFavoritePage,
+  CourseRecommendationFormPage,
+  CourseRecommendationHistoryPage,
+  CourseRecommendationOptionDetailPage,
+  CourseRecommendationPendingPage,
+  CourseRecommendationResultPage,
+} from "./pages/CourseRecommendation/CourseRecommendationPages";
 import ForgotPasswordForm from "./pages/ForgotPassword/ForgotPasswordForm";
 import ForgotPasswordPage from "./pages/ForgotPassword/ForgotPasswordPage";
 import ForgotPasswordResetForm from "./pages/ForgotPassword/ForgotPasswordResetForm";
@@ -46,6 +54,30 @@ export const router = createBrowserRouter([
       {
         path: "/place/favorite",
         element: <FavoritePlacesPage />,
+      },
+      {
+        path: "/course/recommendation/form",
+        element: <CourseRecommendationFormPage />,
+      },
+      {
+        path: "/course/recommendation/pending/:courseId",
+        element: <CourseRecommendationPendingPage />,
+      },
+      {
+        path: "/course/recommendation/result/:courseId",
+        element: <CourseRecommendationResultPage />,
+      },
+      {
+        path: "/course/recommendation/result/:courseId/option/:optionId",
+        element: <CourseRecommendationOptionDetailPage />,
+      },
+      {
+        path: "/course/recommendation/history",
+        element: <CourseRecommendationHistoryPage />,
+      },
+      {
+        path: "/course/favorite",
+        element: <CourseFavoritePage />,
       },
     ],
   },
