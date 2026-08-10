@@ -10,7 +10,7 @@ import { useNavigate } from "react-router-dom";
 import { createRecommendationJob } from "../../apis/server/recommendation";
 import { Button } from "../../components/Button";
 import { Dropdown, type DropdownOption } from "../../components/Dropdown";
-import { Icon } from "../../components/Icon/Icon";
+import { Icon } from "../../components/Icon";
 import { Input } from "../../components/Input";
 import Modal from "../../components/Modal/Modal";
 import { RangeSlider } from "../../components/Rangeslider";

@@ -4,11 +4,14 @@ export const iconNames = [
   "search",
   "close",
   "link",
+  "edit",
   "map-pin",
   "back-arrow",
   "circle-x",
   "chevron-left",
   "chevron-right",
+  "heart-outline",
+  "heart-filled",
 ] as const;
 
 export type IconName = (typeof iconNames)[number];
