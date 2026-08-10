@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { Icon } from "../../components/Icon/Icon";
@@ -18,9 +19,35 @@ export default function ForgotPasswordForm() {
 
   const navigate = useNavigate();
 
+  // ⏱️ 타이머 상태 관리 추가
+  const [timeLeft, setTimeLeft] = useState(300);
+
+  useEffect(() => {
+    let timer: ReturnType<typeof setInterval>;
+    if (isEmailCodeSent && timeLeft > 0) {
+      timer = setInterval(() => {
+        setTimeLeft((prev) => prev - 1);
+      }, 1000);
+    }
+    return () => clearInterval(timer);
+  }, [isEmailCodeSent, timeLeft]);
+
+  const formatTime = (seconds: number) => {
+    const minutes = Math.floor(seconds / 60)
+      .toString()
+      .padStart(2, "0");
+    const remainingSeconds = (seconds % 60).toString().padStart(2, "0");
+    return `${minutes}:${remainingSeconds}`;
+  };
+
+  const handleSendCodeWithTimer = async () => {
+    setTimeLeft(300);
+    await handleSendAuthCode();
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isAuthCodeReady) return;
+    if (!isAuthCodeReady || timeLeft === 0) return;
 
     try {
       await handleVerifyAuthCode();
@@ -71,36 +98,55 @@ export default function ForgotPasswordForm() {
               placeholder="name@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              disabled={isEmailCodeSent}
+              readOnly={isEmailCodeSent}
             />
-            <S.ActionButton type="button" onClick={handleSendAuthCode}>
+            <S.ActionButton
+              type="button"
+              onClick={handleSendCodeWithTimer}
+              $variant={isEmailCodeSent ? "secondary" : "primary"}
+            >
               {isEmailCodeSent ? "다시 받기" : "인증번호 받기"}
             </S.ActionButton>
           </S.InputRow>
 
           {isEmailCodeSent && (
-            <S.HelperText>발송되었습니다. 인증번호를 입력해 주세요.</S.HelperText>
+            <S.HelperText $state="error">
+              인증번호가 발송되었습니다. 이메일을 확인해주세요.
+            </S.HelperText>
           )}
         </S.InputGroup>
+
         {isEmailCodeSent && (
-          <>
-            <S.InputGroup>
-              <S.Label htmlFor="authCode">인증번호</S.Label>
+          <S.InputGroup>
+            <S.Label htmlFor="authCode">인증번호</S.Label>
+            <S.InputRow>
               <S.Input
                 type="text"
                 id="authCode"
+                placeholder="6자리 숫자"
                 maxLength={6}
                 value={authCode}
                 onChange={(e) => setAuthCode(e.target.value)}
               />
-              <S.HelperText>6자리 숫자를 입력해 주세요.</S.HelperText>
-            </S.InputGroup>
+              <S.ActionButton
+                type="submit"
+                disabled={!isAuthCodeReady || timeLeft === 0}
+                $variant="primary"
+              >
+                인증하기
+              </S.ActionButton>
+            </S.InputRow>
 
-            <S.SubmitButton type="submit" disabled={!isAuthCodeReady}>
-              재설정으로 이동
-            </S.SubmitButton>
-          </>
+            {timeLeft > 0 ? (
+              <S.HelperText>남은 시간 {formatTime(timeLeft)}</S.HelperText>
+            ) : (
+              <S.HelperText $state="error">
+                인증 시간이 만료되었습니다. 다시 시도해 주세요.
+              </S.HelperText>
+            )}
+          </S.InputGroup>
         )}
+
         <S.Footer isBottomFixed>
           <S.LoginLink to="/login">로그인 화면으로 돌아가기</S.LoginLink>
         </S.Footer>

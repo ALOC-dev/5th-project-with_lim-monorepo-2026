@@ -2,7 +2,11 @@ import type { ReactNode } from "react";
 import { useCallback, useMemo, useState } from "react";
 import { Outlet } from "react-router-dom";
 
-import { requestSendPasswordCode, requestVerifyPasswordCode } from "../../apis/auth";
+import {
+  requestResetPassword,
+  requestSendPasswordCode,
+  requestVerifyPasswordCode,
+} from "../../apis/auth";
 import { toApiClientErrorMessage } from "../../apis/errors";
 import { ForgotPasswordContext, type ForgotPasswordContextType } from "./ForgotPassword.context";
 
@@ -29,7 +33,7 @@ const ForgotPasswordFlowProvider = ({ children }: { readonly children: ReactNode
     try {
       await requestSendPasswordCode({ email });
       setIsEmailCodeSent(true);
-      alert("인증번호가 발송되었습니다. 이메일을 확인해주세요.");
+      alert("가입된 계정이라면 인증번호가 발송됩니다. 이메일함을 확인해 주세요.");
     } catch (error) {
       const errorMessage = toApiClientErrorMessage(error);
       alert(`인증번호 발송에 실패했습니다. (${errorMessage})`);
@@ -47,6 +51,7 @@ const ForgotPasswordFlowProvider = ({ children }: { readonly children: ReactNode
       await requestVerifyPasswordCode({ email, code: authCode });
 
       alert("이메일 인증이 완료되었습니다.");
+      setIsEmailVerified(true);
     } catch (error) {
       const errorMessage = toApiClientErrorMessage(error);
       alert(`잘못된 인증번호이거나 만료되었습니다. (${errorMessage})`);
@@ -54,6 +59,23 @@ const ForgotPasswordFlowProvider = ({ children }: { readonly children: ReactNode
       throw error;
     }
   }, [email, authCode]);
+
+  const handleResetPassword = useCallback(async () => {
+    if (!isResetReady) {
+      alert("비밀번호 형식을 확인해 주세요.");
+      throw new Error("Password is not ready");
+    }
+
+    try {
+      await requestResetPassword({ email, newPassword: password });
+      alert("비밀번호가 성공적으로 변경되었습니다. 다시 로그인해 주세요.");
+    } catch (error) {
+      const errorMessage = toApiClientErrorMessage(error);
+      alert(`비밀번호 변경에 실패했습니다. (${errorMessage})`);
+      console.error(error);
+      throw error;
+    }
+  }, [email, password, isResetReady]);
 
   const resetForm = useCallback(() => {
     setEmail("");
@@ -74,6 +96,7 @@ const ForgotPasswordFlowProvider = ({ children }: { readonly children: ReactNode
       setAuthCode,
       handleSendAuthCode,
       handleVerifyAuthCode,
+      handleResetPassword,
       password,
       passwordConfirm,
       isResetReady,
@@ -89,6 +112,7 @@ const ForgotPasswordFlowProvider = ({ children }: { readonly children: ReactNode
       isEmailVerified,
       handleSendAuthCode,
       handleVerifyAuthCode,
+      handleResetPassword,
       password,
       passwordConfirm,
       isResetReady,
