@@ -1,8 +1,10 @@
 import styled from "@emotion/styled";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CustomOverlayMap, Map, Polyline } from "react-kakao-maps-sdk";
 import { useNavigate, useParams } from "react-router-dom";
 
+import { getCourseStreamUrl } from "../../apis/server/courses";
 import BottomSheet from "../../components/BottomSheet/BottomSheet";
 import { Button } from "../../components/Button";
 import FeedbackState from "../../components/FeedbackState/FeedbackState";
@@ -13,62 +15,62 @@ import Modal from "../../components/Modal/Modal";
 import PageRoot from "../../components/PageRoot/PageRoot";
 import { SearchInput } from "../../components/SearchInput";
 import { tokens } from "../../design-system/tokens.generated";
-import { courseRepository, getCoursePlace } from "./courseRepository";
-import type { CourseDraft, CourseHistoryItem, CourseOption, CoursePlace } from "./course.types";
+import { courseRepository } from "./courseRepository";
+import type { CourseHistoryItem, CourseOption, CoursePlace } from "./course.types";
 
 const MAX_SELECTED_PLACES = 15;
 const formatCurrency = (value: number) => `${new Intl.NumberFormat("ko-KR").format(value)}원`;
-const formatMinutes = (value: number) => {
-  const hours = Math.floor(value / 60);
-  const minutes = value % 60;
-  return minutes === 0 ? `${hours}시간` : `${hours}시간 ${minutes}분`;
-};
-const formatDate = (value: string) => value.replace(/-/g, ". ");
-const getHistoryResultSummary = (history: CourseHistoryItem) => {
-  if (history.status === "PENDING") return "추천 결과를 만드는 중이에요";
-  if (history.status === "FAILED") return "추천을 만들지 못했어요";
-  if (history.status === "CANCELLED") return "추천 생성을 취소했어요";
-  return `추천 코스 ${history.optionCount ?? 0}개`;
-};
+const formatMinutes = (value: number) =>
+  value % 60 === 0
+    ? `${Math.floor(value / 60)}시간`
+    : `${Math.floor(value / 60)}시간 ${value % 60}분`;
+const formatDate = (value: string) => value.slice(0, 10).replace(/-/g, ". ");
+const historySummary = (item: CourseHistoryItem) =>
+  item.status === "PENDING"
+    ? "추천 결과를 만드는 중이에요"
+    : item.status === "FAILED"
+      ? "추천을 만들지 못했어요"
+      : item.status === "CANCELLED"
+        ? "추천 생성을 취소했어요"
+        : item.status === "EMPTY"
+          ? "조건에 맞는 코스를 찾지 못했어요"
+          : `추천 코스 ${item.optionCount ?? 0}개`;
+
+const historyDisplayStatus = (item: CourseHistoryItem) =>
+  item.status === "PENDING" ? "pending" : item.status === "FAILED" ? "failed" : "default";
+
+const canOpenHistory = (item: CourseHistoryItem) =>
+  item.status !== "PENDING" && item.status !== "CANCELLED";
 
 const CoursePage = ({
   children,
-  onBack,
   title,
+  onBack,
   right,
 }: {
   readonly children: React.ReactNode;
-  readonly onBack?: () => void;
   readonly title: string;
+  readonly onBack?: () => void;
   readonly right?: React.ReactNode;
 }) => (
   <PageRoot backgroundColor={tokens.color.neutral[50]} layout="contained">
     <Header onBack={onBack} right={right} title={title} />
-    <S.Content>{children}</S.Content>
+    <S.Page>{children}</S.Page>
   </PageRoot>
 );
 
-const CourseOptionMap = ({
-  option,
-  onSelectStop,
-}: {
-  readonly option: CourseOption;
-  readonly onSelectStop?: () => void;
-}) => {
-  const center = option.stops[0] ?? null;
-  if (!center) {
-    return <S.MapFallback>표시할 장소가 없어요.</S.MapFallback>;
-  }
-
+const CourseMap = ({ option }: { readonly option: CourseOption }) => {
+  const center = option.stops[0];
+  if (!center) return <S.MapFallback>표시할 장소가 없어요.</S.MapFallback>;
   return (
-    <S.MapArea>
+    <S.Map>
       <Map
         center={{ lat: center.lat, lng: center.lng }}
         level={5}
         style={{ height: "100%", width: "100%" }}
       >
         <Polyline
-          path={option.stops.map((stop) => ({ lat: stop.lat, lng: stop.lng }))}
+          path={option.stops.map(({ lat, lng }) => ({ lat, lng }))}
           strokeColor={tokens.color.primary[500]}
           strokeOpacity={0.8}
           strokeStyle="solid"
@@ -81,93 +83,78 @@ const CourseOptionMap = ({
             xAnchor={0.5}
             yAnchor={0.5}
           >
-            <S.MapMarker
-              aria-label={`${index + 1}번째 장소 ${stop.name}`}
-              onClick={onSelectStop}
-              type="button"
-            >
-              {index + 1}
-            </S.MapMarker>
+            <S.Marker type="button">{index + 1}</S.Marker>
           </CustomOverlayMap>
         ))}
       </Map>
-    </S.MapArea>
+    </S.Map>
   );
 };
 
 export const CourseRecommendationFormPage = () => {
   const navigate = useNavigate();
-  const [placeIds, setPlaceIds] = useState<string[]>([]);
+  const [places, setPlaces] = useState<CoursePlace[]>([]);
   const [date, setDate] = useState("2026-07-18");
   const [startTime, setStartTime] = useState("18:30");
   const [durationHours, setDurationHours] = useState(3);
-  const [isPickerOpen, setIsPickerOpen] = useState(false);
-  const [pickerSource, setPickerSource] = useState<"FAVORITE" | "SEARCH">("FAVORITE");
+  const [isPickerOpen, setPickerOpen] = useState(false);
+  const [pickerSource, setPickerSource] = useState<"FAVORITE" | "KAKAO">("FAVORITE");
   const [query, setQuery] = useState("");
-
-  const selectedPlaces = useMemo(
-    () => placeIds.map(getCoursePlace).filter((place): place is CoursePlace => place !== null),
-    [placeIds],
-  );
-  const pickerPlaces = useMemo(
-    () => courseRepository.listPickerPlaces(query, pickerSource),
-    [pickerSource, query],
-  );
-  const togglePlace = (id: string) => {
-    setPlaceIds((current) => {
-      if (current.includes(id)) {
-        return current.filter((placeId) => placeId !== id);
-      }
-      return current.length >= MAX_SELECTED_PLACES ? current : [...current, id];
-    });
-  };
-  const submit = () => {
-    const draft: CourseDraft = { date, durationHours, placeIds, startTime };
-    const job = courseRepository.startRecommendation(draft);
-    void navigate(`/course/recommendation/pending/${encodeURIComponent(job.id)}`);
-  };
+  const pickerQuery = useQuery({
+    queryKey: ["course-picker", pickerSource, query],
+    queryFn: () => courseRepository.listPickerPlaces(query, pickerSource),
+    enabled: isPickerOpen && (pickerSource === "FAVORITE" || query.trim().length > 0),
+    retry: false,
+  });
+  const createMutation = useMutation({
+    mutationFn: () =>
+      courseRepository.startRecommendation({ places, date, startTime, durationHours }),
+    onSuccess: (course) =>
+      void navigate(`/course/recommendation/pending/${encodeURIComponent(course.id)}`),
+  });
+  const toggle = (place: CoursePlace) =>
+    setPlaces((current) =>
+      current.some(({ id }) => id === place.id)
+        ? current.filter(({ id }) => id !== place.id)
+        : current.length < MAX_SELECTED_PLACES
+          ? [...current, place]
+          : current,
+    );
 
   return (
     <CoursePage onBack={() => navigate(-1)} title="코스 추천">
       <S.Scroll>
         <S.Section>
-          <S.SectionHeading>
-            선택 장소 {placeIds.length} / {MAX_SELECTED_PLACES}
-          </S.SectionHeading>
-          <S.PlacePickerButton onClick={() => setIsPickerOpen(true)} type="button">
-            <S.PlacePickerTitle>
-              {selectedPlaces.length === 0 ? "장소 선택" : "선택 장소"}
-            </S.PlacePickerTitle>
-            <S.PlacePickerHint>
-              {selectedPlaces.length === 0
+          <S.Heading>
+            선택 장소 {places.length} / {MAX_SELECTED_PLACES}
+          </S.Heading>
+          <S.PickerOpen onClick={() => setPickerOpen(true)} type="button">
+            <strong>{places.length === 0 ? "장소 선택" : "선택 장소"}</strong>
+            <span>
+              {places.length === 0
                 ? "즐겨찾기 또는 검색으로 장소를 골라주세요."
-                : `${selectedPlaces[0]?.name ?? ""} 외 ${selectedPlaces.length - 1}곳`}
-            </S.PlacePickerHint>
+                : `${places[0]?.name ?? ""} 외 ${places.length - 1}곳`}
+            </span>
             <Icon name="chevron-right" size={20} />
-          </S.PlacePickerButton>
-          {selectedPlaces.length > 0 ? (
-            <S.SelectedPlaceList aria-label="선택한 장소">
-              {selectedPlaces.map((place) => (
-                <S.SelectedPlace key={place.id}>
-                  <span>{place.name}</span>
-                  <S.IconButton
-                    aria-label={`${place.name} 선택 해제`}
-                    onClick={() => togglePlace(place.id)}
-                    type="button"
-                  >
-                    <Icon name="close" size={18} />
-                  </S.IconButton>
-                </S.SelectedPlace>
-              ))}
-            </S.SelectedPlaceList>
-          ) : null}
+          </S.PickerOpen>
+          {places.map((place) => (
+            <S.SelectedPlace key={place.id}>
+              <span>{place.name}</span>
+              <S.IconButton
+                aria-label={`${place.name} 선택 해제`}
+                onClick={() => toggle(place)}
+                type="button"
+              >
+                <Icon name="close" size={18} />
+              </S.IconButton>
+            </S.SelectedPlace>
+          ))}
         </S.Section>
-
         <S.Section>
-          <S.SectionHeading>약속 시간</S.SectionHeading>
+          <S.Heading>약속 시간</S.Heading>
           <S.FieldGrid>
             <S.Field>
-              <S.Label>날짜</S.Label>
+              <label htmlFor="course-date">날짜</label>
               <Input
                 id="course-date"
                 onChange={(event) => setDate(event.target.value)}
@@ -176,7 +163,7 @@ export const CourseRecommendationFormPage = () => {
               />
             </S.Field>
             <S.Field>
-              <S.Label>시작 시간</S.Label>
+              <label htmlFor="course-time">시작 시간</label>
               <Input
                 id="course-time"
                 onChange={(event) => setStartTime(event.target.value)}
@@ -186,7 +173,7 @@ export const CourseRecommendationFormPage = () => {
             </S.Field>
           </S.FieldGrid>
           <S.Field>
-            <S.Label>총 시간</S.Label>
+            <label htmlFor="course-duration">총 시간</label>
             <S.Select
               id="course-duration"
               onChange={(event) => setDurationHours(Number(event.target.value))}
@@ -200,24 +187,30 @@ export const CourseRecommendationFormPage = () => {
             </S.Select>
           </S.Field>
         </S.Section>
+        {createMutation.isError ? (
+          <FeedbackState kind="error" title="코스 추천 요청을 만들지 못했어요" />
+        ) : null}
       </S.Scroll>
-
-      <S.BottomAction>
-        <Button disabled={placeIds.length === 0} onClick={submit} type="button" width="100%">
+      <S.Bottom>
+        <Button
+          disabled={places.length === 0 || createMutation.isPending}
+          onClick={() => createMutation.mutate()}
+          type="button"
+          width="100%"
+        >
           코스 추천 받기
         </Button>
-      </S.BottomAction>
-
+      </S.Bottom>
       <BottomSheet
-        close={() => setIsPickerOpen(false)}
+        close={() => setPickerOpen(false)}
         height="min(78dvh, 680px)"
         id="course-place-picker"
         isOpen={isPickerOpen}
       >
-        <S.SheetContent>
-          <S.SheetTitle>장소 선택</S.SheetTitle>
-          <S.TabRow>
-            <S.TabButton
+        <S.Sheet>
+          <S.Heading>장소 선택</S.Heading>
+          <S.Tabs>
+            <S.Tab
               $active={pickerSource === "FAVORITE"}
               onClick={() => {
                 setPickerSource("FAVORITE");
@@ -226,21 +219,18 @@ export const CourseRecommendationFormPage = () => {
               type="button"
             >
               즐겨찾기
-            </S.TabButton>
-            <S.TabButton
-              $active={pickerSource === "SEARCH"}
-              onClick={() => setPickerSource("SEARCH")}
+            </S.Tab>
+            <S.Tab
+              $active={pickerSource === "KAKAO"}
+              onClick={() => setPickerSource("KAKAO")}
               type="button"
             >
               장소 검색
-            </S.TabButton>
-          </S.TabRow>
-          {pickerSource === "SEARCH" ? (
+            </S.Tab>
+          </S.Tabs>
+          {pickerSource === "KAKAO" ? (
             <SearchInput
-              backHandler={() => {
-                setQuery("");
-                setPickerSource("FAVORITE");
-              }}
+              backHandler={() => setPickerSource("FAVORITE")}
               clearHandler={() => setQuery("")}
               isSearchMode
               onChange={(event) => setQuery(event.target.value)}
@@ -248,43 +238,46 @@ export const CourseRecommendationFormPage = () => {
               value={query}
             />
           ) : null}
-          <S.PickerCount>
-            선택 장소 {placeIds.length} / {MAX_SELECTED_PLACES}
-          </S.PickerCount>
-          {pickerPlaces.length === 0 ? (
+          <S.Count>
+            선택 장소 {places.length} / {MAX_SELECTED_PLACES}
+          </S.Count>
+          {pickerQuery.isPending ? (
+            <FeedbackState kind="loading" title="장소를 불러오는 중이에요" />
+          ) : pickerQuery.data?.length ? (
+            <S.List>
+              {pickerQuery.data.map((place) => {
+                const selected = places.some(({ id }) => id === place.id);
+                const atLimit = places.length >= MAX_SELECTED_PLACES && !selected;
+                return (
+                  <S.ListItem key={place.id}>
+                    <span>
+                      <strong>{place.name}</strong>
+                      <small>
+                        {place.category} · {place.address}
+                      </small>
+                    </span>
+                    <S.SelectPlace disabled={atLimit} onClick={() => toggle(place)} type="button">
+                      {selected ? "선택됨" : atLimit ? "최대 선택" : "선택"}
+                    </S.SelectPlace>
+                  </S.ListItem>
+                );
+              })}
+            </S.List>
+          ) : (
             <FeedbackState
-              description="다른 검색어로 다시 찾아보세요."
+              description={
+                pickerSource === "KAKAO" && query.trim().length === 0
+                  ? "장소명으로 검색해 보세요."
+                  : "다른 검색어로 다시 찾아보세요."
+              }
               kind="empty"
               title="검색 결과가 없어요"
             />
-          ) : (
-            <S.PickerList>
-              {pickerPlaces.map((place) => {
-                const isSelected = placeIds.includes(place.id);
-                const isAtLimit = placeIds.length >= MAX_SELECTED_PLACES && !isSelected;
-                return (
-                  <S.PickerItem key={place.id}>
-                    <S.PickerText>
-                      <strong>{place.name}</strong>
-                      <span>{place.category}</span>
-                      <span>{place.address}</span>
-                    </S.PickerText>
-                    <S.SelectPlaceButton
-                      disabled={isAtLimit}
-                      onClick={() => togglePlace(place.id)}
-                      type="button"
-                    >
-                      {isSelected ? "선택됨" : isAtLimit ? "최대 선택" : "선택"}
-                    </S.SelectPlaceButton>
-                  </S.PickerItem>
-                );
-              })}
-            </S.PickerList>
           )}
-          <Button onClick={() => setIsPickerOpen(false)} type="button" width="100%">
+          <Button onClick={() => setPickerOpen(false)} type="button" width="100%">
             선택 완료
           </Button>
-        </S.SheetContent>
+        </S.Sheet>
       </BottomSheet>
     </CoursePage>
   );
@@ -294,27 +287,40 @@ export const CourseRecommendationPendingPage = () => {
   const navigate = useNavigate();
   const { courseId } = useParams();
   const [error, setError] = useState<string | null>(null);
-
   useEffect(() => {
     if (!courseId) {
       setError("추천 요청을 찾을 수 없습니다.");
       return;
     }
-    let active = true;
-    void courseRepository.completeRecommendation(courseId).then(
-      (result) => {
-        if (!active) return;
-        void navigate(`/course/recommendation/result/${encodeURIComponent(result.id)}`, {
-          replace: true,
-        });
-      },
-      () => active && setError("코스 추천을 만들지 못했습니다. 다시 시도해 주세요."),
-    );
-    return () => {
-      active = false;
+    const source = new EventSource(getCourseStreamUrl(courseId), { withCredentials: true });
+    let terminalEventReceived = false;
+    const terminal = (event: MessageEvent<string>) => {
+      try {
+        terminalEventReceived = true;
+        const data: unknown = JSON.parse(event.data);
+        if (typeof data !== "object" || data === null) throw new Error();
+        const record = data as { type?: string; message?: string };
+        if (record.type === "result")
+          void navigate(`/course/recommendation/result/${encodeURIComponent(courseId)}`, {
+            replace: true,
+          });
+        else if (record.type === "cancelled")
+          void navigate("/course/recommendation/history", { replace: true });
+        else setError(record.message ?? "코스 추천을 만들지 못했습니다.");
+        source.close();
+      } catch {
+        setError("코스 추천 상태를 읽지 못했습니다.");
+        source.close();
+      }
     };
+    source.addEventListener("result", terminal as EventListener);
+    source.addEventListener("error", terminal as EventListener);
+    source.addEventListener("cancelled", terminal as EventListener);
+    source.onerror = () => {
+      if (!terminalEventReceived) setError("코스 추천 연결이 끊어졌습니다.");
+    };
+    return () => source.close();
   }, [courseId, navigate]);
-
   return (
     <CoursePage onBack={() => navigate("/course/recommendation/form")} title="코스 추천 중">
       {error ? (
@@ -328,7 +334,7 @@ export const CourseRecommendationPendingPage = () => {
         />
       ) : (
         <FeedbackState
-          description="선택한 장소와 약속 시간을 바탕으로 4개의 코스를 만들고 있어요."
+          description="선택한 장소와 약속 시간을 바탕으로 코스를 만들고 있어요."
           kind="loading"
           title="코스를 추천하는 중이에요"
         />
@@ -340,30 +346,30 @@ export const CourseRecommendationPendingPage = () => {
 export const CourseRecommendationResultPage = () => {
   const navigate = useNavigate();
   const { courseId } = useParams();
-  const recommendation = courseId ? courseRepository.getRecommendation(courseId) : null;
-  const [selectedOptionId, setSelectedOptionId] = useState<string | null>(
-    recommendation?.options[0]?.id ?? null,
-  );
-  const selectedOption =
-    recommendation?.options.find((option) => option.id === selectedOptionId) ??
-    recommendation?.options[0] ??
-    null;
-
-  if (!recommendation || !courseId) {
+  const result = useQuery({
+    queryKey: ["course", courseId],
+    queryFn: () => courseRepository.getRecommendation(courseId ?? ""),
+    enabled: Boolean(courseId),
+    retry: false,
+  });
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  useEffect(() => {
+    if (!selectedId && result.data?.options[0]) setSelectedId(result.data.options[0].id);
+  }, [result.data, selectedId]);
+  if (result.isPending)
     return (
-      <CoursePage onBack={() => navigate("/course/recommendation/form")} title="코스 결과">
-        <FeedbackState
-          action={{
-            label: "코스 추천받기",
-            onClick: () => void navigate("/course/recommendation/form"),
-          }}
-          kind="error"
-          title="추천 결과를 찾을 수 없어요"
-        />
+      <CoursePage onBack={() => navigate(-1)} title="코스 결과">
+        <FeedbackState kind="loading" title="추천 결과를 불러오는 중이에요" />
       </CoursePage>
     );
-  }
-  if (recommendation.status === "EMPTY") {
+  const recommendation = result.data;
+  if (!recommendation || !courseId)
+    return (
+      <CoursePage onBack={() => navigate("/course/recommendation/form")} title="코스 결과">
+        <FeedbackState kind="error" title="추천 결과를 찾을 수 없어요" />
+      </CoursePage>
+    );
+  if (recommendation.status === "EMPTY")
     return (
       <CoursePage onBack={() => navigate("/course/recommendation/history")} title="코스 결과">
         <FeedbackState
@@ -371,71 +377,57 @@ export const CourseRecommendationResultPage = () => {
             label: "다시 추천받기",
             onClick: () => void navigate("/course/recommendation/form"),
           }}
-          description="선택 장소를 늘리거나 약속 시간을 조정해 보세요."
           kind="empty"
           title="조건에 맞는 코스를 찾지 못했어요"
         />
       </CoursePage>
     );
-  }
-  if (recommendation.status === "FAILED") {
+  if (recommendation.status !== "SUCCESS")
     return (
       <CoursePage onBack={() => navigate("/course/recommendation/history")} title="코스 결과">
         <FeedbackState
-          action={{
-            label: "다시 추천받기",
-            onClick: () => void navigate("/course/recommendation/form"),
-          }}
           kind="error"
           title={recommendation.errorMessage ?? "추천 결과를 불러오지 못했어요"}
         />
       </CoursePage>
     );
-  }
-  if (recommendation.status !== "SUCCESS" || !selectedOption) {
-    return (
-      <CoursePage onBack={() => navigate("/course/recommendation/form")} title="코스 결과">
-        <FeedbackState kind="error" title="추천 결과를 불러오지 못했어요" />
-      </CoursePage>
-    );
-  }
-
+  const selected =
+    recommendation.options.find(({ id }) => id === selectedId) ?? recommendation.options[0];
+  if (!selected) return null;
   return (
-    <CoursePage onBack={() => navigate("/course/recommendation/form")} title="코스 결과">
-      <S.ResultMapSection>
-        <S.MapSelectionLabel>선택 코스 · {selectedOption.type}</S.MapSelectionLabel>
-        <CourseOptionMap option={selectedOption} />
-      </S.ResultMapSection>
-      <S.ResultSheet>
-        <S.ResultHeading>추천 코스 {recommendation.options.length}개</S.ResultHeading>
-        <S.OptionList>
-          {recommendation.options.map((option, index) => (
-            <S.OptionCard $selected={option.id === selectedOption.id} key={option.id}>
-              <S.OptionSelect onClick={() => setSelectedOptionId(option.id)} type="button">
-                <S.Rank>{index + 1}</S.Rank>
-                <S.OptionSummary>
-                  <strong>{option.type}</strong>
-                  <span>{option.stops.map((stop) => stop.name).join(" → ")}</span>
-                  <span>
-                    {option.stops.length}곳 · 총 {formatMinutes(option.totalDurationMinutes)} · 이동{" "}
-                    {option.totalTravelMinutes}분 · 1인 {formatCurrency(option.pricePerPersonWon)}
-                  </span>
-                </S.OptionSummary>
-              </S.OptionSelect>
-              <S.OptionAction
-                onClick={() =>
-                  void navigate(
-                    `/course/recommendation/result/${encodeURIComponent(courseId)}/option/${encodeURIComponent(option.id)}`,
-                  )
-                }
-                type="button"
-              >
-                상세 보기
-              </S.OptionAction>
-            </S.OptionCard>
-          ))}
-        </S.OptionList>
-      </S.ResultSheet>
+    <CoursePage onBack={() => navigate("/course/recommendation/history")} title="코스 결과">
+      <S.ResultMap>
+        <S.MapLabel>선택 코스 · {selected.type}</S.MapLabel>
+        <CourseMap option={selected} />
+      </S.ResultMap>
+      <S.Result>
+        <S.Heading>추천 코스 {recommendation.options.length}개</S.Heading>
+        {recommendation.options.map((option, index) => (
+          <S.Option $selected={option.id === selected.id} key={option.id}>
+            <S.OptionSelect onClick={() => setSelectedId(option.id)} type="button">
+              <b>{index + 1}</b>
+              <span>
+                <strong>{option.type}</strong>
+                <small>{option.stops.map((stop) => stop.name).join(" → ")}</small>
+                <small>
+                  {option.stops.length}곳 · 총 {formatMinutes(option.totalDurationMinutes)} · 이동{" "}
+                  {option.totalTravelMinutes}분
+                </small>
+              </span>
+            </S.OptionSelect>
+            <S.TextButton
+              onClick={() =>
+                void navigate(
+                  `/course/recommendation/result/${encodeURIComponent(courseId)}/option/${encodeURIComponent(option.id)}`,
+                )
+              }
+              type="button"
+            >
+              상세 보기
+            </S.TextButton>
+          </S.Option>
+        ))}
+      </S.Result>
     </CoursePage>
   );
 };
@@ -443,172 +435,197 @@ export const CourseRecommendationResultPage = () => {
 export const CourseRecommendationOptionDetailPage = () => {
   const navigate = useNavigate();
   const { courseId, optionId } = useParams();
-  const option = courseId && optionId ? courseRepository.getOption(courseId, optionId) : null;
-  const [version, setVersion] = useState(0);
-  if (!courseId || !optionId || !option) {
+  const queryClient = useQueryClient();
+  const optionQuery = useQuery({
+    queryKey: ["course-option", courseId, optionId],
+    queryFn: () => courseRepository.getOption(courseId ?? "", optionId ?? ""),
+    enabled: Boolean(courseId && optionId),
+    retry: false,
+  });
+  const favorite = useMutation({
+    mutationFn: (value: boolean) =>
+      courseRepository.toggleFavorite(courseId ?? "", optionId ?? "", value),
+    onSuccess: () =>
+      void queryClient.invalidateQueries({ queryKey: ["course-option", courseId, optionId] }),
+  });
+  if (optionQuery.isPending)
+    return (
+      <CoursePage onBack={() => navigate(-1)} title="코스 상세">
+        <FeedbackState kind="loading" title="코스 상세를 불러오는 중이에요" />
+      </CoursePage>
+    );
+  const option = optionQuery.data;
+  if (!option)
     return (
       <CoursePage onBack={() => navigate("/course/recommendation/history")} title="코스 상세">
         <FeedbackState kind="error" title="코스 상세를 찾을 수 없어요" />
       </CoursePage>
     );
-  }
-  const toggleFavorite = () => {
-    courseRepository.toggleFavorite(courseId, optionId);
-    setVersion((value) => value + 1);
-  };
-  void version;
   return (
     <CoursePage
-      onBack={() => navigate(`/course/recommendation/result/${encodeURIComponent(courseId)}`)}
+      onBack={() => navigate(`/course/recommendation/result/${encodeURIComponent(courseId ?? "")}`)}
       right={
-        <S.HeartButton aria-label="코스 찜하기" onClick={toggleFavorite} type="button">
+        <S.IconButton
+          aria-label={option.isFavorite ? "코스 찜 해제" : "코스 찜하기"}
+          onClick={() => favorite.mutate(!option.isFavorite)}
+          type="button"
+        >
           <Icon name={option.isFavorite ? "heart-filled" : "heart-outline"} />
-        </S.HeartButton>
+        </S.IconButton>
       }
       title="코스 상세"
     >
-      <S.DetailScroll>
-        <CourseOptionMap option={option} />
-        <S.DetailCard>
-          <S.DetailTitle>{option.title}</S.DetailTitle>
-          <S.DetailMeta>
+      <S.Detail>
+        <CourseMap option={option} />
+        <S.Card>
+          <S.Heading>{option.title}</S.Heading>
+          <span>
             {option.stops.length}곳 · 총 {formatMinutes(option.totalDurationMinutes)} · 이동{" "}
             {option.totalTravelMinutes}분 · 1인 {formatCurrency(option.pricePerPersonWon)}
-          </S.DetailMeta>
-          <S.RouteSummary>{option.stops.map((stop) => stop.name).join(" → ")}</S.RouteSummary>
-        </S.DetailCard>
-        <S.DetailCard>
-          <S.Subheading>코스 구성 이유</S.Subheading>
-          <S.BodyText>{option.reason}</S.BodyText>
-        </S.DetailCard>
-        <S.DetailCard>
-          <S.Subheading>시간순 코스</S.Subheading>
-          <S.Timeline>
-            {option.stops.map((stop, index) => (
-              <S.Stop key={stop.id}>
-                <S.StopTime>{stop.visitTime}</S.StopTime>
-                <S.StopDot>{index + 1}</S.StopDot>
-                <S.StopContent>
-                  <strong>{stop.name}</strong>
-                  <span>
-                    {stop.activityLabel} · {stop.stayMinutes}분 체류
-                  </span>
-                </S.StopContent>
-              </S.Stop>
-            ))}
-          </S.Timeline>
-        </S.DetailCard>
-      </S.DetailScroll>
+          </span>
+          <S.Route>{option.stops.map((stop) => stop.name).join(" → ")}</S.Route>
+        </S.Card>
+        <S.Card>
+          <h3>코스 구성 이유</h3>
+          <p>{option.reason}</p>
+        </S.Card>
+        <S.Card>
+          <h3>시간순 코스</h3>
+          {option.stops.map((stop, index) => (
+            <S.Stop key={stop.id}>
+              <time>{stop.visitTime}</time>
+              <b>{index + 1}</b>
+              <span>
+                <strong>{stop.name}</strong>
+                <small>
+                  {stop.activityLabel} · {stop.stayMinutes}분 체류
+                </small>
+              </span>
+            </S.Stop>
+          ))}
+        </S.Card>
+      </S.Detail>
     </CoursePage>
   );
 };
 
 export const CourseRecommendationHistoryPage = () => {
   const navigate = useNavigate();
-  const [version, setVersion] = useState(0);
-  const [isLoading, setIsLoading] = useState(true);
+  const queryClient = useQueryClient();
+  const histories = useQuery({
+    queryKey: ["course-history"],
+    queryFn: () => courseRepository.listHistory(),
+    retry: false,
+    refetchInterval: (query) =>
+      query.state.data?.some((item) => item.status === "PENDING") ? 5_000 : false,
+  });
   const [editing, setEditing] = useState<CourseHistoryItem | null>(null);
   const [title, setTitle] = useState("");
   const [deleting, setDeleting] = useState<CourseHistoryItem | null>(null);
-  const histories = courseRepository.listHistory();
-  useEffect(() => {
-    const timer = window.setTimeout(() => setIsLoading(false), 250);
-    return () => window.clearTimeout(timer);
-  }, []);
-  const refresh = () => setVersion((value) => value + 1);
-  void version;
-  const saveTitle = () => {
-    if (editing && courseRepository.renameHistory(editing.id, title)) {
+  const refresh = () => void queryClient.invalidateQueries({ queryKey: ["course-history"] });
+  const rename = useMutation({
+    mutationFn: () => courseRepository.renameHistory(editing?.id ?? "", title),
+    onSuccess: () => {
       setEditing(null);
       refresh();
-    }
-  };
-  const confirmDeletion = () => {
-    if (!deleting) return;
-    if (deleting.status === "PENDING") courseRepository.cancelPendingHistory(deleting.id);
-    else courseRepository.deleteHistory(deleting.id);
-    setDeleting(null);
-    refresh();
-  };
-  const openHistory = (history: CourseHistoryItem) => {
-    if (!history.recommendationId) return;
-    void navigate(`/course/recommendation/result/${encodeURIComponent(history.recommendationId)}`);
-  };
+    },
+  });
+  const remove = useMutation({
+    mutationFn: () =>
+      deleting?.status === "PENDING"
+        ? courseRepository.cancelPendingHistory(deleting.id)
+        : courseRepository.deleteHistory(deleting?.id ?? ""),
+    onSuccess: () => {
+      setDeleting(null);
+      refresh();
+    },
+  });
   return (
     <CoursePage onBack={() => navigate(-1)} title="코스 추천 기록">
-      {isLoading ? (
-        <FeedbackState kind="loading" title="추천 기록을 불러오는 중이에요" />
-      ) : histories.length === 0 ? (
-        <FeedbackState
-          action={{
-            label: "코스 추천받기",
-            onClick: () => void navigate("/course/recommendation/form"),
-          }}
-          kind="empty"
-          title="아직 추천받은 기록이 없어요"
-        />
-      ) : (
-        <S.HistoryList>
-          {histories.map((history) => (
-            <S.HistoryCard key={history.id}>
-              <S.HistoryOpen
-                disabled={
-                  !history.recommendationId ||
-                  history.status === "PENDING" ||
-                  history.status === "CANCELLED"
-                }
-                onClick={() => openHistory(history)}
-                type="button"
-              >
-                <S.StatusBadge $status={history.status}>
-                  {history.status === "SUCCESS"
-                    ? "완료"
-                    : history.status === "PENDING"
-                      ? "생성 중"
-                      : history.status === "EMPTY"
-                        ? "결과 없음"
-                        : history.status === "FAILED"
-                          ? "실패"
-                          : "취소됨"}
-                </S.StatusBadge>
-                <strong>{history.title}</strong>
-                <span>
-                  {formatDate(history.requestedAt.slice(0, 10))} · {getHistoryResultSummary(history)}
-                </span>
-              </S.HistoryOpen>
-              <S.HistoryActions>
-                {history.status === "SUCCESS" ? (
-                  <S.IconButton
-                    aria-label={`${history.title} 이름 변경`}
-                    onClick={() => {
-                      setEditing(history);
-                      setTitle(history.title);
-                    }}
-                    type="button"
-                  >
-                    <Icon name="edit" size={18} />
-                  </S.IconButton>
-                ) : null}
-                <S.IconButton
-                  aria-label={`${history.title} 삭제`}
-                  onClick={() => setDeleting(history)}
-                  type="button"
-                >
-                  <Icon name="close" size={18} />
-                </S.IconButton>
-              </S.HistoryActions>
-            </S.HistoryCard>
-          ))}
-        </S.HistoryList>
-      )}
+      <S.HistoryContent>
+        {histories.isPending ? (
+          <FeedbackState kind="loading" title="추천 기록을 불러오는 중이에요" />
+        ) : !histories.data?.length ? (
+          <FeedbackState
+            action={{
+              label: "코스 추천받기",
+              onClick: () => void navigate("/course/recommendation/form"),
+            }}
+            description="추천 요청 후 이곳에서 결과를 확인해요."
+            kind="empty"
+            title="아직 저장된 기록이 없어요"
+          />
+        ) : (
+          <>
+            <S.HistoryNotice>추천 요청을 시작하면 기록이 자동으로 저장됩니다.</S.HistoryNotice>
+            <S.HistoryList>
+              {histories.data.map((item) => {
+                const cardInfo = (
+                  <S.HistoryInfo>
+                    <S.HistoryDate>{formatDate(item.requestedAt)}</S.HistoryDate>
+                    <S.HistoryTitle>{item.title}</S.HistoryTitle>
+                    <S.HistoryDescription $status={historyDisplayStatus(item)}>
+                      {historySummary(item)}
+                    </S.HistoryDescription>
+                  </S.HistoryInfo>
+                );
+
+                return (
+                  <S.History $status={historyDisplayStatus(item)} key={item.id}>
+                    {canOpenHistory(item) ? (
+                      <S.HistoryOpen
+                        aria-label={`${item.title} 추천 기록 열기`}
+                        onClick={() =>
+                          void navigate(
+                            `/course/recommendation/result/${encodeURIComponent(item.id)}`,
+                          )
+                        }
+                        type="button"
+                      >
+                        {cardInfo}
+                      </S.HistoryOpen>
+                    ) : (
+                      cardInfo
+                    )}
+                    <S.HistoryActions>
+                      {item.status === "PENDING" ? (
+                        <S.HistorySpinner aria-label="추천 생성 중" />
+                      ) : null}
+                      {item.status === "SUCCESS" ? (
+                        <S.IconButton
+                          aria-label={`${item.title} 추천 기록 이름 변경`}
+                          onClick={() => {
+                            setEditing(item);
+                            setTitle(item.title);
+                          }}
+                          type="button"
+                        >
+                          <Icon name="edit" size={18} />
+                        </S.IconButton>
+                      ) : null}
+                      <S.IconButton
+                        aria-label={`${item.title} 추천 기록 삭제`}
+                        onClick={() => setDeleting(item)}
+                        type="button"
+                      >
+                        <Icon name="close" size={18} />
+                      </S.IconButton>
+                    </S.HistoryActions>
+                  </S.History>
+                );
+              })}
+            </S.HistoryList>
+          </>
+        )}
+      </S.HistoryContent>
       <Modal
         close={() => setEditing(null)}
-        id="course-history-rename"
-        isOpen={editing !== null}
+        id="course-rename"
+        isOpen={Boolean(editing)}
         primaryAction={{
-          disabled: title.trim().length === 0 || title.trim().length > 60,
           label: "변경",
-          onClick: saveTitle,
+          onClick: () => rename.mutate(),
+          disabled: title.trim().length === 0 || title.trim().length > 60 || rename.isPending,
         }}
         secondaryAction={{ label: "취소", onClick: () => setEditing(null) }}
         title="기록 이름 변경"
@@ -618,11 +635,6 @@ export const CourseRecommendationHistoryPage = () => {
           onChange={(event) => setTitle(event.target.value)}
           value={title}
         />
-        {title.trim().length === 0 || title.trim().length > 60 ? (
-          <S.Validation role="alert">
-            앞뒤 공백을 제외한 이름을 1~60자로 입력해 주세요.
-          </S.Validation>
-        ) : null}
       </Modal>
       <Modal
         close={() => setDeleting(null)}
@@ -631,11 +643,11 @@ export const CourseRecommendationHistoryPage = () => {
             ? "생성 중인 코스 추천을 취소합니다."
             : "삭제한 기록은 다시 복구할 수 없어요."
         }
-        id="course-history-delete"
-        isOpen={deleting !== null}
+        id="course-delete"
+        isOpen={Boolean(deleting)}
         primaryAction={{
           label: deleting?.status === "PENDING" ? "취소하기" : "삭제하기",
-          onClick: confirmDeletion,
+          onClick: () => remove.mutate(),
         }}
         secondaryAction={{ label: "돌아가기", onClick: () => setDeleting(null) }}
         title={
@@ -648,64 +660,63 @@ export const CourseRecommendationHistoryPage = () => {
 
 export const CourseFavoritePage = () => {
   const navigate = useNavigate();
-  const [version, setVersion] = useState(0);
-  const [isLoading, setIsLoading] = useState(true);
-  const favorites = courseRepository.listFavorites();
-  useEffect(() => {
-    const timer = window.setTimeout(() => setIsLoading(false), 250);
-    return () => window.clearTimeout(timer);
-  }, []);
-  void version;
-  const removeFavorite = (recommendationId: string, optionId: string) => {
-    courseRepository.toggleFavorite(recommendationId, optionId);
-    setVersion((value) => value + 1);
-  };
+  const queryClient = useQueryClient();
+  const favorites = useQuery({
+    queryKey: ["course-favorites"],
+    queryFn: () => courseRepository.listFavorites(),
+    retry: false,
+  });
+  const remove = useMutation({
+    mutationFn: (favorite: { courseId: string; optionId: string }) =>
+      courseRepository.toggleFavorite(favorite.courseId, favorite.optionId, false),
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["course-favorites"] }),
+  });
   return (
     <CoursePage onBack={() => navigate(-1)} title="찜한 코스 보기">
-      {isLoading ? (
+      {favorites.isPending ? (
         <FeedbackState kind="loading" title="찜한 코스를 불러오는 중이에요" />
-      ) : favorites.length === 0 ? (
+      ) : !favorites.data?.length ? (
         <FeedbackState
           action={{
             label: "추천 기록 보기",
             onClick: () => void navigate("/course/recommendation/history"),
           }}
-          description="저장한 코스를 다시 확인할 수 있어요."
           kind="empty"
           title="아직 찜한 코스가 없어요"
         />
       ) : (
         <S.FavoriteList>
-          {favorites.map((favorite) => {
-            const option = courseRepository.getOption(favorite.recommendationId, favorite.optionId);
-            return option ? (
-              <S.FavoriteCard key={`${favorite.recommendationId}:${favorite.optionId}`}>
-                <S.FavoriteDate>{formatDate(favorite.savedAt.slice(0, 10))}</S.FavoriteDate>
-                <S.FavoriteOpen
-                  onClick={() =>
-                    void navigate(
-                      `/course/recommendation/result/${encodeURIComponent(favorite.recommendationId)}/option/${encodeURIComponent(favorite.optionId)}`,
-                    )
-                  }
-                  type="button"
-                >
-                  <strong>{option.title}</strong>
-                  <span>{option.stops.length}곳 · 코스 추천</span>
-                  <S.TagRow>
-                    <S.Tag>이동 {option.totalTravelMinutes}분</S.Tag>
-                    <S.Tag>{formatMinutes(option.totalDurationMinutes)}</S.Tag>
-                  </S.TagRow>
-                </S.FavoriteOpen>
-                <S.IconButton
-                  aria-label={`${option.title} 찜 삭제`}
-                  onClick={() => removeFavorite(favorite.recommendationId, favorite.optionId)}
-                  type="button"
-                >
-                  <Icon name="heart-filled" />
-                </S.IconButton>
-              </S.FavoriteCard>
-            ) : null;
-          })}
+          {favorites.data.map((favorite) => (
+            <S.Favorite key={`${favorite.recommendationId}:${favorite.optionId}`}>
+              <time>{formatDate(favorite.savedAt)}</time>
+              <S.FavoriteOpen
+                onClick={() =>
+                  void navigate(
+                    `/course/recommendation/result/${encodeURIComponent(favorite.recommendationId)}/option/${encodeURIComponent(favorite.optionId)}`,
+                  )
+                }
+                type="button"
+              >
+                <strong>{favorite.option.title}</strong>
+                <small>
+                  {favorite.option.stops.length}곳 · 이동 {favorite.option.totalTravelMinutes}분 ·{" "}
+                  {formatMinutes(favorite.option.totalDurationMinutes)}
+                </small>
+              </S.FavoriteOpen>
+              <S.IconButton
+                aria-label={`${favorite.option.title} 찜 삭제`}
+                onClick={() =>
+                  remove.mutate({
+                    courseId: favorite.recommendationId,
+                    optionId: favorite.optionId,
+                  })
+                }
+                type="button"
+              >
+                <Icon name="heart-filled" />
+              </S.IconButton>
+            </S.Favorite>
+          ))}
         </S.FavoriteList>
       )}
     </CoursePage>
@@ -713,7 +724,7 @@ export const CourseFavoritePage = () => {
 };
 
 const S = {
-  Content: styled.div`
+  Page: styled.div`
     display: flex;
     min-height: 0;
     flex: 1;
@@ -721,11 +732,10 @@ const S = {
   `,
   Scroll: styled.div`
     display: flex;
-    min-height: 0;
     flex: 1;
     flex-direction: column;
     gap: 24px;
-    padding: 24px 28px;
+    padding: 24px;
     overflow: auto;
   `,
   Section: styled.section`
@@ -733,120 +743,92 @@ const S = {
     flex-direction: column;
     gap: 12px;
   `,
-  SectionHeading: styled.h2`
+  Heading: styled.h2`
     margin: 0;
     color: ${tokens.color.neutral[900]};
     ${tokens.typography.title.xs};
   `,
-  PlacePickerButton: styled.button`
+  PickerOpen: styled.button`
     display: grid;
     grid-template-columns: 1fr auto;
     gap: 4px 12px;
     padding: 16px;
-    text-align: left;
     border: 1px solid ${tokens.color.neutral[200]};
     border-radius: 12px;
     background: ${tokens.color.neutral[0]};
-    color: ${tokens.color.neutral[900]};
-    cursor: pointer;
+    text-align: left;
+    strong {
+      color: ${tokens.color.neutral[900]};
+    }
+    span {
+      grid-column: 1;
+      color: ${tokens.color.neutral[700]};
+      ${tokens.typography.body.xs};
+    }
   `,
-  PlacePickerTitle: styled.strong`
-    ${tokens.typography.body.md};
-  `,
-  PlacePickerHint: styled.span`
-    grid-column: 1;
-    color: ${tokens.color.neutral[700]};
-    ${tokens.typography.body.xs};
-  `,
-  SelectedPlaceList: styled.ul`
+  SelectedPlace: styled.div`
     display: flex;
-    flex-direction: column;
-    gap: 8px;
-    margin: 0;
-    padding: 0;
-    list-style: none;
-  `,
-  SelectedPlace: styled.li`
-    display: flex;
-    align-items: center;
     justify-content: space-between;
     padding: 10px 12px;
     border-radius: 10px;
     background: ${tokens.color.primary[100]};
-    color: ${tokens.color.neutral[900]};
-    ${tokens.typography.body.sm};
   `,
   IconButton: styled.button`
     display: flex;
-    align-items: center;
-    justify-content: center;
     border: 0;
     background: transparent;
-    color: ${tokens.color.neutral[700]};
-    cursor: pointer;
+    color: ${tokens.color.primary[500]};
   `,
   FieldGrid: styled.div`
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: 1fr 1fr;
     gap: 12px;
   `,
-  Field: styled.label`
+  Field: styled.div`
     display: flex;
     flex-direction: column;
     gap: 6px;
-  `,
-  Label: styled.span`
-    color: ${tokens.color.neutral[700]};
-    ${tokens.typography.label.sm};
+    label {
+      color: ${tokens.color.neutral[700]};
+      ${tokens.typography.label.sm};
+    }
   `,
   Select: styled.select`
-    width: 100%;
     height: 48px;
-    padding: 0 14px;
+    padding: 0 12px;
     border: 1px solid ${tokens.color.neutral[200]};
     border-radius: 8px;
     background: ${tokens.color.neutral[0]};
-    color: ${tokens.color.neutral[900]};
-    ${tokens.typography.body.sm};
   `,
-  BottomAction: styled.div`
-    padding: 16px 28px 24px;
+  Bottom: styled.div`
+    padding: 16px 24px 24px;
     border-top: 1px solid ${tokens.color.neutral[200]};
-    background: ${tokens.color.neutral[50]};
   `,
-  SheetContent: styled.div`
+  Sheet: styled.div`
     display: flex;
     min-height: 0;
     flex: 1;
     flex-direction: column;
-    gap: 16px;
+    gap: 14px;
   `,
-  SheetTitle: styled.h2`
-    margin: 0;
-    color: ${tokens.color.neutral[900]};
-    ${tokens.typography.title.xs};
-  `,
-  TabRow: styled.div`
+  Tabs: styled.div`
     display: grid;
     grid-template-columns: 1fr 1fr;
     border-bottom: 1px solid ${tokens.color.neutral[200]};
   `,
-  TabButton: styled.button<{ $active: boolean }>`
+  Tab: styled.button<{ $active: boolean }>`
     padding: 10px;
     border: 0;
     border-bottom: 2px solid
       ${({ $active }) => ($active ? tokens.color.primary[500] : "transparent")};
     background: transparent;
     color: ${({ $active }) => ($active ? tokens.color.primary[700] : tokens.color.neutral[700])};
-    ${tokens.typography.label.md};
-    cursor: pointer;
   `,
-  PickerCount: styled.p`
+  Count: styled.p`
     margin: 0;
     color: ${tokens.color.neutral[700]};
-    ${tokens.typography.body.xs};
   `,
-  PickerList: styled.ul`
+  List: styled.ul`
     display: flex;
     min-height: 0;
     flex: 1;
@@ -857,120 +839,87 @@ const S = {
     overflow: auto;
     list-style: none;
   `,
-  PickerItem: styled.li`
+  ListItem: styled.li`
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
+    gap: 8px;
     padding: 12px;
     border: 1px solid ${tokens.color.neutral[200]};
     border-radius: 10px;
-  `,
-  PickerText: styled.div`
-    display: flex;
-    min-width: 0;
-    flex: 1;
-    flex-direction: column;
-    gap: 2px;
-    color: ${tokens.color.neutral[900]};
-    ${tokens.typography.body.xs};
-    strong {
-      ${tokens.typography.label.md};
-    }
     span {
-      color: ${tokens.color.neutral[700]};
+      display: flex;
+      min-width: 0;
+      flex-direction: column;
+      gap: 3px;
+    }
+    small {
       overflow: hidden;
+      color: ${tokens.color.neutral[700]};
       text-overflow: ellipsis;
       white-space: nowrap;
     }
   `,
-  SelectPlaceButton: styled.button`
-    flex: none;
-    padding: 8px 10px;
+  SelectPlace: styled.button`
+    padding: 8px;
     border: 0;
     border-radius: 8px;
     background: ${tokens.color.primary[100]};
     color: ${tokens.color.primary[700]};
-    ${tokens.typography.label.sm};
-    cursor: pointer;
     &:disabled {
       background: ${tokens.color.neutral[200]};
-      color: ${tokens.color.neutral[700]};
-      cursor: not-allowed;
     }
   `,
-  ResultMapSection: styled.section`
-    position: relative;
-    height: 310px;
-    background: ${tokens.color.secondary[100]};
-  `,
-  MapArea: styled.div`
+  Map: styled.div`
     height: 100%;
     min-height: 220px;
     overflow: hidden;
-    border-radius: 0 0 18px 18px;
     background: ${tokens.color.secondary[100]};
   `,
   MapFallback: styled.div`
     display: grid;
     min-height: 220px;
     place-items: center;
-    color: ${tokens.color.neutral[700]};
-    ${tokens.typography.body.sm};
+    background: ${tokens.color.secondary[100]};
   `,
-  MapSelectionLabel: styled.span`
-    position: absolute;
-    z-index: 2;
-    top: 14px;
-    left: 20px;
-    padding: 8px 10px;
-    border-radius: 20px;
-    background: ${tokens.color.neutral[0]};
-    color: ${tokens.color.neutral[900]};
-    box-shadow: 0 2px 8px rgb(20 20 19 / 12%);
-    ${tokens.typography.label.sm};
-  `,
-  MapMarker: styled.button`
+  Marker: styled.button`
     display: grid;
     width: 28px;
     height: 28px;
     place-items: center;
-    border: 2px solid ${tokens.color.neutral[0]};
+    border: 2px solid white;
     border-radius: 50%;
     background: ${tokens.color.primary[500]};
-    color: ${tokens.color.neutral[0]};
-    box-shadow: 0 2px 6px rgb(20 20 19 / 25%);
-    ${tokens.typography.label.sm};
-    cursor: pointer;
+    color: white;
   `,
-  ResultSheet: styled.section`
+  ResultMap: styled.section`
+    position: relative;
+    height: 310px;
+  `,
+  MapLabel: styled.span`
+    position: absolute;
+    z-index: 1;
+    top: 12px;
+    left: 16px;
+    padding: 8px 10px;
+    border-radius: 16px;
+    background: white;
+  `,
+  Result: styled.section`
     display: flex;
-    min-height: 0;
     flex: 1;
     flex-direction: column;
-    gap: 14px;
-    padding: 20px 24px;
-    border-radius: 20px 20px 0 0;
-    background: ${tokens.color.neutral[50]};
-  `,
-  ResultHeading: styled.h2`
-    margin: 0;
-    ${tokens.typography.title.xs};
-    color: ${tokens.color.neutral[900]};
-  `,
-  OptionList: styled.div`
-    display: flex;
-    flex-direction: column;
     gap: 12px;
+    padding: 20px 24px;
   `,
-  OptionCard: styled.article<{ $selected: boolean }>`
+  Option: styled.article<{ $selected: boolean }>`
     display: flex;
-    gap: 10px;
-    padding: 14px;
+    gap: 8px;
+    padding: 12px;
     border: 1px solid
       ${({ $selected }) => ($selected ? tokens.color.primary[500] : tokens.color.neutral[200])};
     border-radius: 12px;
-    background: ${tokens.color.neutral[0]};
+    background: white;
   `,
   OptionSelect: styled.button`
     display: flex;
@@ -980,64 +929,40 @@ const S = {
     border: 0;
     background: transparent;
     text-align: left;
-    cursor: pointer;
-  `,
-  Rank: styled.span`
-    display: grid;
-    width: 24px;
-    height: 24px;
-    flex: none;
-    place-items: center;
-    border-radius: 50%;
-    background: ${tokens.color.primary[100]};
-    color: ${tokens.color.primary[700]};
-    ${tokens.typography.label.sm};
-  `,
-  OptionSummary: styled.div`
-    display: flex;
-    min-width: 0;
-    flex: 1;
-    flex-direction: column;
-    gap: 3px;
-    color: ${tokens.color.neutral[900]};
-    strong {
-      ${tokens.typography.label.md};
+    b {
+      display: grid;
+      width: 24px;
+      height: 24px;
+      place-items: center;
+      border-radius: 50%;
+      background: ${tokens.color.primary[100]};
     }
     span {
+      display: flex;
+      min-width: 0;
+      flex-direction: column;
+      gap: 3px;
+    }
+    small {
       overflow: hidden;
       color: ${tokens.color.neutral[700]};
       text-overflow: ellipsis;
       white-space: nowrap;
-      ${tokens.typography.body.xs};
     }
   `,
-  OptionAction: styled.button`
-    align-self: center;
-    flex: none;
-    padding: 8px;
+  TextButton: styled.button`
     border: 0;
     background: transparent;
     color: ${tokens.color.primary[700]};
-    ${tokens.typography.label.sm};
-    cursor: pointer;
   `,
-  HeartButton: styled.button`
+  Detail: styled.div`
     display: flex;
-    border: 0;
-    background: transparent;
-    color: ${tokens.color.primary[500]};
-    cursor: pointer;
-  `,
-  DetailScroll: styled.div`
-    display: flex;
-    min-height: 0;
     flex: 1;
     flex-direction: column;
     gap: 14px;
-    padding-bottom: 24px;
     overflow: auto;
   `,
-  DetailCard: styled.section`
+  Card: styled.section`
     display: flex;
     flex-direction: column;
     gap: 8px;
@@ -1045,76 +970,154 @@ const S = {
     padding: 16px;
     border: 1px solid ${tokens.color.neutral[200]};
     border-radius: 12px;
-    background: ${tokens.color.neutral[0]};
+    background: white;
+    h3,
+    p {
+      margin: 0;
+    }
+    span,
+    p {
+      color: ${tokens.color.neutral[700]};
+    }
   `,
-  DetailTitle: styled.h2`
-    margin: 0;
-    color: ${tokens.color.neutral[900]};
-    ${tokens.typography.title.sm};
+  Route: styled.p`
+    color: ${tokens.color.primary[700]}!important;
   `,
-  DetailMeta: styled.p`
+  Stop: styled.div`
+    display: grid;
+    grid-template-columns: 42px 26px 1fr;
+    gap: 8px;
+    time {
+      color: ${tokens.color.neutral[700]};
+    }
+    b {
+      display: grid;
+      width: 24px;
+      height: 24px;
+      place-items: center;
+      border-radius: 50%;
+      background: ${tokens.color.primary[100]};
+    }
+    span {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    small {
+      color: ${tokens.color.neutral[700]};
+    }
+  `,
+  HistoryContent: styled.div`
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 20px;
+    padding: 16px 24px;
+  `,
+  HistoryNotice: styled.p`
     margin: 0;
     color: ${tokens.color.neutral[700]};
     ${tokens.typography.body.xs};
   `,
-  RouteSummary: styled.p`
-    margin: 0;
-    color: ${tokens.color.primary[700]};
-    ${tokens.typography.body.sm};
-  `,
-  Subheading: styled.h3`
-    margin: 0;
-    color: ${tokens.color.neutral[900]};
-    ${tokens.typography.label.lg};
-  `,
-  BodyText: styled.p`
-    margin: 0;
-    color: ${tokens.color.neutral[700]};
-    ${tokens.typography.body.sm};
-  `,
-  Timeline: styled.ol`
+  HistoryList: styled.ul`
     display: flex;
     flex-direction: column;
-    gap: 14px;
+    gap: 20px;
     margin: 0;
     padding: 0;
     list-style: none;
   `,
-  Stop: styled.li`
-    display: grid;
-    grid-template-columns: 42px 26px 1fr;
-    align-items: start;
-    gap: 8px;
-  `,
-  StopTime: styled.time`
-    padding-top: 3px;
-    color: ${tokens.color.neutral[700]};
-    ${tokens.typography.utility.meta};
-  `,
-  StopDot: styled.span`
-    display: grid;
-    width: 24px;
-    height: 24px;
-    place-items: center;
-    border-radius: 50%;
-    background: ${tokens.color.primary[100]};
-    color: ${tokens.color.primary[700]};
-    ${tokens.typography.label.sm};
-  `,
-  StopContent: styled.div`
+  History: styled.li<{ $status: "pending" | "failed" | "default" }>`
     display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    padding: 16px 12px;
+    border: 1px solid
+      ${({ $status }) =>
+        $status === "failed" ? tokens.color.warning[500] : tokens.color.neutral[200]};
+    border-radius: 12px;
+    background: ${tokens.color.neutral[0]};
+  `,
+  HistoryOpen: styled.button`
+    display: flex;
+    flex: 1;
+    align-self: stretch;
+    min-width: 0;
     flex-direction: column;
-    gap: 2px;
-    color: ${tokens.color.neutral[900]};
-    strong {
-      ${tokens.typography.label.md};
+    align-items: flex-start;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    text-align: left;
+
+    &:active {
+      background: ${tokens.color.neutral[50]};
     }
-    span {
-      color: ${tokens.color.neutral[700]};
-      ${tokens.typography.body.xs};
+
+    &:focus-visible {
+      outline: 2px solid ${tokens.color.primary[500]};
+      outline-offset: -2px;
+      border-radius: 8px;
     }
   `,
-  HistoryList: styled.ul`
+  HistoryInfo: styled.div`
+    display: flex;
+    min-width: 0;
+    flex: 1;
+    flex-direction: column;
+    gap: 3px;
+  `,
+  HistoryDate: styled.time`
+    color: ${tokens.color.neutral[700]};
+    ${tokens.typography.body.xs};
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 18px;
+  `,
+  HistoryTitle: styled.h2`
+    margin: 0;
+    color: ${tokens.color.neutral[900]};
+    ${tokens.typography.title.xs};
+    font-size: 16px;
+    line-height: 24px;
+  `,
+  HistoryDescription: styled.p<{ $status: "pending" | "failed" | "default" }>`
+    margin: 0;
+    color: ${({ $status }) =>
+      $status === "failed" ? tokens.color.warning[500] : tokens.color.neutral[700]};
+    ${tokens.typography.body.xs};
+    font-size: 12px;
+    line-height: 18px;
+  `,
+  HistoryActions: styled.div`
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: 12px;
+  `,
+  HistorySpinner: styled.div`
+    width: 20px;
+    height: 20px;
+    border: 2px solid ${tokens.color.neutral[200]};
+    border-top-color: ${tokens.color.primary[500]};
+    border-radius: 50%;
+    animation: course-history-spin 1s linear infinite;
+
+    @keyframes course-history-spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+  `,
+  ModalInput: styled.input`
+    height: 44px;
+    padding: 0 12px;
+    border: 1px solid ${tokens.color.neutral[200]};
+    border-radius: 8px;
+  `,
+  FavoriteList: styled.ul`
     display: flex;
     flex-direction: column;
     gap: 10px;
@@ -1122,114 +1125,29 @@ const S = {
     padding: 20px 24px;
     list-style: none;
   `,
-  HistoryCard: styled.li`
-    display: flex;
-    gap: 8px;
-    padding: 14px;
-    border: 1px solid ${tokens.color.neutral[200]};
-    border-radius: 12px;
-    background: ${tokens.color.neutral[0]};
-  `,
-  HistoryOpen: styled.button`
-    display: flex;
-    min-width: 0;
-    flex: 1;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 4px;
-    border: 0;
-    background: transparent;
-    color: ${tokens.color.neutral[900]};
-    text-align: left;
-    cursor: pointer;
-    strong {
-      ${tokens.typography.label.md};
-    }
-    span {
-      color: ${tokens.color.neutral[700]};
-      ${tokens.typography.body.xs};
-    }
-    &:disabled {
-      cursor: default;
-    }
-  `,
-  StatusBadge: styled.span<{ $status: string }>`
-    padding: 3px 6px;
-    border-radius: 6px;
-    background: ${({ $status }) =>
-      $status === "SUCCESS" ? tokens.color.tertiary[100] : tokens.color.secondary[100]};
-    color: ${tokens.color.neutral[700]};
-    ${tokens.typography.label.xs};
-  `,
-  HistoryActions: styled.div`
-    display: flex;
-    align-items: flex-start;
-    gap: 4px;
-  `,
-  ModalInput: styled.input`
-    height: 44px;
-    padding: 0 12px;
-    border: 1px solid ${tokens.color.neutral[200]};
-    border-radius: 8px;
-    color: ${tokens.color.neutral[900]};
-    ${tokens.typography.body.sm};
-  `,
-  Validation: styled.p`
-    margin: 0;
-    color: ${tokens.color.warning[500]};
-    ${tokens.typography.body.xs};
-  `,
-  FavoriteList: styled.ul`
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    margin: 0;
-    padding: 20px 24px;
-    list-style: none;
-  `,
-  FavoriteCard: styled.li`
+  Favorite: styled.li`
     display: grid;
     grid-template-columns: 1fr auto;
-    gap: 6px 12px;
+    gap: 6px;
     padding: 14px;
     border: 1px solid ${tokens.color.neutral[200]};
     border-radius: 12px;
-    background: ${tokens.color.neutral[0]};
-  `,
-  FavoriteDate: styled.time`
-    grid-column: 1/-1;
-    color: ${tokens.color.neutral[700]};
-    ${tokens.typography.utility.meta};
+    background: white;
+    time {
+      grid-column: 1/-1;
+      color: ${tokens.color.neutral[700]};
+    }
   `,
   FavoriteOpen: styled.button`
     display: flex;
-    min-width: 0;
     flex-direction: column;
     align-items: flex-start;
     gap: 4px;
     border: 0;
     background: transparent;
-    color: ${tokens.color.neutral[900]};
     text-align: left;
-    cursor: pointer;
-    strong {
-      ${tokens.typography.label.md};
-    }
-    span {
+    small {
       color: ${tokens.color.neutral[700]};
-      ${tokens.typography.body.xs};
     }
-  `,
-  TagRow: styled.div`
-    display: flex;
-    gap: 6px;
-    margin-top: 4px;
-  `,
-  Tag: styled.span`
-    padding: 3px 6px;
-    border-radius: 6px;
-    background: ${tokens.color.primary[50]};
-    color: ${tokens.color.primary[700]};
-    ${tokens.typography.label.xs};
   `,
 };

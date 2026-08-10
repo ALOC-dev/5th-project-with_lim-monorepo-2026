@@ -1,10 +1,12 @@
 export type CourseRecommendationStatus = "PENDING" | "SUCCESS" | "FAILED" | "EMPTY" | "CANCELLED";
 
-export type CoursePlaceSource = "FAVORITE" | "SEARCH";
+export type CoursePlaceSource = "FAVORITE" | "KAKAO";
 
 export type CoursePlace = {
   readonly id: string;
   readonly source: CoursePlaceSource;
+  readonly kakaoPlaceId: string;
+  readonly favoritePlaceId?: string;
   readonly name: string;
   readonly address: string;
   readonly category: string;
@@ -13,7 +15,7 @@ export type CoursePlace = {
 };
 
 export type CourseDraft = {
-  readonly placeIds: readonly string[];
+  readonly places: readonly CoursePlace[];
   readonly date: string;
   readonly startTime: string;
   readonly durationHours: number;
@@ -29,6 +31,7 @@ export type CourseOptionType = "이동 최소" | "느긋한 흐름" | "장소 �
 
 export type CourseOption = {
   readonly id: string;
+  readonly courseId: string;
   readonly type: CourseOptionType;
   readonly title: string;
   readonly reason: string;
@@ -43,9 +46,7 @@ export type CourseRecommendation = {
   readonly id: string;
   readonly historyId: string;
   readonly status: CourseRecommendationStatus;
-  readonly draft: CourseDraft;
   readonly options: readonly CourseOption[];
-  readonly completedAt?: string;
   readonly errorMessage?: string;
 };
 
@@ -62,21 +63,25 @@ export type CourseFavorite = {
   readonly optionId: string;
   readonly recommendationId: string;
   readonly savedAt: string;
+  readonly option: CourseOption;
 };
 
 export type CourseRecommendationRepository = {
   readonly listPickerPlaces: (
     query: string,
-    source: "FAVORITE" | "SEARCH",
-  ) => readonly CoursePlace[];
-  readonly startRecommendation: (draft: CourseDraft) => CourseRecommendation;
-  readonly completeRecommendation: (id: string) => Promise<CourseRecommendation>;
-  readonly getRecommendation: (id: string) => CourseRecommendation | null;
-  readonly getOption: (recommendationId: string, optionId: string) => CourseOption | null;
-  readonly listHistory: () => readonly CourseHistoryItem[];
-  readonly renameHistory: (id: string, title: string) => boolean;
-  readonly deleteHistory: (id: string) => boolean;
-  readonly cancelPendingHistory: (id: string) => boolean;
-  readonly listFavorites: () => readonly CourseFavorite[];
-  readonly toggleFavorite: (recommendationId: string, optionId: string) => boolean;
+    source: CoursePlaceSource,
+  ) => Promise<readonly CoursePlace[]>;
+  readonly startRecommendation: (draft: CourseDraft) => Promise<CourseRecommendation>;
+  readonly getRecommendation: (id: string) => Promise<CourseRecommendation | null>;
+  readonly getOption: (recommendationId: string, optionId: string) => Promise<CourseOption | null>;
+  readonly listHistory: () => Promise<readonly CourseHistoryItem[]>;
+  readonly renameHistory: (id: string, title: string) => Promise<boolean>;
+  readonly deleteHistory: (id: string) => Promise<boolean>;
+  readonly cancelPendingHistory: (id: string) => Promise<boolean>;
+  readonly listFavorites: () => Promise<readonly CourseFavorite[]>;
+  readonly toggleFavorite: (
+    recommendationId: string,
+    optionId: string,
+    favorite: boolean,
+  ) => Promise<boolean>;
 };

@@ -10,6 +10,7 @@ import favoritesRouter from "./routes/favorites.js";
 import placeRecommendationHistoriesRouter from "./routes/placeRecommendationHistories.js";
 import savedPlacesRouter from "./routes/savedPlaces.js";
 import usersRouter from "./routes/users.js";
+import coursesRouter from "./routes/courses.js";
 
 const { config, secrets } = parseServerEnvironment(process.env);
 
@@ -23,6 +24,7 @@ app.use(
 app.use(express.json());
 app.use(cookieParser());
 app.use("/api/auth", authRouter);
+app.use("/api/courses", coursesRouter());
 app.use("/api/favorites", favoritesRouter);
 app.use("/api/place-recommendation-histories", placeRecommendationHistoriesRouter);
 app.use("/api/recommend", createRecommendationRouter(secrets));
