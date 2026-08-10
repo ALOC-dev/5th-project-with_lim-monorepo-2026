@@ -57,8 +57,6 @@ export default function RecommendationHistoryContent() {
     <>
       <S.Container>
         <S.Header>
-          <S.StatusBarMock></S.StatusBarMock>
-
           <S.NavBar>
             <S.BackButton type="button" onClick={() => navigate(-1)}>
               <Icon name="back-arrow" />

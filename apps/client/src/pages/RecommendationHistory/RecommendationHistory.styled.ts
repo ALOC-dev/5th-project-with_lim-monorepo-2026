@@ -23,17 +23,6 @@ export const S = {
     background: ${tokens.color.neutral["50"]};
   `,
 
-  StatusBarMock: styled.div`
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    width: 100%;
-    ${tokens.typography.utility.meta};
-    font-size: 13px;
-    font-weight: 600;
-    color: ${tokens.color.neutral["900"]};
-  `,
-
   NavBar: styled.div`
     display: flex;
     align-items: center;

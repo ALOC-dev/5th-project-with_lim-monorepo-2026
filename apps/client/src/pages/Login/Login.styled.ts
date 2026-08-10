@@ -26,19 +26,6 @@ export const S = {
     box-sizing: border-box;
   `,
 
-  StatusBarMock: styled.div`
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    width: 100%;
-    ${tokens.typography.utility.meta};
-    padding: 14px 20px;
-    font-size: 13px;
-    font-weight: 600;
-    line-height: 18px;
-    color: ${tokens.color.neutral["900"]};
-  `,
-
   Title: styled.label`
     ${tokens.typography.utility.screenTitle}
     padding: 12px 20px;

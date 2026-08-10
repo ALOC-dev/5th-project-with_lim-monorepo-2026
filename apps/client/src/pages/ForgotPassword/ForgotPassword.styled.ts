@@ -18,13 +18,7 @@ export const S = {
     background-color: ${tokens.color.neutral[50]};
     height: 96px;
   `,
-  StatusBarMock: styled.div`
-    display: flex;
-    justify-content: space-between;
-    padding: 14px 20px;
-    ${tokens.typography.body.sm}
-    font-weight: 600;
-  `,
+
   NavBar: styled.div`
     display: flex;
     align-items: center;
