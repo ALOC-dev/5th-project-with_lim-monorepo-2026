@@ -26,19 +26,24 @@ const LOCATION_SEARCH_STALE_TIME_MS = 30_000;
 const LOCATION_SEARCH_HISTORY_SAVE_DELAY_MS = 500;
 
 export const useLocationSearchQuery = (): LocationSearchQueryResult => {
-  const { location } = useRecommendationFormInput();
+  const { locations: formLocations } = useRecommendationFormInput();
   const { query } = useLocationSelection();
   const normalizedQuery = query.trim();
   const latestSavedQueryRef = useRef("");
 
+  // 검색의 기준이 될 좌표를 계산합니다. (마지막 장소 기준, 없으면 서울시청)
+  const lastLocation = formLocations[formLocations.length - 1];
+  const searchLat = lastLocation?.lat ?? 37.5665;
+  const searchLng = lastLocation?.lng ?? 126.978;
+
   const searchQuery = useQuery({
-    queryKey: ["locationSearch", normalizedQuery, location.lat, location.lng] as const,
+    queryKey: ["locationSearch", normalizedQuery, searchLat, searchLng] as const,
     queryFn: () =>
       searchLocationsByKeyword({
         query: normalizedQuery,
         currentLocation: {
-          lat: location.lat,
-          lng: location.lng,
+          lat: searchLat,
+          lng: searchLng,
         },
         size: LOCATION_SEARCH_RESULT_SIZE,
       }),

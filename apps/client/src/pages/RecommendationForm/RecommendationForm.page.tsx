@@ -17,9 +17,18 @@ import {
 } from "./RecommendationForm.context";
 
 const RecommendationFlowProvider = ({ children }: { readonly children: ReactNode }) => {
-  const [location, setLocation] = useState(() => getRecommendationFormInitialValues().location);
+  const [locations, setLocations] = useState<RecommendationFormInputContextType["locations"]>(
+    () => getRecommendationFormInitialValues().locations || [],
+  );
+
+  // 필수 입력 상태
   const [date, setDate] = useState(() => getRecommendationFormInitialValues().date);
   const [time24h, setTime24h] = useState(() => getRecommendationFormInitialValues().time24h);
+  const [userNaturalLanguageRequest, setUserNaturalLanguageRequest] = useState(
+    () => getRecommendationFormInitialValues().userNaturalLanguageRequest,
+  );
+
+  // 선택 입력 값 상태
   const [stayDurationMinutes, setStayDurationMinutes] = useState(
     () => getRecommendationFormInitialValues().stayDurationMinutes,
   );
@@ -33,85 +42,124 @@ const RecommendationFlowProvider = ({ children }: { readonly children: ReactNode
   const [budgetPerPerson, setBudgetPerPerson] = useState(
     () => getRecommendationFormInitialValues().budgetPerPerson,
   );
-  const [userNaturalLanguageRequest, setUserNaturalLanguageRequest] = useState(
-    () => getRecommendationFormInitialValues().userNaturalLanguageRequest,
-  );
+
+  // 선택 입력 활성화(체크박스) 여부를 관리하는 boolean 상태
+  const [isStayDurationEnabled, setIsStayDurationEnabled] = useState(false);
+  const [isActivityTypeEnabled, setIsActivityTypeEnabled] = useState(false);
+  const [isNumberOfPeopleEnabled, setIsNumberOfPeopleEnabled] = useState(false);
+  const [isPartyTypeEnabled, setIsPartyTypeEnabled] = useState(false);
+  const [isBudgetEnabled, setIsBudgetEnabled] = useState(false);
+
   const [activeSheet, setActiveSheet] = useState<RecommendationFormSheet | null>(null);
 
   const resetForm = useCallback(() => {
     const initialFormValues = getRecommendationFormInitialValues();
 
-    setLocation(initialFormValues.location);
+    setLocations(initialFormValues.locations || []);
     setDate(initialFormValues.date);
     setTime24h(initialFormValues.time24h);
+    setUserNaturalLanguageRequest(initialFormValues.userNaturalLanguageRequest);
+
     setStayDurationMinutes(initialFormValues.stayDurationMinutes);
     setNumberOfPeople(initialFormValues.numberOfPeople);
     setPartyType(initialFormValues.partyType);
     setActivityType(initialFormValues.activityType);
     setBudgetPerPerson(initialFormValues.budgetPerPerson);
-    setUserNaturalLanguageRequest(initialFormValues.userNaturalLanguageRequest);
+
+    setIsStayDurationEnabled(false);
+    setIsActivityTypeEnabled(false);
+    setIsNumberOfPeopleEnabled(false);
+    setIsPartyTypeEnabled(false);
+    setIsBudgetEnabled(false);
+
     setActiveSheet("location");
   }, []);
 
   const buildUserInput = useCallback<RecommendationFormInputContextType["buildUserInput"]>(() => {
     return buildRecommendationUserInput({
-      location,
+      locations,
       date,
       time24h,
-      stayDurationMinutes,
-      numberOfPeople,
-      partyType,
-      activityType,
-      budgetPerPerson,
       userNaturalLanguageRequest,
+
+      // 체크박스가 활성화된 경우에만 해당 값을 전달, 아니면 null 처리
+      stayDurationMinutes: isStayDurationEnabled ? stayDurationMinutes : null,
+      numberOfPeople: isNumberOfPeopleEnabled ? numberOfPeople : null,
+      partyType: isPartyTypeEnabled ? partyType : null,
+      activityType: isActivityTypeEnabled ? activityType : null,
+      budgetPerPerson: isBudgetEnabled ? budgetPerPerson : null,
     });
   }, [
-    budgetPerPerson,
+    locations,
     date,
-    numberOfPeople,
-    partyType,
-    activityType,
-    stayDurationMinutes,
     time24h,
     userNaturalLanguageRequest,
-    location,
+    stayDurationMinutes,
+    isStayDurationEnabled,
+    numberOfPeople,
+    isNumberOfPeopleEnabled,
+    partyType,
+    isPartyTypeEnabled,
+    activityType,
+    isActivityTypeEnabled,
+    budgetPerPerson,
+    isBudgetEnabled,
   ]);
 
   const inputContextValue = useMemo<RecommendationFormInputContextType>(
     () => ({
-      location,
+      locations,
       date,
       time24h,
+      userNaturalLanguageRequest,
       stayDurationMinutes,
       numberOfPeople,
       partyType,
       activityType,
       budgetPerPerson,
-      userNaturalLanguageRequest,
-      setLocation,
+
+      isStayDurationEnabled,
+      isActivityTypeEnabled,
+      isNumberOfPeopleEnabled,
+      isPartyTypeEnabled,
+      isBudgetEnabled,
+
+      setLocations,
       setDate,
       setTime24h,
+      setUserNaturalLanguageRequest,
       setStayDurationMinutes,
       setNumberOfPeople,
       setPartyType,
       setActivityType,
       setBudgetPerPerson,
-      setUserNaturalLanguageRequest,
+
+      setIsStayDurationEnabled,
+      setIsActivityTypeEnabled,
+      setIsNumberOfPeopleEnabled,
+      setIsPartyTypeEnabled,
+      setIsBudgetEnabled,
+
       resetForm,
       buildUserInput,
     }),
     [
-      budgetPerPerson,
-      buildUserInput,
+      locations,
       date,
-      location,
+      time24h,
+      userNaturalLanguageRequest,
+      stayDurationMinutes,
       numberOfPeople,
       partyType,
       activityType,
+      budgetPerPerson,
+      isStayDurationEnabled,
+      isActivityTypeEnabled,
+      isNumberOfPeopleEnabled,
+      isPartyTypeEnabled,
+      isBudgetEnabled,
       resetForm,
-      stayDurationMinutes,
-      time24h,
-      userNaturalLanguageRequest,
+      buildUserInput,
     ],
   );
 

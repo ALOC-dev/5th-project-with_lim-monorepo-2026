@@ -25,16 +25,22 @@ const getLocationDisplay = (location: Location) => {
 };
 
 const QueryResultItem = ({ location }: QueryResultItemProps) => {
-  const { setLocation } = useRecommendationFormInput();
-  const { openMapMode, setQuery } = useLocationSelection();
+  const { locations } = useRecommendationFormInput();
+  const { setQuery, openMapMode } = useLocationSelection();
   const { insertItem } = useLocationSearchHistory();
   const { mainText, subText } = getLocationDisplay(location);
+
   const selectLocation = () => {
+    if (locations.length >= 8) {
+      alert("출발지는 최대 8개까지만 선택할 수 있습니다.");
+      return;
+    }
+
     insertItem({
       type: "location",
       location,
     });
-    setLocation(location);
+
     setQuery("");
     openMapMode();
   };

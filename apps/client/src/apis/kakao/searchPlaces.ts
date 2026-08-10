@@ -114,12 +114,6 @@ type KeywordSearchOptionsParams = {
 
 /**
  * 앱 좌표를 Kakao keywordSearch option 객체로 변환한다.
- *
- * 좌표 이름이 가장 헷갈리기 쉽다.
- * - 우리 앱은 `{ lat, lng }`로 저장한다.
- * - Kakao `LatLng` 생성자는 `(lat, lng)` 순서로 받는다.
- * - 반대로 Kakao 장소 검색 결과 row는 `{ y, x }`로 돌아오며, `y`가 위도이고 `x`가 경도다.
- *   이 row 정규화는 `toLocationSearchPlace`에서 처리한다.
  */
 const toKeywordSearchOptions = ({
   currentLocation,
@@ -130,7 +124,7 @@ const toKeywordSearchOptions = ({
   const baseOptions = {
     location,
     size,
-    sort: kakao.maps.services.SortBy.DISTANCE,
+    sort: kakao.maps.services.SortBy.ACCURACY,
   };
 
   if (radiusMeters === undefined) {
@@ -145,10 +139,6 @@ const toKeywordSearchOptions = ({
 
 /**
  * 이 파일이 실제로 사용하는 Kakao SDK 심볼만 확인하는 런타임 guard.
- *
- * Kakao SDK는 `<script>` 태그로 주입되는 브라우저 전역 객체다.
- * 그래서 TypeScript 타입은 알아도 런타임에는 아직 `kakao` 객체가 없을 수 있다.
- * 컴포넌트 렌더/업데이트 중 `ReferenceError`를 던지는 대신 typed failure를 반환하기 위해 둔다.
  */
 const isKakaoPlacesReady = (): boolean => {
   return (
