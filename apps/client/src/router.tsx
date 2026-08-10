@@ -1,6 +1,7 @@
 import { createBrowserRouter, Navigate } from "react-router-dom";
 
 import FavoritePlacesPage from "./pages/FavoritePlaces/FavoritePlacesPage";
+import { ActivityHubPage } from "./pages/ActivityHub/ActivityHubPage";
 import {
   CourseFavoritePage,
   CourseRecommendationFormPage,
@@ -16,7 +17,6 @@ import HealthCheckPage from "./pages/HealthCheck/page";
 import LoginPage from "./pages/Login/LoginPage";
 import RecommendationFormPage from "./pages/RecommendationForm/RecommendationForm.page";
 import RecommendationHistoryPage from "./pages/RecommendationHistory/RecommendationHistoryPage";
-import RecommendationMemberPage from "./pages/RecommendationMember/page";
 import RecommendationPendingPage from "./pages/RecommendationPending/page";
 import RecommendationResultPage from "./pages/RecommendationResult/RecommendationResult.page";
 import SignupPage from "./pages/Signup/SignupPage";
@@ -27,6 +27,10 @@ export const router = createBrowserRouter([
   {
     element: <ProtectedRoute />,
     children: [
+      {
+        path: "/activity",
+        element: <ActivityHubPage />,
+      },
       {
         path: "/place/recommendation/form",
         element: <RecommendationFormPage />,
@@ -45,7 +49,7 @@ export const router = createBrowserRouter([
       },
       {
         path: "/place/recommendation/member",
-        element: <RecommendationMemberPage />,
+        element: <Navigate to="/activity" replace />,
       },
       {
         path: "/place/recommendation/history",
