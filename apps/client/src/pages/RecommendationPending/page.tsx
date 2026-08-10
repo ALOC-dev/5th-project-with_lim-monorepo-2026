@@ -81,7 +81,7 @@ const RecommendationPendingPage = () => {
       return;
     }
 
-    const es = new EventSource(getRecommendationStreamUrl(jobId));
+    const es = new EventSource(getRecommendationStreamUrl(jobId), { withCredentials: true });
 
     const queue: RecommendationProgressStep[] = [];
     let processing = false;

@@ -1,23 +1,28 @@
+import type { PlaceRecommendationHistoryStatus } from "@monorepo/api-contracts";
 import { createContext, useContext } from "react";
 
-// 기록 아이템 타입 정의
-export type HistoryStatus = "pending" | "success" | "failed";
+export type HistoryStatus = PlaceRecommendationHistoryStatus;
+
+export type HistoryDisplayStatus = "pending" | "success" | "failed";
 
 export type HistoryItem = {
-  id: string;
-  status: HistoryStatus;
-  dateLabel: string;
-  title: string;
-  description: string;
+  readonly id: string;
+  readonly status: HistoryStatus;
+  readonly displayStatus: HistoryDisplayStatus;
+  readonly dateLabel: string;
+  readonly title: string;
+  readonly description: string;
 };
 
 export type RecommendationHistoryContextType = {
-  readonly historyList: HistoryItem[];
+  readonly historyList: readonly HistoryItem[];
   readonly isLoading: boolean;
+  readonly isError: boolean;
+  readonly retry: () => void;
 
-  readonly handleCardClick: (id: string, status: HistoryStatus) => void;
-  readonly handleDeleteItem: (id: string) => void;
-  readonly handleUpdateTitle: (id: string, newTitle: string) => void;
+  readonly handleCardClick: (id: string, status: HistoryStatus) => Promise<void>;
+  readonly handleDeleteItem: (id: string) => Promise<boolean>;
+  readonly handleUpdateTitle: (id: string, newTitle: string) => Promise<boolean>;
 };
 
 export const RecommendationHistoryContext = createContext<RecommendationHistoryContextType | null>(

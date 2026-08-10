@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 
 import { tokens } from "../../design-system/tokens.generated";
-import { type HistoryStatus } from "./RecommendationHistory.context";
+import { type HistoryDisplayStatus } from "./RecommendationHistory.context";
 
 export const S = {
   Container: styled.div`
@@ -50,7 +50,7 @@ export const S = {
     margin: 0;
   `,
 
-  Card: styled.li<{ $status: HistoryStatus }>`
+  Card: styled.li<{ $status: HistoryDisplayStatus }>`
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
@@ -59,15 +59,32 @@ export const S = {
     box-sizing: border-box;
     border-radius: 12px;
     background-color: ${tokens.color.neutral["0"]};
-    cursor: pointer;
     transition: all 0.2s ease-in-out;
 
     border: 1px solid
       ${({ $status }) =>
         $status === "failed" ? tokens.color.warning["500"] : tokens.color.neutral["200"]};
+  `,
+
+  CardOpenButton: styled.div`
+    display: flex;
+    flex: 1;
+    align-self: stretch;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    cursor: pointer;
+    text-align: left;
 
     &:active {
       background-color: ${tokens.color.neutral["50"]};
+    }
+
+    &:focus-visible {
+      outline: 2px solid ${tokens.color.primary["500"]};
+      outline-offset: -2px;
+      border-radius: 8px;
     }
   `,
 
@@ -95,7 +112,7 @@ export const S = {
     margin: 0;
   `,
 
-  CardDescription: styled.p<{ $status?: HistoryStatus }>`
+  CardDescription: styled.p<{ $status?: HistoryDisplayStatus }>`
     ${tokens.typography.body.xs};
     font-size: 12px;
     font-weight: 400;

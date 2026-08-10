@@ -9,6 +9,7 @@
     "start": "node --env-file-if-exists=.env dist/index.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "node --env-file-if-exists=.env --import tsx src/scripts/recommendation-engine/test.ts",
+    "test:history": "node --import tsx --test src/recommendation/history.test.ts",
     "clean": "rm -rf dist",
     "db:push": "drizzle-kit push",
     "db:generate": "drizzle-kit generate",

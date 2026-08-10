@@ -46,6 +46,7 @@ export const signupVerificationCodes = pgTable('signup_verification_codes', {
 export const placeRecommendationHistories = pgTable('place_recommendation_histories', {
   id: uuid('id').primaryKey().defaultRandom(),
   userIds: uuid('user_ids').array().notNull().default(sql`'{}'`),
+  title: text('title').notNull().default('추천 기록'),
   input: jsonb('input').$type<UserInput>().notNull(),
   output: jsonb('output').$type<UserOutput>(),
   errorCode: text('error_code'),

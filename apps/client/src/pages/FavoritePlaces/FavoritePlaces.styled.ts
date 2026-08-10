@@ -34,6 +34,11 @@ export const S = {
     color: ${tokens.color.secondary[700]};
     margin-bottom: 16px;
   `,
+  DeleteError: styled.p`
+    ${typography.body.xs}
+    color: ${tokens.color.warning[500]};
+    margin: 0 0 12px;
+  `,
   List: styled.div`
     display: flex;
     flex-direction: column;
@@ -117,6 +122,11 @@ export const S = {
     display: flex;
     align-items: center;
     justify-content: center;
+
+    &:disabled {
+      cursor: not-allowed;
+      opacity: 0.6;
+    }
   `,
   ScoreBadge: styled.div`
     display: flex;
