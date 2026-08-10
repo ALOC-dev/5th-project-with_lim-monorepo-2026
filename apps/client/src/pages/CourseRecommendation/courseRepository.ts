@@ -1,3 +1,5 @@
+import type { CourseRoutePoint } from "@monorepo/api-contracts";
+
 import { searchLocationsByKeyword } from "../../apis/kakao/searchPlaces";
 import {
   cancelCourse,
@@ -51,6 +53,7 @@ const toOption = (option: {
   readonly totalTravelMinutes: number;
   readonly pricePerPersonWon: number;
   readonly isFavorite: boolean;
+  readonly routePath: readonly CourseRoutePoint[];
   readonly reason?: string | null;
   readonly stops: readonly {
     readonly id: string;
@@ -76,6 +79,7 @@ const toOption = (option: {
   totalTravelMinutes: option.totalTravelMinutes,
   pricePerPersonWon: option.pricePerPersonWon,
   isFavorite: option.isFavorite,
+  routePath: option.routePath,
   stops: option.stops.map((stop) => ({
     ...toPlace({
       source: stop.source,
@@ -110,7 +114,7 @@ export const courseRepository: CourseRecommendationRepository = {
   listPickerPlaces: async (query, source) => {
     if (source === "FAVORITE") {
       const response = await getFavoritePlaces();
-      if (!response.success) return [];
+      if (!response.success) throw new Error(response.error);
       return response.data.favorites.map((favorite) =>
         toPlace({
           source: "FAVORITE",
@@ -125,7 +129,10 @@ export const courseRepository: CourseRecommendationRepository = {
       );
     }
     const response = await searchLocationsByKeyword({ query, currentLocation: SEARCH_CENTER });
-    if (response.kind !== "success") return [];
+    if (response.kind !== "success") {
+      if (response.reason === "zero-result" || response.reason === "empty-query") return [];
+      throw new Error("장소 검색을 완료하지 못했습니다.");
+    }
     return response.places.map((place) =>
       toPlace({
         source: "KAKAO",
@@ -165,15 +172,17 @@ export const courseRepository: CourseRecommendationRepository = {
   },
   getRecommendation: async (id) => {
     const response = await getCourse(id);
-    return response.success ? toRecommendation(response.data) : null;
+    if (!response.success) throw new Error(response.error);
+    return toRecommendation(response.data);
   },
   getOption: async (courseId, optionId) => {
     const response = await getCourseOption(courseId, optionId);
-    return response.success ? toOption(response.data) : null;
+    if (!response.success) throw new Error(response.error);
+    return toOption(response.data);
   },
   listHistory: async () => {
     const response = await getCourses();
-    if (!response.success) return [];
+    if (!response.success) throw new Error(response.error);
     return response.data.items.map((item) => ({
       id: item.id,
       title: item.title ?? "새 코스 추천",
@@ -183,12 +192,24 @@ export const courseRepository: CourseRecommendationRepository = {
       optionCount: item.optionCount ?? undefined,
     }));
   },
-  renameHistory: async (id, title) => (await renameCourse(id, title)).success,
-  deleteHistory: async (id) => (await deleteCourse(id)).success,
-  cancelPendingHistory: async (id) => (await cancelCourse(id)).success,
+  renameHistory: async (id, title) => {
+    const response = await renameCourse(id, title);
+    if (!response.success) throw new Error(response.error);
+    return true;
+  },
+  deleteHistory: async (id) => {
+    const response = await deleteCourse(id);
+    if (!response.success) throw new Error(response.error);
+    return true;
+  },
+  cancelPendingHistory: async (id) => {
+    const response = await cancelCourse(id);
+    if (!response.success) throw new Error(response.error);
+    return true;
+  },
   listFavorites: async () => {
     const response = await getFavoriteCourseOptions();
-    if (!response.success) return [];
+    if (!response.success) throw new Error(response.error);
     return response.data.options.map((option) => ({
       optionId: option.id,
       recommendationId: option.courseId,
@@ -196,6 +217,9 @@ export const courseRepository: CourseRecommendationRepository = {
       option: toOption(option),
     }));
   },
-  toggleFavorite: async (_courseId, optionId, favorite) =>
-    (await setCourseOptionFavorite(optionId, favorite)).success,
+  toggleFavorite: async (_courseId, optionId, favorite) => {
+    const response = await setCourseOptionFavorite(optionId, favorite);
+    if (!response.success) throw new Error(response.error);
+    return true;
+  },
 };

@@ -1,3 +1,7 @@
+import type { CourseRoutePoint as ApiCourseRoutePoint } from "@monorepo/api-contracts";
+
+export type CourseRoutePoint = ApiCourseRoutePoint;
+
 export type CourseRecommendationStatus = "PENDING" | "SUCCESS" | "FAILED" | "EMPTY" | "CANCELLED";
 
 export type CoursePlaceSource = "FAVORITE" | "KAKAO";
@@ -35,6 +39,8 @@ export type CourseOption = {
   readonly type: CourseOptionType;
   readonly title: string;
   readonly reason: string;
+  /** Engine-provided route geometry. Legacy records can fall back to stops. */
+  readonly routePath: readonly CourseRoutePoint[];
   readonly stops: readonly CourseStop[];
   readonly totalDurationMinutes: number;
   readonly totalTravelMinutes: number;

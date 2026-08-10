@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CustomOverlayMap, Map, Polyline } from "react-kakao-maps-sdk";
 import { useNavigate, useParams } from "react-router-dom";
@@ -15,6 +15,7 @@ import Modal from "../../components/Modal/Modal";
 import PageRoot from "../../components/PageRoot/PageRoot";
 import { SearchInput } from "../../components/SearchInput";
 import { tokens } from "../../design-system/tokens.generated";
+import { getCourseRoutePath } from "./courseMap";
 import { courseRepository } from "./courseRepository";
 import type { CourseHistoryItem, CourseOption, CoursePlace } from "./course.types";
 
@@ -59,18 +60,64 @@ const CoursePage = ({
   </PageRoot>
 );
 
-const CourseMap = ({ option }: { readonly option: CourseOption }) => {
-  const center = option.stops[0];
+const COURSE_SINGLE_POINT_MAP_LEVEL = 4;
+const COURSE_MAP_BOUNDS_PADDING = { bottom: 32, left: 32, right: 32, top: 32 } as const;
+
+const CourseMap = ({
+  option,
+  height,
+}: {
+  readonly option: CourseOption;
+  readonly height?: string;
+}) => {
+  const routePath = useMemo(() => getCourseRoutePath(option), [option]);
+  const [map, setMap] = useState<kakao.maps.Map | null>(null);
+  const center = routePath[0];
+  const fitMapToRoute = useCallback(
+    (targetMap: kakao.maps.Map) => {
+      if (routePath.length === 0) return;
+      if (routePath.length === 1) {
+        const point = routePath[0];
+        if (!point) return;
+        targetMap.setCenter(new kakao.maps.LatLng(point.lat, point.lng));
+        targetMap.setLevel(COURSE_SINGLE_POINT_MAP_LEVEL);
+        return;
+      }
+      const bounds = new kakao.maps.LatLngBounds();
+      routePath.forEach(({ lat, lng }) => bounds.extend(new kakao.maps.LatLng(lat, lng)));
+      targetMap.setBounds(
+        bounds,
+        COURSE_MAP_BOUNDS_PADDING.top,
+        COURSE_MAP_BOUNDS_PADDING.right,
+        COURSE_MAP_BOUNDS_PADDING.bottom,
+        COURSE_MAP_BOUNDS_PADDING.left,
+      );
+    },
+    [routePath],
+  );
+  const handleMapCreate = useCallback(
+    (createdMap: kakao.maps.Map) => {
+      setMap(createdMap);
+      fitMapToRoute(createdMap);
+    },
+    [fitMapToRoute],
+  );
+
+  useEffect(() => {
+    if (map) fitMapToRoute(map);
+  }, [fitMapToRoute, map]);
+
   if (!center) return <S.MapFallback>표시할 장소가 없어요.</S.MapFallback>;
   return (
-    <S.Map>
+    <S.Map $height={height}>
       <Map
         center={{ lat: center.lat, lng: center.lng }}
         level={5}
+        onCreate={handleMapCreate}
         style={{ height: "100%", width: "100%" }}
       >
         <Polyline
-          path={option.stops.map(({ lat, lng }) => ({ lat, lng }))}
+          path={routePath.map(({ lat, lng }) => ({ lat, lng }))}
           strokeColor={tokens.color.primary[500]}
           strokeOpacity={0.8}
           strokeStyle="solid"
@@ -83,7 +130,9 @@ const CourseMap = ({ option }: { readonly option: CourseOption }) => {
             xAnchor={0.5}
             yAnchor={0.5}
           >
-            <S.Marker type="button">{index + 1}</S.Marker>
+            <S.Marker aria-label={`${index + 1}번째 장소 ${stop.name}`} role="img">
+              {index + 1}
+            </S.Marker>
           </CustomOverlayMap>
         ))}
       </Map>
@@ -206,11 +255,14 @@ export const CourseRecommendationFormPage = () => {
         height="min(78dvh, 680px)"
         id="course-place-picker"
         isOpen={isPickerOpen}
+        isModal
+        ariaLabel="장소 선택"
       >
         <S.Sheet>
           <S.Heading>장소 선택</S.Heading>
           <S.Tabs>
             <S.Tab
+              aria-pressed={pickerSource === "FAVORITE"}
               $active={pickerSource === "FAVORITE"}
               onClick={() => {
                 setPickerSource("FAVORITE");
@@ -221,6 +273,7 @@ export const CourseRecommendationFormPage = () => {
               즐겨찾기
             </S.Tab>
             <S.Tab
+              aria-pressed={pickerSource === "KAKAO"}
               $active={pickerSource === "KAKAO"}
               onClick={() => setPickerSource("KAKAO")}
               type="button"
@@ -241,42 +294,62 @@ export const CourseRecommendationFormPage = () => {
           <S.Count>
             선택 장소 {places.length} / {MAX_SELECTED_PLACES}
           </S.Count>
-          {pickerQuery.isPending ? (
-            <FeedbackState kind="loading" title="장소를 불러오는 중이에요" />
-          ) : pickerQuery.data?.length ? (
-            <S.List>
-              {pickerQuery.data.map((place) => {
-                const selected = places.some(({ id }) => id === place.id);
-                const atLimit = places.length >= MAX_SELECTED_PLACES && !selected;
-                return (
-                  <S.ListItem key={place.id}>
-                    <span>
-                      <strong>{place.name}</strong>
-                      <small>
-                        {place.category} · {place.address}
-                      </small>
-                    </span>
-                    <S.SelectPlace disabled={atLimit} onClick={() => toggle(place)} type="button">
-                      {selected ? "선택됨" : atLimit ? "최대 선택" : "선택"}
-                    </S.SelectPlace>
-                  </S.ListItem>
-                );
-              })}
-            </S.List>
-          ) : (
-            <FeedbackState
-              description={
-                pickerSource === "KAKAO" && query.trim().length === 0
-                  ? "장소명으로 검색해 보세요."
-                  : "다른 검색어로 다시 찾아보세요."
-              }
-              kind="empty"
-              title="검색 결과가 없어요"
-            />
-          )}
-          <Button onClick={() => setPickerOpen(false)} type="button" width="100%">
-            선택 완료
-          </Button>
+          <S.PickerResults>
+            {pickerQuery.isPending ? (
+              <FeedbackState kind="loading" title="장소를 불러오는 중이에요" />
+            ) : pickerQuery.isError ? (
+              <FeedbackState
+                action={{ label: "다시 시도", onClick: () => void pickerQuery.refetch() }}
+                kind="error"
+                title="장소를 불러오지 못했어요"
+              />
+            ) : pickerQuery.data?.length ? (
+              <S.List>
+                {pickerQuery.data.map((place) => {
+                  const selected = places.some(({ id }) => id === place.id);
+                  const atLimit = places.length >= MAX_SELECTED_PLACES && !selected;
+                  return (
+                    <S.ListItem key={place.id}>
+                      <span>
+                        <strong>{place.name}</strong>
+                        <small>
+                          {place.category} · {place.address}
+                        </small>
+                      </span>
+                      <S.SelectPlace
+                        aria-label={`${place.name} ${selected ? "선택 해제" : "선택"}`}
+                        aria-pressed={selected}
+                        disabled={atLimit}
+                        onClick={() => toggle(place)}
+                        type="button"
+                      >
+                        {selected ? "선택됨" : atLimit ? "최대 선택" : "선택"}
+                      </S.SelectPlace>
+                    </S.ListItem>
+                  );
+                })}
+              </S.List>
+            ) : (
+              <FeedbackState
+                description={
+                  pickerSource === "FAVORITE"
+                    ? "마음에 드는 장소를 찜하면 여기에서 바로 선택할 수 있어요."
+                    : query.trim().length === 0
+                      ? "장소명으로 검색해 보세요."
+                      : "다른 검색어로 다시 찾아보세요."
+                }
+                kind="empty"
+                title={
+                  pickerSource === "FAVORITE" ? "아직 찜한 장소가 없어요" : "검색 결과가 없어요"
+                }
+              />
+            )}
+          </S.PickerResults>
+          <S.SheetBottom>
+            <Button onClick={() => setPickerOpen(false)} type="button" width="100%">
+              선택 완료
+            </Button>
+          </S.SheetBottom>
         </S.Sheet>
       </BottomSheet>
     </CoursePage>
@@ -287,6 +360,7 @@ export const CourseRecommendationPendingPage = () => {
   const navigate = useNavigate();
   const { courseId } = useParams();
   const [error, setError] = useState<string | null>(null);
+  const [progress, setProgress] = useState("선택한 장소와 약속 시간을 확인하고 있어요.");
   useEffect(() => {
     if (!courseId) {
       setError("추천 요청을 찾을 수 없습니다.");
@@ -294,6 +368,23 @@ export const CourseRecommendationPendingPage = () => {
     }
     const source = new EventSource(getCourseStreamUrl(courseId), { withCredentials: true });
     let terminalEventReceived = false;
+    const updateProgress = (event: MessageEvent<string>) => {
+      try {
+        const data: unknown = JSON.parse(event.data);
+        if (typeof data !== "object" || data === null) return;
+        const record = data as { type?: string; step?: string };
+        if (record.type !== "progress") return;
+        setProgress(
+          record.step === "generating_options"
+            ? "여러 코스 옵션을 만들고 있어요."
+            : record.step === "persisting_results"
+              ? "추천 결과를 저장하고 있어요."
+              : "선택한 장소와 약속 시간을 확인하고 있어요.",
+        );
+      } catch {
+        // A malformed progress event must not end a valid stream.
+      }
+    };
     const terminal = (event: MessageEvent<string>) => {
       try {
         terminalEventReceived = true;
@@ -316,6 +407,7 @@ export const CourseRecommendationPendingPage = () => {
     source.addEventListener("result", terminal as EventListener);
     source.addEventListener("error", terminal as EventListener);
     source.addEventListener("cancelled", terminal as EventListener);
+    source.addEventListener("progress", updateProgress as EventListener);
     source.onerror = () => {
       if (!terminalEventReceived) setError("코스 추천 연결이 끊어졌습니다.");
     };
@@ -333,11 +425,7 @@ export const CourseRecommendationPendingPage = () => {
           title={error}
         />
       ) : (
-        <FeedbackState
-          description="선택한 장소와 약속 시간을 바탕으로 코스를 만들고 있어요."
-          kind="loading"
-          title="코스를 추천하는 중이에요"
-        />
+        <FeedbackState description={progress} kind="loading" title="코스를 추천하는 중이에요" />
       )}
     </CoursePage>
   );
@@ -404,7 +492,12 @@ export const CourseRecommendationResultPage = () => {
         <S.Heading>추천 코스 {recommendation.options.length}개</S.Heading>
         {recommendation.options.map((option, index) => (
           <S.Option $selected={option.id === selected.id} key={option.id}>
-            <S.OptionSelect onClick={() => setSelectedId(option.id)} type="button">
+            <S.OptionSelect
+              aria-label={`${index + 1}번 ${option.type} 코스 선택`}
+              aria-pressed={option.id === selected.id}
+              onClick={() => setSelectedId(option.id)}
+              type="button"
+            >
               <b>{index + 1}</b>
               <span>
                 <strong>{option.type}</strong>
@@ -446,7 +539,11 @@ export const CourseRecommendationOptionDetailPage = () => {
     mutationFn: (value: boolean) =>
       courseRepository.toggleFavorite(courseId ?? "", optionId ?? "", value),
     onSuccess: () =>
-      void queryClient.invalidateQueries({ queryKey: ["course-option", courseId, optionId] }),
+      void Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["course-option", courseId, optionId] }),
+        queryClient.invalidateQueries({ queryKey: ["course", courseId] }),
+        queryClient.invalidateQueries({ queryKey: ["course-favorites"] }),
+      ]),
   });
   if (optionQuery.isPending)
     return (
@@ -467,6 +564,7 @@ export const CourseRecommendationOptionDetailPage = () => {
       right={
         <S.IconButton
           aria-label={option.isFavorite ? "코스 찜 해제" : "코스 찜하기"}
+          disabled={favorite.isPending}
           onClick={() => favorite.mutate(!option.isFavorite)}
           type="button"
         >
@@ -476,7 +574,10 @@ export const CourseRecommendationOptionDetailPage = () => {
       title="코스 상세"
     >
       <S.Detail>
-        <CourseMap option={option} />
+        <CourseMap height="232px" option={option} />
+        {favorite.isError ? (
+          <S.InlineError role="alert">코스 찜 상태를 변경하지 못했어요.</S.InlineError>
+        ) : null}
         <S.Card>
           <S.Heading>{option.title}</S.Heading>
           <span>
@@ -522,6 +623,7 @@ export const CourseRecommendationHistoryPage = () => {
   const [editing, setEditing] = useState<CourseHistoryItem | null>(null);
   const [title, setTitle] = useState("");
   const [deleting, setDeleting] = useState<CourseHistoryItem | null>(null);
+  const renameInvalid = title.trim().length === 0 || title.trim().length > 60;
   const refresh = () => void queryClient.invalidateQueries({ queryKey: ["course-history"] });
   const rename = useMutation({
     mutationFn: () => courseRepository.renameHistory(editing?.id ?? "", title),
@@ -545,6 +647,12 @@ export const CourseRecommendationHistoryPage = () => {
       <S.HistoryContent>
         {histories.isPending ? (
           <FeedbackState kind="loading" title="추천 기록을 불러오는 중이에요" />
+        ) : histories.isError ? (
+          <FeedbackState
+            action={{ label: "다시 시도", onClick: () => void histories.refetch() }}
+            kind="error"
+            title="추천 기록을 불러오지 못했어요"
+          />
         ) : !histories.data?.length ? (
           <FeedbackState
             action={{
@@ -595,6 +703,7 @@ export const CourseRecommendationHistoryPage = () => {
                         <S.IconButton
                           aria-label={`${item.title} 추천 기록 이름 변경`}
                           onClick={() => {
+                            rename.reset();
                             setEditing(item);
                             setTitle(item.title);
                           }}
@@ -605,7 +714,10 @@ export const CourseRecommendationHistoryPage = () => {
                       ) : null}
                       <S.IconButton
                         aria-label={`${item.title} 추천 기록 삭제`}
-                        onClick={() => setDeleting(item)}
+                        onClick={() => {
+                          remove.reset();
+                          setDeleting(item);
+                        }}
                         type="button"
                       >
                         <Icon name="close" size={18} />
@@ -619,25 +731,43 @@ export const CourseRecommendationHistoryPage = () => {
         )}
       </S.HistoryContent>
       <Modal
-        close={() => setEditing(null)}
+        close={() => {
+          rename.reset();
+          setEditing(null);
+        }}
         id="course-rename"
         isOpen={Boolean(editing)}
         primaryAction={{
           label: "변경",
           onClick: () => rename.mutate(),
-          disabled: title.trim().length === 0 || title.trim().length > 60 || rename.isPending,
+          disabled: renameInvalid || rename.isPending,
         }}
-        secondaryAction={{ label: "취소", onClick: () => setEditing(null) }}
+        secondaryAction={{
+          label: "취소",
+          onClick: () => {
+            rename.reset();
+            setEditing(null);
+          },
+        }}
         title="기록 이름 변경"
       >
         <S.ModalInput
           aria-label="코스 기록 이름"
+          $invalid={renameInvalid}
           onChange={(event) => setTitle(event.target.value)}
           value={title}
         />
+        {renameInvalid ? (
+          <S.ModalError role="alert">이름은 1~60자로 입력해 주세요.</S.ModalError>
+        ) : rename.isError ? (
+          <S.ModalError role="alert">이름을 변경하지 못했어요.</S.ModalError>
+        ) : null}
       </Modal>
       <Modal
-        close={() => setDeleting(null)}
+        close={() => {
+          remove.reset();
+          setDeleting(null);
+        }}
         description={
           deleting?.status === "PENDING"
             ? "생성 중인 코스 추천을 취소합니다."
@@ -648,12 +778,27 @@ export const CourseRecommendationHistoryPage = () => {
         primaryAction={{
           label: deleting?.status === "PENDING" ? "취소하기" : "삭제하기",
           onClick: () => remove.mutate(),
+          disabled: remove.isPending,
         }}
-        secondaryAction={{ label: "돌아가기", onClick: () => setDeleting(null) }}
+        secondaryAction={{
+          label: "돌아가기",
+          onClick: () => {
+            remove.reset();
+            setDeleting(null);
+          },
+        }}
         title={
           deleting?.status === "PENDING" ? "추천 생성을 취소할까요?" : "추천 기록을 삭제할까요?"
         }
-      />
+      >
+        {remove.isError ? (
+          <S.ModalError role="alert">
+            {deleting?.status === "PENDING"
+              ? "추천 생성을 취소하지 못했어요."
+              : "추천 기록을 삭제하지 못했어요."}
+          </S.ModalError>
+        ) : null}
+      </Modal>
     </CoursePage>
   );
 };
@@ -669,12 +814,25 @@ export const CourseFavoritePage = () => {
   const remove = useMutation({
     mutationFn: (favorite: { courseId: string; optionId: string }) =>
       courseRepository.toggleFavorite(favorite.courseId, favorite.optionId, false),
-    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["course-favorites"] }),
+    onSuccess: (_result, favorite) =>
+      void Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["course-favorites"] }),
+        queryClient.invalidateQueries({
+          queryKey: ["course-option", favorite.courseId, favorite.optionId],
+        }),
+        queryClient.invalidateQueries({ queryKey: ["course", favorite.courseId] }),
+      ]),
   });
   return (
     <CoursePage onBack={() => navigate(-1)} title="찜한 코스 보기">
       {favorites.isPending ? (
         <FeedbackState kind="loading" title="찜한 코스를 불러오는 중이에요" />
+      ) : favorites.isError ? (
+        <FeedbackState
+          action={{ label: "다시 시도", onClick: () => void favorites.refetch() }}
+          kind="error"
+          title="찜한 코스를 불러오지 못했어요"
+        />
       ) : !favorites.data?.length ? (
         <FeedbackState
           action={{
@@ -685,39 +843,45 @@ export const CourseFavoritePage = () => {
           title="아직 찜한 코스가 없어요"
         />
       ) : (
-        <S.FavoriteList>
-          {favorites.data.map((favorite) => (
-            <S.Favorite key={`${favorite.recommendationId}:${favorite.optionId}`}>
-              <time>{formatDate(favorite.savedAt)}</time>
-              <S.FavoriteOpen
-                onClick={() =>
-                  void navigate(
-                    `/course/recommendation/result/${encodeURIComponent(favorite.recommendationId)}/option/${encodeURIComponent(favorite.optionId)}`,
-                  )
-                }
-                type="button"
-              >
-                <strong>{favorite.option.title}</strong>
-                <small>
-                  {favorite.option.stops.length}곳 · 이동 {favorite.option.totalTravelMinutes}분 ·{" "}
-                  {formatMinutes(favorite.option.totalDurationMinutes)}
-                </small>
-              </S.FavoriteOpen>
-              <S.IconButton
-                aria-label={`${favorite.option.title} 찜 삭제`}
-                onClick={() =>
-                  remove.mutate({
-                    courseId: favorite.recommendationId,
-                    optionId: favorite.optionId,
-                  })
-                }
-                type="button"
-              >
-                <Icon name="heart-filled" />
-              </S.IconButton>
-            </S.Favorite>
-          ))}
-        </S.FavoriteList>
+        <S.FavoriteContent>
+          {remove.isError ? (
+            <S.InlineError role="alert">찜을 해제하지 못했어요.</S.InlineError>
+          ) : null}
+          <S.FavoriteList>
+            {favorites.data.map((favorite) => (
+              <S.Favorite key={`${favorite.recommendationId}:${favorite.optionId}`}>
+                <time>{formatDate(favorite.savedAt)}</time>
+                <S.FavoriteOpen
+                  onClick={() =>
+                    void navigate(
+                      `/course/recommendation/result/${encodeURIComponent(favorite.recommendationId)}/option/${encodeURIComponent(favorite.optionId)}`,
+                    )
+                  }
+                  type="button"
+                >
+                  <strong>{favorite.option.title}</strong>
+                  <small>
+                    {favorite.option.stops.length}곳 · 이동 {favorite.option.totalTravelMinutes}분 ·{" "}
+                    {formatMinutes(favorite.option.totalDurationMinutes)}
+                  </small>
+                </S.FavoriteOpen>
+                <S.IconButton
+                  aria-label={`${favorite.option.title} 찜 삭제`}
+                  disabled={remove.isPending}
+                  onClick={() =>
+                    remove.mutate({
+                      courseId: favorite.recommendationId,
+                      optionId: favorite.optionId,
+                    })
+                  }
+                  type="button"
+                >
+                  <Icon name="heart-filled" />
+                </S.IconButton>
+              </S.Favorite>
+            ))}
+          </S.FavoriteList>
+        </S.FavoriteContent>
       )}
     </CoursePage>
   );
@@ -768,16 +932,35 @@ const S = {
   `,
   SelectedPlace: styled.div`
     display: flex;
+    min-width: 0;
+    align-items: center;
     justify-content: space-between;
+    gap: 12px;
     padding: 10px 12px;
     border-radius: 10px;
     background: ${tokens.color.primary[100]};
+
+    span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
   `,
   IconButton: styled.button`
-    display: flex;
+    display: grid;
+    width: 44px;
+    height: 44px;
+    flex: none;
+    place-items: center;
     border: 0;
+    border-radius: 50%;
     background: transparent;
     color: ${tokens.color.primary[500]};
+
+    &:focus-visible {
+      outline: 2px solid ${tokens.color.primary[500]};
+      outline-offset: 2px;
+    }
   `,
   FieldGrid: styled.div`
     display: grid;
@@ -810,6 +993,17 @@ const S = {
     flex: 1;
     flex-direction: column;
     gap: 14px;
+  `,
+  PickerResults: styled.div`
+    display: flex;
+    min-height: 0;
+    flex: 1;
+    flex-direction: column;
+    overflow: auto;
+  `,
+  SheetBottom: styled.div`
+    flex: none;
+    padding-top: 2px;
   `,
   Tabs: styled.div`
     display: grid;
@@ -870,9 +1064,9 @@ const S = {
       background: ${tokens.color.neutral[200]};
     }
   `,
-  Map: styled.div`
-    height: 100%;
-    min-height: 220px;
+  Map: styled.div<{ $height?: string }>`
+    height: ${({ $height }) => $height ?? "100%"};
+    min-height: ${({ $height }) => $height ?? "220px"};
     overflow: hidden;
     background: ${tokens.color.secondary[100]};
   `,
@@ -882,7 +1076,7 @@ const S = {
     place-items: center;
     background: ${tokens.color.secondary[100]};
   `,
-  Marker: styled.button`
+  Marker: styled.span`
     display: grid;
     width: 28px;
     height: 28px;
@@ -903,7 +1097,7 @@ const S = {
     left: 16px;
     padding: 8px 10px;
     border-radius: 16px;
-    background: white;
+    background: ${tokens.color.neutral[0]};
   `,
   Result: styled.section`
     display: flex;
@@ -919,7 +1113,8 @@ const S = {
     border: 1px solid
       ${({ $selected }) => ($selected ? tokens.color.primary[500] : tokens.color.neutral[200])};
     border-radius: 12px;
-    background: white;
+    background: ${({ $selected }) =>
+      $selected ? tokens.color.primary[50] : tokens.color.neutral[0]};
   `,
   OptionSelect: styled.button`
     display: flex;
@@ -936,6 +1131,7 @@ const S = {
       place-items: center;
       border-radius: 50%;
       background: ${tokens.color.primary[100]};
+      color: ${tokens.color.primary[700]};
     }
     span {
       display: flex;
@@ -1111,11 +1307,27 @@ const S = {
       }
     }
   `,
-  ModalInput: styled.input`
+  ModalInput: styled.input<{ $invalid: boolean }>`
     height: 44px;
     padding: 0 12px;
-    border: 1px solid ${tokens.color.neutral[200]};
+    border: 1px solid
+      ${({ $invalid }) => ($invalid ? tokens.color.warning[500] : tokens.color.neutral[200])};
     border-radius: 8px;
+  `,
+  ModalError: styled.p`
+    margin: 0;
+    color: ${tokens.color.warning[500]};
+    ${tokens.typography.body.xs};
+  `,
+  FavoriteContent: styled.div`
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  `,
+  InlineError: styled.p`
+    margin: 20px 24px 0;
+    color: ${tokens.color.warning[500]};
+    ${tokens.typography.body.xs};
   `,
   FavoriteList: styled.ul`
     display: flex;
