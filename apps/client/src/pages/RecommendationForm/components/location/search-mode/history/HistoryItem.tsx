@@ -3,7 +3,6 @@ import styled from "@emotion/styled";
 import { Icon } from "../../../../../../components/Icon";
 import { theme } from "../../../../../../design-system/theme.generated";
 import { useLocationSearchHistory } from "../../../../hooks/useLocationSearchHistory";
-import { useRecommendationFormInput } from "../../../../RecommendationForm.context";
 import type { LocationSearchHistoryItem } from "../../../../utils/locationSearchHistory";
 import type { Location } from "../../LocationSelection.context";
 import { useLocationSelection } from "../../LocationSelection.context";
@@ -31,7 +30,6 @@ const assertNever = (value: never): never => {
 };
 
 const HistoryItem = ({ item }: HistoryItemProps) => {
-  const { setLocations } = useRecommendationFormInput();
   const { openMapMode, setQuery } = useLocationSelection();
   const { deleteItem, promoteItem } = useLocationSearchHistory();
 
@@ -42,22 +40,6 @@ const HistoryItem = ({ item }: HistoryItemProps) => {
 
   const selectLocation = (location: Location) => {
     promoteItem(item);
-
-    setLocations((prev) => {
-      if (prev.length >= 8) {
-        return prev;
-      }
-
-      return [
-        ...prev,
-        {
-          lat: location.lat,
-          lng: location.lng,
-          roadNameAddress: location.roadNameAddress,
-          placeName: location.placeName,
-        },
-      ];
-    });
 
     setQuery("");
     openMapMode();

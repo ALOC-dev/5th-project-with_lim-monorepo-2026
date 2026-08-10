@@ -2,10 +2,7 @@ import styled from "@emotion/styled";
 
 import { theme } from "../../../../../../design-system/theme.generated";
 import { useLocationSearchHistory } from "../../../../hooks/useLocationSearchHistory";
-import {
-  useRecommendationFormInput,
-  useRecommendationFormUi,
-} from "../../../../RecommendationForm.context";
+import { useRecommendationFormInput } from "../../../../RecommendationForm.context";
 import type { Location } from "../../LocationSelection.context";
 import { useLocationSelection } from "../../LocationSelection.context";
 
@@ -28,9 +25,8 @@ const getLocationDisplay = (location: Location) => {
 };
 
 const QueryResultItem = ({ location }: QueryResultItemProps) => {
-  const { locations, setLocations } = useRecommendationFormInput();
-  const { closeSheet } = useRecommendationFormUi();
-  const { setQuery } = useLocationSelection();
+  const { locations } = useRecommendationFormInput();
+  const { setQuery, openMapMode } = useLocationSelection();
   const { insertItem } = useLocationSearchHistory();
   const { mainText, subText } = getLocationDisplay(location);
 
@@ -45,9 +41,8 @@ const QueryResultItem = ({ location }: QueryResultItemProps) => {
       location,
     });
 
-    setLocations((prev) => [...prev, location]);
     setQuery("");
-    closeSheet();
+    openMapMode();
   };
 
   return (
