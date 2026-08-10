@@ -8,6 +8,8 @@ import {
   requestVerifyPasswordCode,
 } from "../../apis/auth";
 import { toApiClientErrorMessage } from "../../apis/errors";
+import PageRoot from "../../components/PageRoot/PageRoot";
+import { tokens } from "../../design-system/tokens.generated";
 import { ForgotPasswordContext, type ForgotPasswordContextType } from "./ForgotPassword.context";
 
 const ForgotPasswordFlowProvider = ({ children }: { readonly children: ReactNode }) => {
@@ -131,7 +133,9 @@ const ForgotPasswordFlowProvider = ({ children }: { readonly children: ReactNode
 export default function ForgotPasswordPage() {
   return (
     <ForgotPasswordFlowProvider>
-      <Outlet />
+      <PageRoot backgroundColor={tokens.color.neutral["50"]} layout="contained">
+        <Outlet />
+      </PageRoot>
     </ForgotPasswordFlowProvider>
   );
 }

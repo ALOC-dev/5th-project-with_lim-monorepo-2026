@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 import { useCallback, useMemo, useState } from "react";
 
+import PageRoot from "../../components/PageRoot/PageRoot";
+import { tokens } from "../../design-system/tokens.generated";
 import { LoginFormInputContext } from "./Login.context";
 import { type LoginFormInputContextType } from "./Login.context";
 import LoginFormContent from "./LoginForm";
@@ -37,8 +39,10 @@ export const LoginFlowProvider = ({ children }: { readonly children: ReactNode }
 
 export default function LoginPage() {
   return (
-    <LoginFlowProvider>
-      <LoginFormContent />
-    </LoginFlowProvider>
+    <PageRoot backgroundColor={tokens.color.neutral["50"]} layout="contained">
+      <LoginFlowProvider>
+        <LoginFormContent />
+      </LoginFlowProvider>
+    </PageRoot>
   );
 }

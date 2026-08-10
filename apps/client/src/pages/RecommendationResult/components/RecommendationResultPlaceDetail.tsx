@@ -1,11 +1,13 @@
 import { useEffect } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 
+import Header from "../../../components/Header/Header";
 import { useRecommendationResultUiContext } from "../wrappers/RecommendationResult.ui.context";
 import { S } from "./RecommendationResultPlaceDetail.styled";
 
 const RecommendationResultPlaceDetail = () => {
   const { placeId, recommendationId } = useParams();
+  const navigate = useNavigate();
   const { places, selectedPlaceId, selectPlace } = useRecommendationResultUiContext();
   const place = places.find((candidate) => candidate.id === placeId) ?? null;
   const backPath = `/place/recommendation/result/${recommendationId ?? ""}`;
@@ -19,12 +21,7 @@ const RecommendationResultPlaceDetail = () => {
   if (place === null) {
     return (
       <S.Root>
-        <S.Header>
-          <S.BackLink to={backPath} aria-label="결과 목록으로 돌아가기">
-            ‹
-          </S.BackLink>
-          <S.HeaderTitle>장소 상세</S.HeaderTitle>
-        </S.Header>
+        <Header title="장소 상세" onBack={() => navigate(backPath)} />
         <S.Body>
           <S.InfoCard>추천 결과에서 해당 장소를 찾을 수 없습니다.</S.InfoCard>
         </S.Body>
@@ -34,12 +31,7 @@ const RecommendationResultPlaceDetail = () => {
 
   return (
     <S.Root>
-      <S.Header>
-        <S.BackLink to={backPath} aria-label="결과 목록으로 돌아가기">
-          ‹
-        </S.BackLink>
-        <S.HeaderTitle>상세 정보</S.HeaderTitle>
-      </S.Header>
+      <Header title="상세 정보" onBack={() => navigate(backPath)} />
       <S.Body>
         <S.TopCard>
           <S.PlaceName>{place.name}</S.PlaceName>
@@ -70,20 +62,12 @@ const RecommendationResultPlaceDetail = () => {
           <S.InfoLabel>참고 링크</S.InfoLabel>
           <S.ReferenceLinks>
             {place.referenceUrls.naverMap !== undefined && (
-              <S.ReferenceLink
-                href={place.referenceUrls.naverMap}
-                target="_blank"
-                rel="noreferrer"
-              >
+              <S.ReferenceLink href={place.referenceUrls.naverMap} target="_blank" rel="noreferrer">
                 네이버지도
               </S.ReferenceLink>
             )}
             {place.referenceUrls.kakaoMap !== undefined && (
-              <S.ReferenceLink
-                href={place.referenceUrls.kakaoMap}
-                target="_blank"
-                rel="noreferrer"
-              >
+              <S.ReferenceLink href={place.referenceUrls.kakaoMap} target="_blank" rel="noreferrer">
                 카카오맵
               </S.ReferenceLink>
             )}

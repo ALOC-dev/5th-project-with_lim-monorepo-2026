@@ -10,7 +10,7 @@ import { useNavigate } from "react-router-dom";
 import { createRecommendationJob } from "../../apis/server/recommendation";
 import { Button } from "../../components/Button";
 import { Dropdown, type DropdownOption } from "../../components/Dropdown";
-import { Icon } from "../../components/Icon";
+import Header from "../../components/Header/Header";
 import { Input } from "../../components/Input";
 import Modal from "../../components/Modal/Modal";
 import { RangeSlider } from "../../components/Rangeslider";
@@ -129,14 +129,7 @@ const FormContent = () => {
 
   return (
     <S.RootContainer>
-      <S.Header>
-        <S.NavBar>
-          <S.BackButton type="button" onClick={() => navigate(-1)}>
-            <Icon name="back-arrow" />
-          </S.BackButton>
-          <S.Title>장소 추천</S.Title>
-        </S.NavBar>
-      </S.Header>
+      <Header title="장소 추천" onBack={() => navigate(-1)} />
       <S.ScrollContent>
         <S.RequiredNotice>*필수 입력</S.RequiredNotice>
 

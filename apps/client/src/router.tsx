@@ -1,6 +1,5 @@
-import { createBrowserRouter, Navigate, Outlet } from "react-router-dom";
+import { createBrowserRouter, Navigate } from "react-router-dom";
 
-import { useAuth } from "./contexts/Auth.context";
 import FavoritePlacesPage from "./pages/FavoritePlaces/FavoritePlacesPage";
 import ForgotPasswordForm from "./pages/ForgotPassword/ForgotPasswordForm";
 import ForgotPasswordPage from "./pages/ForgotPassword/ForgotPasswordPage";
@@ -13,22 +12,7 @@ import RecommendationMemberPage from "./pages/RecommendationMember/page";
 import RecommendationPendingPage from "./pages/RecommendationPending/page";
 import RecommendationResultPage from "./pages/RecommendationResult/RecommendationResult.page";
 import SignupPage from "./pages/Signup/SignupPage";
-
-const ProtectedRoute = () => {
-  const { isAuthenticated, isLoading } = useAuth();
-
-  if (isLoading) return <div>로딩 중...</div>;
-
-  return isAuthenticated ? <Outlet /> : <Navigate to="/login" replace />;
-};
-
-const PublicRoute = () => {
-  const { isAuthenticated, isLoading } = useAuth();
-
-  if (isLoading) return <div>로딩 중...</div>;
-
-  return isAuthenticated ? <Navigate to="/place/recommendation/form" replace /> : <Outlet />;
-};
+import { ProtectedRoute, PublicRoute } from "./routes/AuthRouteGuards";
 const NotFoundPage = () => <div>NotFoundPage</div>;
 
 export const router = createBrowserRouter([

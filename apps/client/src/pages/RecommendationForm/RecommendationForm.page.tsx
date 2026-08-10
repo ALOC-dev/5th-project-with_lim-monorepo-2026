@@ -198,7 +198,7 @@ const RecommendationFlowProvider = ({ children }: { readonly children: ReactNode
 const RecommendationFormPage = () => {
   return (
     <RecommendationFlowProvider>
-      <PageRoot backgroundColor={tokens.color.neutral[50]}>
+      <PageRoot backgroundColor={tokens.color.neutral[50]} layout="contained">
         <FormContent />
         <LocationSelectionBottomSheet />
         <DateSelectionBottomSheet />

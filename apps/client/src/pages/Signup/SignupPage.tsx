@@ -5,6 +5,8 @@ import {
   requestSendSignupCode,
   requestVerifySignupCode,
 } from "../../apis/auth";
+import PageRoot from "../../components/PageRoot/PageRoot";
+import { tokens } from "../../design-system/tokens.generated";
 import { SignupFormInputContext, type SignupFormInputContextType } from "./Signup.context";
 import SignupFormContent from "./SignupForm";
 
@@ -159,8 +161,10 @@ export const SignupFlowProvider = ({ children }: { readonly children: ReactNode 
 
 export default function SignupPage() {
   return (
-    <SignupFlowProvider>
-      <SignupFormContent />
-    </SignupFlowProvider>
+    <PageRoot backgroundColor={tokens.color.neutral["50"]} layout="contained">
+      <SignupFlowProvider>
+        <SignupFormContent />
+      </SignupFlowProvider>
+    </PageRoot>
   );
 }

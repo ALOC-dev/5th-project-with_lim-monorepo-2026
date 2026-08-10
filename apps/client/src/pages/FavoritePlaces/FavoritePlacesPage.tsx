@@ -1,6 +1,14 @@
-import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { type ReactNode, useCallback, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
+import {
+  deleteSavedPlace,
+  getSavedPlaces,
+  type SavedRecommendationPlace,
+} from "../../apis/server/savedPlaces";
+import PageRoot from "../../components/PageRoot/PageRoot";
+import { tokens } from "../../design-system/tokens.generated";
 import {
   type FavoritePlaceItem,
   FavoritePlacesContext,
@@ -8,53 +16,112 @@ import {
 } from "./FavoritePlaces.context";
 import FavoritePlacesContent from "./FavoritePlacesForm";
 
-export const FavoritePlacesProvider = ({ children }: { readonly children: ReactNode }) => {
+const favoritePlacesQueryKey = ["favoritePlaces"] as const;
+
+const seoulDateFormatter = new Intl.DateTimeFormat("en-US", {
+  timeZone: "Asia/Seoul",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
+class SavedPlacesRequestError extends Error {
+  readonly operation: "delete" | "list";
+
+  constructor(operation: "delete" | "list", message: string) {
+    super(message);
+    this.name = "SavedPlacesRequestError";
+    this.operation = operation;
+  }
+}
+
+const formatSeoulDate = (createdAt: string): string => {
+  const dateParts = new Map(
+    seoulDateFormatter
+      .formatToParts(new Date(createdAt))
+      .map(({ type, value }) => [type, value] as const),
+  );
+
+  return `${dateParts.get("year") ?? ""}.${dateParts.get("month") ?? ""}.${dateParts.get("day") ?? ""}`;
+};
+
+const toFavoritePlaceItem = ({
+  id,
+  createdAt,
+  placeData,
+}: SavedRecommendationPlace): FavoritePlaceItem => ({
+  id,
+  date: formatSeoulDate(createdAt),
+  title: placeData.name,
+  category: `${placeData.mainCategory} · ${placeData.subCategory}`,
+  score: placeData.score,
+  tags: placeData.tags,
+});
+
+const requestSavedPlaces = async (): Promise<SavedRecommendationPlace[]> => {
+  const response = await getSavedPlaces();
+  if (!response.success) {
+    throw new SavedPlacesRequestError("list", response.error);
+  }
+
+  return response.data.savedPlaces;
+};
+
+const requestSavedPlaceDeletion = async (savedPlaceId: string): Promise<string> => {
+  const response = await deleteSavedPlace(savedPlaceId);
+  if (!response.success) {
+    throw new SavedPlacesRequestError("delete", response.error);
+  }
+
+  return savedPlaceId;
+};
+
+const FavoritePlacesProvider = ({ children }: { readonly children: ReactNode }) => {
   const navigate = useNavigate();
-  const [favoriteList, setFavoriteList] = useState<FavoritePlaceItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const queryClient = useQueryClient();
+  const [deleteErrorMessage, setDeleteErrorMessage] = useState<string | null>(null);
+  const {
+    data: savedPlaces = [],
+    isError: isListError,
+    isPending: isLoading,
+    refetch,
+  } = useQuery({
+    queryKey: favoritePlacesQueryKey,
+    queryFn: requestSavedPlaces,
+    retry: false,
+  });
+  const { isPending: isDeleting, mutate: deleteFavoritePlace } = useMutation({
+    mutationFn: requestSavedPlaceDeletion,
+    onMutate: () => {
+      setDeleteErrorMessage(null);
+    },
+    onSuccess: (deletedSavedPlaceId) => {
+      queryClient.setQueryData<SavedRecommendationPlace[]>(
+        favoritePlacesQueryKey,
+        (currentSavedPlaces) => currentSavedPlaces?.filter(({ id }) => id !== deletedSavedPlaceId),
+      );
+    },
+    onError: () => {
+      setDeleteErrorMessage("찜한 장소를 삭제하지 못했습니다. 다시 시도해 주세요.");
+    },
+  });
 
-  useEffect(() => {
-    const fetchMockData = () => {
-      const mockData: FavoritePlaceItem[] = [
-        {
-          id: "place_1",
-          date: "2026.07.17",
-          title: "도시정원 다이닝",
-          category: "식당 · 이탈리안",
-          score: 92,
-          tags: ["분위기", "예약가능"],
-        },
-        {
-          id: "place_2",
-          date: "2026.07.17",
-          title: "도시정원 다이닝",
-          category: "식당 · 이탈리안",
-          score: 92,
-          tags: ["분위기", "예약가능"],
-        },
-        {
-          id: "place_3",
-          date: "2026.07.17",
-          title: "도시정원 다이닝",
-          category: "식당 · 이탈리안",
-          score: 92,
-          tags: ["분위기", "예약가능"],
-        },
-      ];
+  const favoriteList = useMemo(() => savedPlaces.map(toFavoritePlaceItem), [savedPlaces]);
 
-      setTimeout(() => {
-        setFavoriteList(mockData);
-        setIsLoading(false);
-      }, 1500);
-    };
+  const handleToggleFavorite = useCallback(
+    (savedPlaceId: string) => {
+      if (isDeleting) {
+        return;
+      }
 
-    void fetchMockData();
-  }, []);
+      deleteFavoritePlace(savedPlaceId);
+    },
+    [deleteFavoritePlace, isDeleting],
+  );
 
-  // 찜 삭제
-  const handleToggleFavorite = useCallback((id: string) => {
-    setFavoriteList((prev) => prev.filter((item) => item.id !== id));
-  }, []);
+  const handleRetry = useCallback(() => {
+    void refetch();
+  }, [refetch]);
 
   // 빈 화면에서 추천 받으러 가기
   const handleGoToRecommendations = useCallback(() => {
@@ -65,10 +132,23 @@ export const FavoritePlacesProvider = ({ children }: { readonly children: ReactN
     () => ({
       favoriteList,
       isLoading,
+      isListError,
+      isDeleting,
+      deleteErrorMessage,
       handleToggleFavorite,
+      handleRetry,
       handleGoToRecommendations,
     }),
-    [favoriteList, isLoading, handleToggleFavorite, handleGoToRecommendations],
+    [
+      favoriteList,
+      isLoading,
+      isListError,
+      isDeleting,
+      deleteErrorMessage,
+      handleToggleFavorite,
+      handleRetry,
+      handleGoToRecommendations,
+    ],
   );
 
   return (
@@ -79,7 +159,9 @@ export const FavoritePlacesProvider = ({ children }: { readonly children: ReactN
 export default function FavoritePlacesPage() {
   return (
     <FavoritePlacesProvider>
-      <FavoritePlacesContent />
+      <PageRoot backgroundColor={tokens.color.neutral[50]} layout="contained">
+        <FavoritePlacesContent />
+      </PageRoot>
     </FavoritePlacesProvider>
   );
 }

@@ -1,18 +1,22 @@
 import { createContext, useContext } from "react";
 
 export type FavoritePlaceItem = {
-  id: string;
-  date: string;
-  title: string;
-  category: string;
-  score: number;
-  tags: string[];
+  readonly id: string;
+  readonly date: string;
+  readonly title: string;
+  readonly category: string;
+  readonly score: number;
+  readonly tags: readonly string[];
 };
 
 export type FavoritePlacesContextType = {
-  readonly favoriteList: FavoritePlaceItem[];
+  readonly favoriteList: readonly FavoritePlaceItem[];
   readonly isLoading: boolean;
+  readonly isListError: boolean;
+  readonly isDeleting: boolean;
+  readonly deleteErrorMessage: string | null;
   readonly handleToggleFavorite: (id: string) => void;
+  readonly handleRetry: () => void;
   readonly handleGoToRecommendations: () => void;
 };
 

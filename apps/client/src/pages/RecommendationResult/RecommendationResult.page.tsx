@@ -1,5 +1,6 @@
 import { useParams } from "react-router-dom";
 
+import FeedbackState from "../../components/FeedbackState/FeedbackState";
 import PageRoot from "../../components/PageRoot/PageRoot";
 import { tokens } from "../../design-system/tokens.generated";
 import RecommendationResultListView from "./components/RecommendationResultListView";
@@ -10,11 +11,11 @@ import { RecommendationResultQueryBoundary } from "./wrappers/RecommendationResu
 import { RecommendationResultUiProvider } from "./wrappers/RecommendationResult.ui.provider";
 
 const RecommendationResultLoading = () => {
-  return <div>추천 결과를 불러오는 중입니다.</div>;
+  return <FeedbackState kind="loading" title="추천 결과를 불러오는 중입니다." />;
 };
 
 const RecommendationResultError = () => {
-  return <div>추천 결과를 불러오지 못했습니다.</div>;
+  return <FeedbackState kind="error" title="추천 결과를 불러오지 못했습니다." />;
 };
 
 const RecommendationResultSuccessView = ({
@@ -40,9 +41,14 @@ const RecommendationResultResolvedView = () => {
 };
 
 const RecommendationResultPage = () => {
+  const { placeId } = useParams();
+
   return (
     <RecommendationResultDataProvider>
-      <PageRoot backgroundColor={tokens.color.neutral[50]}>
+      <PageRoot
+        backgroundColor={tokens.color.neutral[50]}
+        layout={placeId === undefined ? "full" : "contained"}
+      >
         <RecommendationResultQueryBoundary
           views={{
             loading: RecommendationResultLoading,

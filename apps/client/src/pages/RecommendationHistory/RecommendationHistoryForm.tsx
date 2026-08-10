@@ -1,69 +1,111 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
+import FeedbackState from "../../components/FeedbackState/FeedbackState";
+import Header from "../../components/Header/Header";
 import { Icon } from "../../components/Icon/Icon";
 import Modal from "../../components/Modal/Modal";
 import { type HistoryItem, useRecommendationHistory } from "./RecommendationHistory.context";
 import { S } from "./RecommendationHistory.styled";
 
 export default function RecommendationHistoryContent() {
-  const { historyList, isLoading, handleCardClick, handleDeleteItem, handleUpdateTitle } =
-    useRecommendationHistory();
+  const {
+    historyList,
+    isError: isHistoryListError,
+    isLoading,
+    handleCardClick,
+    handleDeleteItem,
+    handleUpdateTitle,
+    retry,
+  } = useRecommendationHistory();
   const navigate = useNavigate();
 
   const [editingItem, setEditingItem] = useState<HistoryItem | null>(null);
   const [editTitle, setEditTitle] = useState("");
+  const [editRequestError, setEditRequestError] = useState<string | null>(null);
+  const [isSavingTitle, setIsSavingTitle] = useState(false);
 
   const [deletingItem, setDeletingItem] = useState<HistoryItem | null>(null);
+  const [deleteRequestError, setDeleteRequestError] = useState<string | null>(null);
+  const [isDeletingItem, setIsDeletingItem] = useState(false);
 
-  const textLengthWithoutSpaces = editTitle.replace(/\s/g, "").length;
-  const isError = textLengthWithoutSpaces === 0 || textLengthWithoutSpaces > 60;
+  const trimmedEditTitle = editTitle.trim();
+  const isEditTitleInvalid = trimmedEditTitle.length === 0 || trimmedEditTitle.length > 60;
 
   const openEditModal = (e: React.MouseEvent, item: HistoryItem) => {
     e.stopPropagation();
+    setEditRequestError(null);
     setEditingItem(item);
     setEditTitle(item.title);
   };
 
   const closeEditModal = () => {
+    if (isSavingTitle) return;
+
+    setEditRequestError(null);
     setEditingItem(null);
     setEditTitle("");
   };
 
-  const handleSaveTitle = () => {
-    if (isError || !editingItem) return;
+  const handleSaveTitle = async (): Promise<void> => {
+    if (isEditTitleInvalid || !editingItem || isSavingTitle) return;
 
-    handleUpdateTitle(editingItem.id, editTitle);
-    closeEditModal();
+    setEditRequestError(null);
+    setIsSavingTitle(true);
+    const isUpdated = await handleUpdateTitle(editingItem.id, trimmedEditTitle);
+    setIsSavingTitle(false);
+
+    if (isUpdated) {
+      closeEditModal();
+      return;
+    }
+
+    setEditRequestError("추천 기록 이름을 변경하지 못했습니다. 다시 시도해 주세요.");
   };
 
   const openDeleteModal = (e: React.MouseEvent, item: HistoryItem) => {
     e.stopPropagation();
+    setDeleteRequestError(null);
     setDeletingItem(item);
   };
 
+  const handleCompletedCardKeyDown = (
+    e: React.KeyboardEvent<HTMLDivElement>,
+    item: HistoryItem,
+  ) => {
+    if (e.key !== "Enter" && e.key !== " " && e.key !== "Space") return;
+
+    e.preventDefault();
+    void handleCardClick(item.id, item.status);
+  };
+
   const closeDeleteModal = () => {
+    if (isDeletingItem) return;
+
+    setDeleteRequestError(null);
     setDeletingItem(null);
   };
 
-  const confirmDelete = () => {
-    if (!deletingItem) return;
+  const confirmDelete = async (): Promise<void> => {
+    if (!deletingItem || isDeletingItem) return;
 
-    handleDeleteItem(deletingItem.id);
-    closeDeleteModal();
+    setDeleteRequestError(null);
+    setIsDeletingItem(true);
+    const isDeleted = await handleDeleteItem(deletingItem.id);
+    setIsDeletingItem(false);
+
+    if (isDeleted) {
+      closeDeleteModal();
+      return;
+    }
+
+    setDeleteRequestError("추천 기록을 삭제하지 못했습니다. 다시 시도해 주세요.");
   };
 
   return (
     <>
       <S.Container>
-        <S.Header>
-          <S.NavBar>
-            <S.BackButton type="button" onClick={() => navigate(-1)}>
-              <Icon name="back-arrow" />
-            </S.BackButton>
-            <S.Title>장소 추천 기록</S.Title>
-          </S.NavBar>
-        </S.Header>
+        <Header title="장소 추천 기록" onBack={() => navigate(-1)} />
 
         <S.Main>
           {isLoading ? (
@@ -78,60 +120,88 @@ export default function RecommendationHistoryContent() {
                 ))}
               </S.List>
             </>
+          ) : isHistoryListError ? (
+            <FeedbackState
+              action={{ label: "다시 시도", onClick: retry }}
+              description="서버 연결을 확인한 뒤 다시 시도해 주세요."
+              kind="error"
+              title="추천 기록을 불러오지 못했습니다."
+            />
           ) : historyList.length === 0 ? (
-            <S.EmptyStateWrapper>
-              <S.EmptyIconWrapper>
-                <Icon name="search" />
-              </S.EmptyIconWrapper>
-              <S.EmptyTitle>아직 저장된 기록이 없어요</S.EmptyTitle>
-              <S.EmptyDescription>추천 요청 후 이곳에서 결과를 확인해요.</S.EmptyDescription>
-              <S.EmptyButton type="button" onClick={() => navigate("/place/recommendation/form")}>
-                추천 요청하러 가기
-              </S.EmptyButton>
-            </S.EmptyStateWrapper>
+            <FeedbackState
+              action={{
+                label: "추천 요청하러 가기",
+                onClick: () => {
+                  void navigate("/place/recommendation/form");
+                },
+              }}
+              description="추천 요청 후 이곳에서 결과를 확인해요."
+              kind="empty"
+              title="아직 저장된 기록이 없어요"
+            />
           ) : (
             <>
               <S.NoticeText>추천 요청을 시작하면 기록이 자동으로 저장됩니다.</S.NoticeText>
               <S.List>
-                {historyList.map((item) => (
-                  <S.Card
-                    key={item.id}
-                    $status={item.status}
-                    onClick={() => handleCardClick(item.id, item.status)}
-                  >
+                {historyList.map((item) => {
+                  const cardInfo = (
                     <S.CardInfo>
                       <S.DateLabel>{item.dateLabel}</S.DateLabel>
                       <S.CardTitle>{item.title}</S.CardTitle>
-                      <S.CardDescription $status={item.status}>
+                      <S.CardDescription $status={item.displayStatus}>
                         {item.description}
                       </S.CardDescription>
                     </S.CardInfo>
+                  );
 
-                    <S.CardActions>
-                      {item.status === "pending" && <S.SpinnerIcon />}
-                      {item.status === "success" && (
-                        <S.IconButton
-                          type="button"
-                          $iconType="edit"
-                          onClick={(e: React.MouseEvent<HTMLButtonElement>) =>
-                            openEditModal(e, item)
+                  return (
+                    <S.Card key={item.id} $status={item.displayStatus}>
+                      {item.status === "COMPLETED" ? (
+                        <S.CardOpenButton
+                          role="button"
+                          tabIndex={0}
+                          aria-label={`${item.title} 추천 기록 열기`}
+                          onClick={() => {
+                            void handleCardClick(item.id, item.status);
+                          }}
+                          onKeyDown={(e: React.KeyboardEvent<HTMLDivElement>) =>
+                            handleCompletedCardKeyDown(e, item)
                           }
                         >
-                          <Icon name="edit" />
-                        </S.IconButton>
+                          {cardInfo}
+                        </S.CardOpenButton>
+                      ) : (
+                        cardInfo
                       )}
-                      <S.IconButton
-                        type="button"
-                        $iconType="close"
-                        onClick={(e: React.MouseEvent<HTMLButtonElement>) =>
-                          openDeleteModal(e, item)
-                        }
-                      >
-                        <Icon name="close" />
-                      </S.IconButton>
-                    </S.CardActions>
-                  </S.Card>
-                ))}
+
+                      <S.CardActions>
+                        {item.status === "PENDING" && <S.SpinnerIcon />}
+                        {item.status === "COMPLETED" && (
+                          <S.IconButton
+                            type="button"
+                            $iconType="edit"
+                            aria-label={`${item.title} 추천 기록 이름 변경`}
+                            onClick={(e: React.MouseEvent<HTMLButtonElement>) =>
+                              openEditModal(e, item)
+                            }
+                          >
+                            <Icon name="edit" />
+                          </S.IconButton>
+                        )}
+                        <S.IconButton
+                          type="button"
+                          $iconType="close"
+                          aria-label={`${item.title} 추천 기록 삭제`}
+                          onClick={(e: React.MouseEvent<HTMLButtonElement>) =>
+                            openDeleteModal(e, item)
+                          }
+                        >
+                          <Icon name="close" />
+                        </S.IconButton>
+                      </S.CardActions>
+                    </S.Card>
+                  );
+                })}
               </S.List>
             </>
           )}
@@ -145,24 +215,35 @@ export default function RecommendationHistoryContent() {
         title="기록 이름 변경"
         description="목록과 저장된 결과 화면에만 반영됩니다."
         primaryAction={{
-          label: "변경",
-          onClick: handleSaveTitle,
-          disabled: isError,
+          label: editRequestError === null ? "변경" : "다시 시도",
+          onClick: () => {
+            void handleSaveTitle();
+          },
+          disabled: isEditTitleInvalid || isSavingTitle,
         }}
         secondaryAction={{
           label: "취소",
           onClick: closeEditModal,
+          disabled: isSavingTitle,
         }}
       >
         <S.ModalInput
+          aria-label="추천 기록 이름"
           value={editTitle}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditTitle(e.target.value)}
-          $isError={isError}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+            setEditRequestError(null);
+            setEditTitle(e.target.value);
+          }}
+          $isError={isEditTitleInvalid || editRequestError !== null}
         />
-        <S.ModalHelperText $isError={isError}>
-          {isError
-            ? "공백을 제외하고 1~60자로 입력해 주세요."
-            : "공백을 제외하고 1~60자로 입력할 수 있어요."}
+        <S.ModalHelperText
+          $isError={isEditTitleInvalid || editRequestError !== null}
+          role={editRequestError ? "alert" : undefined}
+        >
+          {editRequestError ??
+            (isEditTitleInvalid
+              ? "앞뒤 공백을 제외한 이름을 1~60자로 입력해 주세요."
+              : "앞뒤 공백을 제외한 이름은 1~60자로 입력할 수 있어요.")}
         </S.ModalHelperText>
       </Modal>
 
@@ -171,24 +252,34 @@ export default function RecommendationHistoryContent() {
         isOpen={Boolean(deletingItem)}
         close={closeDeleteModal}
         title={
-          deletingItem?.status === "failed"
+          deletingItem?.status === "FAILED"
             ? "실패한 추천 기록을 삭제할까요?"
             : "이 추천 기록을 삭제할까요?"
         }
         description={
-          deletingItem?.status === "failed"
+          deletingItem?.status === "FAILED"
             ? "삭제한 기록은 다시 복구할 수 없어요."
             : "결과 스냅샷만 삭제되며 찜한 장소는 유지됩니다."
         }
         primaryAction={{
-          label: "삭제하기",
-          onClick: confirmDelete,
+          label: deleteRequestError === null ? "삭제하기" : "다시 시도",
+          onClick: () => {
+            void confirmDelete();
+          },
+          disabled: isDeletingItem,
         }}
         secondaryAction={{
           label: "돌아가기",
           onClick: closeDeleteModal,
+          disabled: isDeletingItem,
         }}
-      />
+      >
+        {deleteRequestError ? (
+          <S.ModalHelperText $isError role="alert">
+            {deleteRequestError}
+          </S.ModalHelperText>
+        ) : null}
+      </Modal>
     </>
   );
 }

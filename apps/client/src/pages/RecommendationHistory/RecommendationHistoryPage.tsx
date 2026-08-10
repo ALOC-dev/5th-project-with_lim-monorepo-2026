@@ -1,90 +1,164 @@
-import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
+import type { PlaceRecommendationHistoryListResponseData } from "@monorepo/api-contracts";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { type ReactNode, useCallback, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import {
-  type HistoryItem,
+  deletePlaceRecommendationHistory,
+  getPlaceRecommendationHistories,
+  getPlaceRecommendationHistory,
+  renamePlaceRecommendationHistory,
+} from "../../apis/server/placeRecommendationHistories";
+import PageRoot from "../../components/PageRoot/PageRoot";
+import { tokens } from "../../design-system/tokens.generated";
+import { getRecommendationResultQueryKey } from "../RecommendationResult/wrappers/RecommendationResult.query-key";
+import {
   type HistoryStatus,
   RecommendationHistoryContext,
   type RecommendationHistoryContextType,
 } from "./RecommendationHistory.context";
+import {
+  recommendationHistoriesQueryKey,
+  toCompletedEngineOutput,
+  toHistoryItem,
+  unwrapRecommendationHistoryApiResponse,
+} from "./RecommendationHistory.data";
 import RecommendationHistoryContent from "./RecommendationHistoryForm";
 
 export const RecommendationHistoryProvider = ({ children }: { readonly children: ReactNode }) => {
   const navigate = useNavigate();
-  const [historyList, setHistoryList] = useState<HistoryItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const queryClient = useQueryClient();
+  const [failedDetailId, setFailedDetailId] = useState<string | null>(null);
+  const {
+    data: historyData,
+    isError: isHistoryListError,
+    isPending,
+    refetch,
+  } = useQuery({
+    queryKey: recommendationHistoriesQueryKey,
+    queryFn: async () =>
+      unwrapRecommendationHistoryApiResponse(await getPlaceRecommendationHistories()),
+    retry: false,
+  });
 
-  useEffect(() => {
-    const fetchMockData = () => {
-      const mockData: HistoryItem[] = [
-        {
-          id: "req_1",
-          status: "pending",
-          dateLabel: "방금 요청함",
-          title: "대화하기 좋은 저녁 식사",
-          description: "출발지 3곳의 이동 시간을 계산하고 있어요.",
-        },
-        {
-          id: "req_2",
-          status: "failed",
-          dateLabel: "2026.07.08 수",
-          title: "비 오는 날 실내 데이트",
-          description: "출발지 3곳 기준으로 추천을 만들지 못했어요.",
-        },
-        {
-          id: "req_3",
-          status: "success",
-          dateLabel: "2026.07.02 목",
-          title: "친구와 가볍게 만날 카페",
-          description: "출발지 3곳",
-        },
-      ];
-      setHistoryList(mockData);
-      setIsLoading(false);
-    };
+  const loadCompletedHistory = useCallback(
+    async (id: string): Promise<void> => {
+      setFailedDetailId(null);
 
-    void fetchMockData();
-  }, []);
-
-  const handleCardClick = useCallback(
-    (id: string, status: HistoryStatus) => {
-      if (status === "pending") {
-        void navigate("/place/recommendation/pending");
-      } else if (status === "success") {
-        void navigate(`/place/recommendation/result/${id}`);
+      const response = await getPlaceRecommendationHistory(id);
+      if (!response.success) {
+        setFailedDetailId(id);
+        return;
       }
+
+      const result = toCompletedEngineOutput(response.data);
+      if (result === null) {
+        setFailedDetailId(id);
+        return;
+      }
+
+      queryClient.setQueryData(getRecommendationResultQueryKey(id), result);
+      void navigate("/place/recommendation/result/" + encodeURIComponent(id), {
+        state: { result },
+      });
     },
-    [navigate],
+    [navigate, queryClient],
   );
 
-  const handleDeleteItem = useCallback((id: string) => {
-    try {
-      setHistoryList((prev) => prev.filter((item) => item.id !== id));
-    } catch (error) {
-      console.error("기록 삭제 실패:", error);
-    }
-  }, []);
+  const handleCardClick = useCallback(
+    async (id: string, status: HistoryStatus): Promise<void> => {
+      switch (status) {
+        case "PENDING":
+        case "FAILED":
+          return;
+        case "COMPLETED":
+          await loadCompletedHistory(id);
+      }
+    },
+    [loadCompletedHistory],
+  );
 
-  const handleUpdateTitle = useCallback((id: string, newTitle: string) => {
-    try {
-      // TODO: requestUpdateHistoryTitle(id, newTitle) API 호출
-      setHistoryList((prev) =>
-        prev.map((item) => (item.id === id ? { ...item, title: newTitle } : item)),
+  const handleDeleteItem = useCallback(
+    async (id: string): Promise<boolean> => {
+      const response = await deletePlaceRecommendationHistory(id);
+      if (!response.success) {
+        return false;
+      }
+
+      queryClient.setQueryData<PlaceRecommendationHistoryListResponseData>(
+        recommendationHistoriesQueryKey,
+        (current) => {
+          if (current === undefined) {
+            return current;
+          }
+
+          return {
+            ...current,
+            items: current.items.filter((item) => item.id !== response.data.deletedId),
+          };
+        },
       );
-    } catch (error) {
-      console.error("기록 수정 실패:", error);
+
+      return true;
+    },
+    [queryClient],
+  );
+
+  const handleUpdateTitle = useCallback(
+    async (id: string, title: string): Promise<boolean> => {
+      const response = await renamePlaceRecommendationHistory(id, title);
+      if (!response.success) {
+        return false;
+      }
+
+      queryClient.setQueryData<PlaceRecommendationHistoryListResponseData>(
+        recommendationHistoriesQueryKey,
+        (current) => {
+          if (current === undefined) {
+            return current;
+          }
+
+          return {
+            ...current,
+            items: current.items.map((item) =>
+              item.id === response.data.id ? { ...item, title: response.data.title } : item,
+            ),
+          };
+        },
+      );
+
+      return true;
+    },
+    [queryClient],
+  );
+
+  const historyList = useMemo(
+    () => historyData?.items.map(toHistoryItem) ?? [],
+    [historyData?.items],
+  );
+
+  const isError = isHistoryListError || failedDetailId !== null;
+
+  const retry = useCallback(() => {
+    if (failedDetailId !== null) {
+      void loadCompletedHistory(failedDetailId);
+      return;
     }
-  }, []);
+
+    void refetch();
+  }, [failedDetailId, loadCompletedHistory, refetch]);
 
   const contextValue = useMemo<RecommendationHistoryContextType>(
     () => ({
-      historyList,
-      isLoading,
       handleCardClick,
       handleDeleteItem,
       handleUpdateTitle,
+      historyList,
+      isError,
+      isLoading: isPending,
+      retry,
     }),
-    [historyList, isLoading, handleCardClick, handleDeleteItem, handleUpdateTitle],
+    [handleCardClick, handleDeleteItem, handleUpdateTitle, historyList, isError, isPending, retry],
   );
 
   return (
@@ -97,7 +171,9 @@ export const RecommendationHistoryProvider = ({ children }: { readonly children:
 export default function RecommendationHistoryPage() {
   return (
     <RecommendationHistoryProvider>
-      <RecommendationHistoryContent />
+      <PageRoot backgroundColor={tokens.color.neutral[50]} layout="contained">
+        <RecommendationHistoryContent />
+      </PageRoot>
     </RecommendationHistoryProvider>
   );
 }

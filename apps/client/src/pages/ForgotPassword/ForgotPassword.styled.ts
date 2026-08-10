@@ -4,50 +4,15 @@ import { Link } from "react-router-dom";
 import { tokens } from "../../design-system/tokens.generated";
 
 export const S = {
-  Container: styled.main`
+  Container: styled.div`
     display: flex;
+    flex: 1;
     flex-direction: column;
     width: 100%;
     margin: 0 auto;
-    min-height: 100vh;
+    min-height: 0;
     background-color: ${tokens.color.neutral["50"]};
     box-sizing: border-box;
-  `,
-
-  Header: styled.header`
-    background-color: ${tokens.color.neutral[50]};
-    height: 96px;
-  `,
-
-  NavBar: styled.div`
-    display: flex;
-    align-items: center;
-    padding: 12px 20px;
-    gap: 12px;
-  `,
-
-  BackButton: styled.button`
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: none;
-    border: none;
-    padding: 0;
-    cursor: pointer;
-    color: ${tokens.color.neutral["900"]};
-    svg {
-      width: 24px;
-      height: 24px;
-    }
-  `,
-
-  Title: styled.label`
-    ${tokens.typography.utility.screenTitle};
-    font-size: 16px;
-    font-weight: 600;
-    line-height: 22px;
-    color: ${tokens.color.neutral["900"]};
-    margin: 0;
   `,
 
   Form: styled.form`
@@ -219,6 +184,8 @@ export const S = {
     line-height: 36px;
     color: ${tokens.color.neutral["900"]};
     margin: 0;
+    word-break: keep-all;
+    overflow-wrap: break-word;
   `,
 
   Description: styled.label`
@@ -228,6 +195,12 @@ export const S = {
     line-height: 20px;
     color: ${tokens.color.neutral["700"]};
     margin: 0;
+    word-break: keep-all;
+    overflow-wrap: break-word;
+  `,
+
+  NoWrap: styled.span`
+    white-space: nowrap;
   `,
 
   InfoBox: styled.div`
@@ -255,6 +228,8 @@ export const S = {
     font-weight: 400;
     line-height: 18px;
     color: ${tokens.color.neutral["700"]};
+    word-break: keep-all;
+    overflow-wrap: break-word;
   `,
 
   TitleSection: styled.div`
