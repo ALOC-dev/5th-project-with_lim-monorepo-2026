@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 
-import { Icon } from "../../components/Icon/Icon";
+import Header from "../../components/Header/Header";
 import { useForgotPasswordInput } from "./ForgotPassword.context";
 import { S } from "./ForgotPassword.styled";
 
@@ -38,14 +38,7 @@ export default function ResetPasswordForm() {
 
   return (
     <S.Container>
-      <S.Header>
-        <S.NavBar>
-          <S.BackButton type="button" onClick={() => navigate(-1)}>
-            <Icon name="back-arrow" />
-          </S.BackButton>
-          <S.Title>새 비밀번호 설정</S.Title>
-        </S.NavBar>
-      </S.Header>
+      <Header onBack={() => navigate(-1)} title="새 비밀번호 설정" />
 
       <S.Form onSubmit={handleSubmit}>
         <S.IntroSection>
@@ -56,7 +49,8 @@ export default function ResetPasswordForm() {
             입력해 주세요
           </S.Heading>
           <S.Description>
-            이전과 다른 비밀번호를 사용하면 계정을 더 안전하게 보호할 수 있습니다.
+            이전과 다른 비밀번호를 사용하면 계정을 더 안전하게{" "}
+            <S.NoWrap>보호할 수 있습니다.</S.NoWrap>
           </S.Description>
         </S.IntroSection>
 

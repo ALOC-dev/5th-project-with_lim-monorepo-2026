@@ -3,44 +3,10 @@ import styled from "@emotion/styled";
 import { tokens } from "../../design-system/tokens.generated";
 
 export const S = {
-  Container: styled.main`
+  Container: styled.div`
     display: flex;
     width: 100%;
     flex-direction: column;
-  `,
-
-  Header: styled.header`
-    background-color: ${tokens.color.neutral[50]};
-    height: 96px;
-  `,
-  NavBar: styled.div`
-    display: flex;
-    align-items: center;
-    padding: 12px 20px;
-    gap: 12px;
-  `,
-  BackButton: styled.button`
-    background: none;
-    border: none;
-    padding: 0;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    svg {
-      width: 24px;
-      height: 24px;
-    }
-  `,
-
-  Title: styled.div`
-    ${tokens.typography.utility.screenTitle}
-    font-size: 16px;
-    font-weight: 600;
-    line-height: 22px;
-    color: ${tokens.color.neutral["900"]};
-    margin: 0;
   `,
 
   Form: styled.form`
@@ -195,5 +161,7 @@ export const S = {
     font-style: normal;
     font-weight: 400;
     line-height: 20px;
+    word-break: keep-all;
+    overflow-wrap: break-word;
   `,
 };

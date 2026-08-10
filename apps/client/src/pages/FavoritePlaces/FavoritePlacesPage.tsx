@@ -1,6 +1,8 @@
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
+import PageRoot from "../../components/PageRoot/PageRoot";
+import { tokens } from "../../design-system/tokens.generated";
 import {
   type FavoritePlaceItem,
   FavoritePlacesContext,
@@ -14,41 +16,39 @@ export const FavoritePlacesProvider = ({ children }: { readonly children: ReactN
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const fetchMockData = () => {
-      const mockData: FavoritePlaceItem[] = [
-        {
-          id: "place_1",
-          date: "2026.07.17",
-          title: "도시정원 다이닝",
-          category: "식당 · 이탈리안",
-          score: 92,
-          tags: ["분위기", "예약가능"],
-        },
-        {
-          id: "place_2",
-          date: "2026.07.17",
-          title: "도시정원 다이닝",
-          category: "식당 · 이탈리안",
-          score: 92,
-          tags: ["분위기", "예약가능"],
-        },
-        {
-          id: "place_3",
-          date: "2026.07.17",
-          title: "도시정원 다이닝",
-          category: "식당 · 이탈리안",
-          score: 92,
-          tags: ["분위기", "예약가능"],
-        },
-      ];
+    const mockData: FavoritePlaceItem[] = [
+      {
+        id: "place_1",
+        date: "2026.07.17",
+        title: "도시정원 다이닝",
+        category: "식당 · 이탈리안",
+        score: 92,
+        tags: ["분위기", "예약가능"],
+      },
+      {
+        id: "place_2",
+        date: "2026.07.17",
+        title: "도시정원 다이닝",
+        category: "식당 · 이탈리안",
+        score: 92,
+        tags: ["분위기", "예약가능"],
+      },
+      {
+        id: "place_3",
+        date: "2026.07.17",
+        title: "도시정원 다이닝",
+        category: "식당 · 이탈리안",
+        score: 92,
+        tags: ["분위기", "예약가능"],
+      },
+    ];
 
-      setTimeout(() => {
-        setFavoriteList(mockData);
-        setIsLoading(false);
-      }, 1500);
-    };
+    const timeoutId = window.setTimeout(() => {
+      setFavoriteList(mockData);
+      setIsLoading(false);
+    }, 1500);
 
-    void fetchMockData();
+    return () => window.clearTimeout(timeoutId);
   }, []);
 
   // 찜 삭제
@@ -79,7 +79,9 @@ export const FavoritePlacesProvider = ({ children }: { readonly children: ReactN
 export default function FavoritePlacesPage() {
   return (
     <FavoritePlacesProvider>
-      <FavoritePlacesContent />
+      <PageRoot backgroundColor={tokens.color.neutral[50]} layout="contained">
+        <FavoritePlacesContent />
+      </PageRoot>
     </FavoritePlacesProvider>
   );
 }

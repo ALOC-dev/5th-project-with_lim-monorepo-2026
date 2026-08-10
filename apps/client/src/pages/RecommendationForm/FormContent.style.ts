@@ -8,47 +8,6 @@ export const S = {
     flex-direction: column;
     height: 100%;
   `,
-  Header: styled.header`
-    display: flex;
-    width: 100%;
-    padding: 18px 24px 6px 24px;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 4px;
-    background: ${tokens.color.neutral["50"]};
-  `,
-
-  NavBar: styled.div`
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    width: 100%;
-  `,
-
-  BackButton: styled.button`
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 10px;
-    color: ${tokens.color.neutral["900"]};
-    background: none;
-    border: none;
-    padding: 0;
-    cursor: pointer;
-
-    svg {
-      width: 24px;
-      height: 24px;
-    }
-  `,
-
-  Title: styled.h1`
-    font-size: 16px;
-    font-weight: 600;
-    color: ${tokens.color.neutral["900"]};
-    line-height: 22px;
-    margin: 0;
-  `,
 
   ScrollContent: styled.div`
     display: flex;

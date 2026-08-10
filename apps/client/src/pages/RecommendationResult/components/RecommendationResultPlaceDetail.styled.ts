@@ -1,35 +1,12 @@
 import styled from "@emotion/styled";
-import { Link } from "react-router-dom";
 
 import { tokens } from "../../../design-system/tokens.generated";
 import { typography } from "../../../design-system/typography.generated";
 
 export const S = {
   Root: styled.div`
-    min-height: 100dvh;
+    flex: 1;
     background-color: ${tokens.color.neutral[50]};
-  `,
-  Header: styled.header`
-    display: grid;
-    grid-template-columns: auto 1fr auto;
-    align-items: center;
-    gap: 12px;
-    padding: calc(18px + env(safe-area-inset-top)) 24px 18px;
-    background-color: ${tokens.color.neutral[50]};
-  `,
-  BackLink: styled(Link)`
-    display: inline-grid;
-    place-items: center;
-    min-inline-size: 32px;
-    aspect-ratio: 1;
-    color: ${tokens.color.neutral[900]};
-    text-decoration: none;
-    ${typography.title.sm}
-  `,
-  HeaderTitle: styled.h1`
-    margin: 0;
-    color: ${tokens.color.neutral[900]};
-    ${typography.utility.screenTitle}
   `,
   Body: styled.div`
     display: flex;

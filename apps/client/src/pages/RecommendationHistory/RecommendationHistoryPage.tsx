@@ -1,6 +1,8 @@
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
+import PageRoot from "../../components/PageRoot/PageRoot";
+import { tokens } from "../../design-system/tokens.generated";
 import {
   type HistoryItem,
   type HistoryStatus,
@@ -97,7 +99,9 @@ export const RecommendationHistoryProvider = ({ children }: { readonly children:
 export default function RecommendationHistoryPage() {
   return (
     <RecommendationHistoryProvider>
-      <RecommendationHistoryContent />
+      <PageRoot backgroundColor={tokens.color.neutral[50]} layout="contained">
+        <RecommendationHistoryContent />
+      </PageRoot>
     </RecommendationHistoryProvider>
   );
 }

@@ -13,44 +13,14 @@ const pulse = keyframes`
 export const S = {
   Container: styled.div`
     display: flex;
-    flex-direction: column;
-    height: 100vh;
-    background-color: ${tokens.color.neutral[50]};
-  `,
-  Header: styled.header`
-    background-color: ${tokens.color.neutral[50]};
-    height: 96px;
-  `,
-  NavBar: styled.div`
-    display: flex;
-    align-items: center;
-    padding: 12px 20px;
-    gap: 12px;
-  `,
-
-  BackButton: styled.button`
-    background: none;
-    border: none;
-    padding: 0;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    svg {
-      width: 24px;
-      height: 24px;
-    }
-  `,
-  Title: styled.h1`
-    ${tokens.typography.utility.screenTitle}
-    font-size: 16px;
-    font-weight: 600;
-    line-height: 22px;
-    color: ${tokens.color.neutral[900]};
-  `,
-  Main: styled.main`
     flex: 1;
+    flex-direction: column;
+    min-height: 0;
+    background-color: ${tokens.color.neutral[50]};
+  `,
+  Main: styled.div`
+    flex: 1;
+    min-height: 0;
     overflow-y: auto;
     padding: 20px;
     display: flex;
@@ -85,53 +55,6 @@ export const S = {
     background-color: ${tokens.color.neutral[200]};
     border-radius: 4px;
     animation: ${pulse} 1.5s ease-in-out infinite;
-  `,
-
-  EmptyStateWrapper: styled.div`
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    gap: 14px;
-    padding-bottom: 60px;
-  `,
-  EmptyIconWrapper: styled.div`
-    color: ${tokens.color.primary[500]};
-    margin-bottom: 16px;
-
-    svg {
-      width: 37px;
-      height: 37px;
-    }
-  `,
-  EmptyTitle: styled.h2`
-    ${typography.title.sm}
-    font-size: 20px;
-    font-weight: 700;
-    line-height: 28px;
-    color: ${tokens.color.neutral[900]};
-  `,
-  EmptyDescription: styled.p`
-    ${typography.body.xs}
-    font-size: 13px;
-    font-weight: 400;
-    line-height: 20px;
-    color: ${tokens.color.neutral[700]};
-  `,
-  EmptyButton: styled.button`
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    background-color: ${tokens.color.primary[500]};
-    color: ${tokens.color.neutral[0]};
-    border: none;
-    border-radius: 10px;
-    ${typography.utility.cta}
-    cursor: pointer;
-    width: 100%;
-    height: 52px;
   `,
 
   Card: styled.div`

@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
+import FeedbackState from "../../components/FeedbackState/FeedbackState";
+import Header from "../../components/Header/Header";
 import { Icon } from "../../components/Icon/Icon";
 import Modal from "../../components/Modal/Modal";
 import { type HistoryItem, useRecommendationHistory } from "./RecommendationHistory.context";
@@ -56,14 +58,7 @@ export default function RecommendationHistoryContent() {
   return (
     <>
       <S.Container>
-        <S.Header>
-          <S.NavBar>
-            <S.BackButton type="button" onClick={() => navigate(-1)}>
-              <Icon name="back-arrow" />
-            </S.BackButton>
-            <S.Title>장소 추천 기록</S.Title>
-          </S.NavBar>
-        </S.Header>
+        <Header title="장소 추천 기록" onBack={() => navigate(-1)} />
 
         <S.Main>
           {isLoading ? (
@@ -79,16 +74,17 @@ export default function RecommendationHistoryContent() {
               </S.List>
             </>
           ) : historyList.length === 0 ? (
-            <S.EmptyStateWrapper>
-              <S.EmptyIconWrapper>
-                <Icon name="search" />
-              </S.EmptyIconWrapper>
-              <S.EmptyTitle>아직 저장된 기록이 없어요</S.EmptyTitle>
-              <S.EmptyDescription>추천 요청 후 이곳에서 결과를 확인해요.</S.EmptyDescription>
-              <S.EmptyButton type="button" onClick={() => navigate("/place/recommendation/form")}>
-                추천 요청하러 가기
-              </S.EmptyButton>
-            </S.EmptyStateWrapper>
+            <FeedbackState
+              action={{
+                label: "추천 요청하러 가기",
+                onClick: () => {
+                  void navigate("/place/recommendation/form");
+                },
+              }}
+              description="추천 요청 후 이곳에서 결과를 확인해요."
+              kind="empty"
+              title="아직 저장된 기록이 없어요"
+            />
           ) : (
             <>
               <S.NoticeText>추천 요청을 시작하면 기록이 자동으로 저장됩니다.</S.NoticeText>

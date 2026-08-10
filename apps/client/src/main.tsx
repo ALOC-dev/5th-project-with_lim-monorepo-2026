@@ -9,13 +9,28 @@ import { AuthProvider } from "./contexts/Auth.context";
 import { theme } from "./design-system/theme.generated";
 import GlobalStyle from "./styles/GlobalStyle";
 
-ReactDOM.createRoot(document.getElementById("root")!).render(
-  <React.StrictMode>
-    <ThemeProvider theme={theme}>
-      <GlobalStyle />
-      <AuthProvider>
-        <App />
-      </AuthProvider>
-    </ThemeProvider>
-  </React.StrictMode>,
-);
+const reactDevToolsSetting = import.meta.env.VITE_DISABLE_REACT_DEVTOOLS;
+const reactDevToolsDisabled =
+  reactDevToolsSetting === "1" || reactDevToolsSetting === "true";
+const shouldLoadReactDevTools = import.meta.env.DEV && !reactDevToolsDisabled;
+
+const renderApp = () => {
+  ReactDOM.createRoot(document.getElementById("root")!).render(
+    <React.StrictMode>
+      <ThemeProvider theme={theme}>
+        <GlobalStyle />
+        <AuthProvider>
+          <App />
+        </AuthProvider>
+      </ThemeProvider>
+    </React.StrictMode>,
+  );
+};
+
+if (shouldLoadReactDevTools) {
+  void Promise.all([import("react-scan"), import("react-grab")])
+    .then(([{ scan }]) => scan({ enabled: true }))
+    .finally(renderApp);
+} else {
+  renderApp();
+}

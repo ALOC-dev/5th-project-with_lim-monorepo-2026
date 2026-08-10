@@ -10,6 +10,8 @@ import {
   type RecommendationProgressStep,
   RecommendationResultSseEventSchema,
 } from "../../apis/server/recommendation";
+import PageRoot from "../../components/PageRoot/PageRoot";
+import { tokens } from "../../design-system/tokens.generated";
 import { getRecommendationResultQueryKey } from "../RecommendationResult/wrappers/RecommendationResult.query-key";
 import { type RecommendationPendingStepStatus, S } from "./RecommendationPending.styled";
 
@@ -52,8 +54,12 @@ const isRecord = (value: unknown): value is Readonly<Record<string, unknown>> =>
   return typeof value === "object" && value !== null;
 };
 
-const parseSseMessageData = (event: MessageEvent<string>): unknown => {
-  return JSON.parse(event.data);
+const parseSseMessageData = (data: unknown): unknown => {
+  if (typeof data !== "string") {
+    throw new Error("추천 진행 상태 형식이 올바르지 않습니다.");
+  }
+
+  return JSON.parse(data);
 };
 
 const RecommendationPendingPage = () => {
@@ -67,10 +73,11 @@ const RecommendationPendingPage = () => {
   const [steps, setSteps] = useState<Record<RecommendationProgressStep, StepStatus>>(INITIAL_STEPS);
   const [elapsed, setElapsed] = useState(0); // 현재 단계 경과 시간(초)
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const visibleErrorMessage =
+    jobId === null || userInput === null ? "추천 요청 정보를 찾을 수 없습니다." : errorMessage;
 
   useEffect(() => {
     if (jobId === null || userInput === null) {
-      setErrorMessage("추천 요청 정보를 찾을 수 없습니다.");
       return;
     }
 
@@ -134,7 +141,7 @@ const RecommendationPendingPage = () => {
     es.addEventListener("progress", (event: MessageEvent<string>) => {
       try {
         const parseResult = RecommendationProgressSseEventSchema.safeParse(
-          parseSseMessageData(event),
+          parseSseMessageData(event.data),
         );
 
         if (!parseResult.success) {
@@ -161,7 +168,7 @@ const RecommendationPendingPage = () => {
     es.addEventListener("result", (event: MessageEvent<string>) => {
       try {
         const sseParseResult = RecommendationResultSseEventSchema.safeParse(
-          parseSseMessageData(event),
+          parseSseMessageData(event.data),
         );
 
         if (!sseParseResult.success) {
@@ -201,7 +208,7 @@ const RecommendationPendingPage = () => {
       if (event instanceof MessageEvent) {
         try {
           const parseResult = RecommendationErrorSseEventSchema.safeParse(
-            parseSseMessageData(event),
+            parseSseMessageData(event.data),
           );
 
           if (parseResult.success) {
@@ -228,38 +235,43 @@ const RecommendationPendingPage = () => {
     };
   }, [jobId, navigate, queryClient, userInput]);
 
-  if (errorMessage !== null) {
+  if (visibleErrorMessage !== null) {
     return (
-      <S.Page>
-        <S.Body>
-          <S.Title>추천 결과를 만들지 못했어요</S.Title>
-          <S.Subtitle>{errorMessage}</S.Subtitle>
-          <S.BackButton type="button" onClick={() => navigate("/place/recommendation/form")}>
-            폼으로 돌아가기
-          </S.BackButton>
-        </S.Body>
-      </S.Page>
+      <PageRoot backgroundColor={tokens.color.neutral[50]} layout="contained">
+        <S.Page>
+          <S.Body>
+            <S.Title>추천 결과를 만들지 못했어요</S.Title>
+            <S.Subtitle>{visibleErrorMessage}</S.Subtitle>
+            <S.BackButton type="button" onClick={() => navigate("/place/recommendation/form")}>
+              폼으로 돌아가기
+            </S.BackButton>
+          </S.Body>
+        </S.Page>
+      </PageRoot>
     );
   }
 
   return (
-    <S.Page>
-      <S.Body>
-        <S.Spinner />
-        <S.Title>추천 결과를 만들고 있어요</S.Title>
-        <S.Subtitle>
-          장소 후보를 수집하고 점수를 계산하는 중입니다.{"\n"}잠시만 기다려 주세요.
-        </S.Subtitle>
-        <S.StepList>
-          {STEP_KEYS.map((key) => (
-            <S.StepItem key={key} $status={steps[key]}>
-              {steps[key] === "done" ? "✓" : steps[key] === "active" ? "▶" : "○"} {STEP_LABELS[key]}
-              {steps[key] === "active" && elapsed > 0 && <S.Elapsed>{elapsed}초</S.Elapsed>}
-            </S.StepItem>
-          ))}
-        </S.StepList>
-      </S.Body>
-    </S.Page>
+    <PageRoot backgroundColor={tokens.color.neutral[50]} layout="contained">
+      <S.Page>
+        <S.Body>
+          <S.Spinner />
+          <S.Title>추천 결과를 만들고 있어요</S.Title>
+          <S.Subtitle>
+            장소 후보를 수집하고 점수를 계산하는 중입니다.{"\n"}잠시만 기다려 주세요.
+          </S.Subtitle>
+          <S.StepList>
+            {STEP_KEYS.map((key) => (
+              <S.StepItem key={key} $status={steps[key]}>
+                {steps[key] === "done" ? "✓" : steps[key] === "active" ? "▶" : "○"}{" "}
+                {STEP_LABELS[key]}
+                {steps[key] === "active" && elapsed > 0 && <S.Elapsed>{elapsed}초</S.Elapsed>}
+              </S.StepItem>
+            ))}
+          </S.StepList>
+        </S.Body>
+      </S.Page>
+    </PageRoot>
   );
 };
 

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-import { Icon } from "../../components/Icon/Icon";
+import Header from "../../components/Header/Header";
 import { useForgotPasswordInput } from "./ForgotPassword.context";
 import { S } from "./ForgotPassword.styled";
 
@@ -59,21 +59,16 @@ export default function ForgotPasswordForm() {
 
   return (
     <S.Container>
-      <S.Header>
-        <S.NavBar>
-          <S.BackButton type="button" onClick={() => navigate(-1)}>
-            <Icon name="back-arrow" />
-          </S.BackButton>
-          <S.Title>비밀번호 재설정</S.Title>
-        </S.NavBar>
-      </S.Header>
+      <Header onBack={() => navigate(-1)} title="비밀번호 재설정" />
 
       <S.Form onSubmit={handleSubmit}>
         <S.IntroSection>
           <S.Heading>
-            가입한 이메일 인증 후
+            가입한 이메일
             <br />
-            비밀번호를 바꿀 수 있어요
+            인증 후 비밀번호를
+            <br />
+            <S.NoWrap>바꿀 수 있어요</S.NoWrap>
           </S.Heading>
           <S.Description>
             계정 보호를 위해 이메일 인증이 완료된 뒤 재설정 화면으로 이동합니다.

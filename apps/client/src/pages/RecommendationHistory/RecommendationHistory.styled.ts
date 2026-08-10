@@ -4,70 +4,13 @@ import { tokens } from "../../design-system/tokens.generated";
 import { type HistoryStatus } from "./RecommendationHistory.context";
 
 export const S = {
-  Container: styled.main`
+  Container: styled.div`
     display: flex;
+    flex: 1;
     width: 100%;
     margin: 0 auto;
-    min-height: 100vh;
     flex-direction: column;
     background-color: ${tokens.color.neutral["50"]};
-  `,
-
-  Header: styled.header`
-    display: flex;
-    width: 100%;
-    padding: 18px 24px 6px 24px;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 4px;
-    background: ${tokens.color.neutral["50"]};
-  `,
-
-  NavBar: styled.div`
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    width: 100%;
-  `,
-
-  BackButton: styled.button`
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 10px;
-    width: 24px;
-    height: 24px;
-    background: none;
-    border: none;
-    padding: 0;
-    cursor: pointer;
-    color: ${tokens.color.neutral["900"]};
-
-    svg {
-      width: 24px;
-      height: 24px;
-    }
-  `,
-
-  Title: styled.div`
-    ${tokens.typography.utility.screenTitle}
-    font-size: 16px;
-    font-weight: 600;
-    line-height: 22px;
-    color: ${tokens.color.neutral["900"]};
-    margin: 0;
-  `,
-
-  MoreButton: styled.button`
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 10px;
-    width: 24px;
-    height: 24px;
-    background: none;
-    border: none;
-    cursor: pointer;
   `,
 
   Main: styled.div`
@@ -210,65 +153,6 @@ export const S = {
       }
     }
   `,
-  EmptyStateWrapper: styled.div`
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    flex: 1;
-    gap: 14px;
-    width: 100%;
-  `,
-
-  EmptyIconWrapper: styled.div`
-    display: flex;
-    justify-content: center;
-    color: ${tokens.color.primary["500"]};
-    align-items: center;
-    svg {
-      width: 34px;
-      height: 34px;
-    }
-  `,
-
-  EmptyTitle: styled.h3`
-    ${tokens.typography.title.sm};
-    font-size: 20px;
-    font-weight: 700;
-    line-height: 28px;
-    color: ${tokens.color.neutral["900"]};
-  `,
-
-  EmptyDescription: styled.p`
-    ${tokens.typography.body.xs};
-    font-size: 13px;
-    font-weight: 400;
-    line-height: 28px;
-    color: ${tokens.color.neutral["700"]};
-  `,
-
-  EmptyButton: styled.button`
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    width: 100%;
-    height: 52px;
-    border-radius: 10px;
-    background-color: ${tokens.color.primary["500"]};
-    color: ${tokens.color.neutral["0"]};
-    ${tokens.typography.utility.cta};
-    font-size: 16px;
-    font-weight: 700;
-    line-height: 24px;
-    border: none;
-    cursor: pointer;
-    transition: background-color 0.2s;
-
-    &:hover {
-      background-color: ${tokens.color.primary["300"]};
-    }
-  `,
-
   SkeletonCard: styled.li`
     display: flex;
     flex-direction: column;

@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
+import FeedbackState from "../../components/FeedbackState/FeedbackState";
+import Header from "../../components/Header/Header";
 import { Icon } from "../../components/Icon/Icon";
 import { useFavoritePlaces } from "./FavoritePlaces.context";
 import { S } from "./FavoritePlaces.styled";
@@ -20,14 +22,7 @@ export default function FavoritePlacesContent() {
 
   return (
     <S.Container>
-      <S.Header>
-        <S.NavBar>
-          <S.BackButton type="button" onClick={() => navigate(-1)}>
-            <Icon name="back-arrow" />
-          </S.BackButton>
-          <S.Title>찜한 장소 보기</S.Title>
-        </S.NavBar>
-      </S.Header>
+      <Header title="찜한 장소 보기" onBack={() => navigate(-1)} />
 
       <S.Main>
         {isLoading ? (
@@ -44,16 +39,12 @@ export default function FavoritePlacesContent() {
             </S.List>
           </>
         ) : displayList.length === 0 ? (
-          <S.EmptyStateWrapper>
-            <S.EmptyIconWrapper>
-              <Icon name="heart-outline" />
-            </S.EmptyIconWrapper>
-            <S.EmptyTitle>아직 찜한 장소가 없어요</S.EmptyTitle>
-            <S.EmptyDescription>저장한 장소를 여기서 볼 수 있어요.</S.EmptyDescription>
-            <S.EmptyButton type="button" onClick={handleGoToRecommendations}>
-              추천 결과 보러가기
-            </S.EmptyButton>
-          </S.EmptyStateWrapper>
+          <FeedbackState
+            action={{ label: "추천 결과 보러가기", onClick: handleGoToRecommendations }}
+            description="저장한 장소를 여기서 볼 수 있어요."
+            kind="empty"
+            title="아직 찜한 장소가 없어요"
+          />
         ) : (
           <>
             <S.NoticeText>저장한 장소를 다시 확인합니다.</S.NoticeText>

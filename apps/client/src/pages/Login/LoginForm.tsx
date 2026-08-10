@@ -1,7 +1,8 @@
-import { type AxiosError } from "axios";
 import { useNavigate } from "react-router-dom";
 
 import { requestLogin } from "../../apis/auth";
+import { toApiClientErrorMessage } from "../../apis/errors";
+import Header from "../../components/Header/Header";
 import { useAuth } from "../../contexts/Auth.context";
 import { useLoginFormInput } from "./Login.context";
 import { S } from "./Login.styled";
@@ -26,18 +27,13 @@ export default function LoginFormContent() {
         void navigate("/place/recommendation/form", { replace: true });
       }
     } catch (error) {
-      const err = error as AxiosError<{ error?: string }>;
-      const errorMessage =
-        err.response?.data?.error || "로그인 중 오류가 발생했습니다. 다시 시도해 주세요.";
-      alert(errorMessage);
+      alert(toApiClientErrorMessage(error));
     }
   };
 
   return (
     <S.Container>
-      <S.Header>
-        <S.Title>로그인</S.Title>
-      </S.Header>
+      <Header title="로그인" />
 
       <S.Form onSubmit={handleSubmit}>
         <S.InputGroup>

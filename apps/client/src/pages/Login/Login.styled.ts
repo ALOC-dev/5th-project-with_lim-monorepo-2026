@@ -4,37 +4,18 @@ import { Link } from "react-router-dom";
 import { tokens } from "../../design-system/tokens.generated";
 
 export const S = {
-  Container: styled.main`
+  Container: styled.div`
     display: flex;
+    flex: 1;
     flex-direction: column;
     /* width: 100%;
     margin: 0 auto; */
     background-color: ${tokens.color.neutral["50"]};
     box-sizing: border-box;
     position: relative;
-    min-height: 100vh;
+    min-height: 0;
   `,
 
-  Header: styled.header`
-    display: flex;
-    width: 100%;
-    /* padding: 18px 24px 6px 24px; */
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 4px;
-    background: ${tokens.color.neutral["50"]};
-    box-sizing: border-box;
-  `,
-
-  Title: styled.label`
-    ${tokens.typography.utility.screenTitle}
-    padding: 12px 20px;
-    font-size: 16px;
-    font-weight: 600;
-    line-height: 22px;
-    color: ${tokens.color.neutral["900"]};
-    margin: 0;
-  `,
   Form: styled.form`
     display: flex;
     padding: 32px 36px 28px 36px;

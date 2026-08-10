@@ -12,9 +12,9 @@ const spin = keyframes`
 `;
 
 export const S = {
-  Page: styled.main`
+  Page: styled.div`
     display: flex;
-    min-height: 100vh;
+    flex: 1;
     align-items: flex-start;
     padding: 80px 24px 40px;
     background: ${tokens.color.neutral[50]};

@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 
 import { requestSignup } from "../../apis/auth";
 import { toApiClientErrorMessage } from "../../apis/errors";
-import { Icon } from "../../components/Icon/Icon";
+import Header from "../../components/Header/Header";
 import Modal from "../../components/Modal/Modal";
 import { useSignupFormInput } from "./Signup.context";
 import { S } from "./Signup.styled";
@@ -121,14 +121,7 @@ export default function SignupFormContent() {
 
   return (
     <S.Container>
-      <S.Header>
-        <S.NavBar>
-          <S.BackButton type="button" onClick={() => navigate(-1)}>
-            <Icon name="back-arrow" />
-          </S.BackButton>
-          <S.Title>회원가입</S.Title>
-        </S.NavBar>
-      </S.Header>
+      <Header onBack={() => navigate(-1)} title="회원가입" />
 
       <S.Form onSubmit={handleSubmit}>
         <S.InputGroup>
