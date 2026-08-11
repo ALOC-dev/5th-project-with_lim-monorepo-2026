@@ -15,7 +15,7 @@ export default function FavoritePlacesContent() {
     deleteErrorMessage,
     handleToggleFavorite,
     handleRetry,
-    handleGoToRecommendationHistory,
+    handleGoToPlaceRecommendationHistory,
   } = useFavoritePlaces();
   const navigate = useNavigate();
 
@@ -35,7 +35,7 @@ export default function FavoritePlacesContent() {
           />
         ) : favoriteList.length === 0 ? (
           <FeedbackState
-            action={{ label: "추천 기록 보기", onClick: handleGoToRecommendationHistory }}
+            action={{ label: "추천 기록 보기", onClick: handleGoToPlaceRecommendationHistory }}
             kind="empty"
             title="아직 찜한 장소가 없어요"
           />

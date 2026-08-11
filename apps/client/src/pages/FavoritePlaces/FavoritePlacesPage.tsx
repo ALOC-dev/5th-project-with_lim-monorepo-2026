@@ -123,7 +123,7 @@ const FavoritePlacesProvider = ({ children }: { readonly children: ReactNode }) 
     void refetch();
   }, [refetch]);
 
-  const handleGoToRecommendationHistory = useCallback(() => {
+  const handleGoToPlaceRecommendationHistory = useCallback(() => {
     void navigate("/place/recommendation/history");
   }, [navigate]);
 
@@ -136,7 +136,7 @@ const FavoritePlacesProvider = ({ children }: { readonly children: ReactNode }) 
       deleteErrorMessage,
       handleToggleFavorite,
       handleRetry,
-      handleGoToRecommendationHistory,
+      handleGoToPlaceRecommendationHistory,
     }),
     [
       favoriteList,
@@ -146,7 +146,7 @@ const FavoritePlacesProvider = ({ children }: { readonly children: ReactNode }) 
       deleteErrorMessage,
       handleToggleFavorite,
       handleRetry,
-      handleGoToRecommendationHistory,
+      handleGoToPlaceRecommendationHistory,
     ],
   );
 

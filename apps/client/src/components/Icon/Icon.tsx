@@ -5,7 +5,7 @@ import courseHistoryIcon from "../../assets/activity-icons/course-history.svg";
 import courseMapIcon from "../../assets/activity-icons/course-map.svg";
 import placeFavoriteIcon from "../../assets/activity-icons/place-favorite.svg";
 import placePinIcon from "../../assets/activity-icons/place-pin.svg";
-import recommendationHistoryIcon from "../../assets/activity-icons/recommendation-history.svg";
+import placeRecommendationHistoryIcon from "../../assets/activity-icons/place-recommendation-history.svg";
 import type { IconName, IconProps } from "./Icon.types";
 
 type IconRenderer = () => ReactNode;
@@ -185,7 +185,7 @@ const iconRenderers = {
   ),
   "activity-place-history": () => (
     <>
-      <image height="22" href={recommendationHistoryIcon} width="22" x="0" y="5" />
+      <image height="22" href={placeRecommendationHistoryIcon} width="22" x="0" y="5" />
       <image height="12.651" href={placePinIcon} width="10.419" x="13" y="1" />
     </>
   ),

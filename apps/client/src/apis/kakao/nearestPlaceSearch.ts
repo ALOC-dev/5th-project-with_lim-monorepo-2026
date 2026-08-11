@@ -1,8 +1,8 @@
-import type { PlaceCandidate } from "../../pages/RecommendationForm/utils/placeCandidate";
+import type { PlaceCandidate } from "../../pages/PlaceRecommendationForm/utils/placeCandidate";
 import {
   selectNearestPlaceCandidate,
   toPlaceCandidate,
-} from "../../pages/RecommendationForm/utils/placeCandidate";
+} from "../../pages/PlaceRecommendationForm/utils/placeCandidate";
 
 /**
  * category code는 Kakao가 장소를 대분류하는 코드다.
@@ -13,7 +13,7 @@ import {
  */
 type PlaceCategoryCode = Parameters<kakao.maps.services.Places["categorySearch"]>[0];
 
-export type { PlaceCandidate } from "../../pages/RecommendationForm/utils/placeCandidate";
+export type { PlaceCandidate } from "../../pages/PlaceRecommendationForm/utils/placeCandidate";
 
 export type NearestPlaceCoordinates = {
   readonly lat: number;
