@@ -1,0 +1,1921 @@
+{
+  "status": "SUCCESS",
+  "userInput": {
+    "dateISO": "2026-08-03",
+    "startTime24h": "10:00",
+    "totalDurationMinutes": 600,
+    "places": [
+      {
+        "id": "dinner",
+        "name": "연남 저녁식당",
+        "phoneNumber": null,
+        "tags": [
+          "식당",
+          "이탈리안"
+        ],
+        "contentSummary": "연남 저녁식당 mock 장소입니다.",
+        "mainCategory": "식당",
+        "subCategory": "이탈리안",
+        "operationInfo": {
+          "timezone": "Asia/Seoul",
+          "schedules": {
+            "MONDAY": {
+              "status": "OPEN",
+              "open": "10:00",
+              "close": "23:00",
+              "breakTimes": []
+            },
+            "TUESDAY": {
+              "status": "OPEN",
+              "open": "10:00",
+              "close": "23:00",
+              "breakTimes": []
+            },
+            "WEDNESDAY": {
+              "status": "OPEN",
+              "open": "10:00",
+              "close": "23:00",
+              "breakTimes": []
+            },
+            "THURSDAY": {
+              "status": "OPEN",
+              "open": "10:00",
+              "close": "23:00",
+              "breakTimes": []
+            },
+            "FRIDAY": {
+              "status": "OPEN",
+              "open": "10:00",
+              "close": "23:00",
+              "breakTimes": []
+            },
+            "SATURDAY": {
+              "status": "OPEN",
+              "open": "10:00",
+              "close": "23:00",
+              "breakTimes": []
+            },
+            "SUNDAY": {
+              "status": "OPEN",
+              "open": "10:00",
+              "close": "23:00",
+              "breakTimes": []
+            }
+          }
+        },
+        "availabilityAtRequestedTime": {
+          "status": "OPEN",
+          "requestedDateISO": "2026-08-03",
+          "requestedTime24h": "18:30",
+          "stayDurationMinutes": 60,
+          "reason": "mock 영업시간 기준 방문 가능합니다."
+        },
+        "referenceUrls": {
+          "kakaoMap": "https://place.map.kakao.com/dinner"
+        },
+        "accessibility": {
+          "score": 80,
+          "distanceMeters": 500,
+          "perOrigin": [
+            {
+              "originId": "host",
+              "distanceMeters": 500
+            }
+          ]
+        },
+        "location": {
+          "lat": 37.5,
+          "lng": 127,
+          "placeName": "연남 저녁식당",
+          "roadAddressKo": "서울시 mock로 1"
+        },
+        "priceRangePerPerson": [
+          22000,
+          38000
+        ],
+        "score": 88,
+        "scoreBreakdown": {
+          "inputMatch": 88,
+          "trust": 88,
+          "accessibility": 80,
+          "diversity": 80,
+          "total": 88
+        },
+        "reasons": [
+          "mock 추천 근거"
+        ]
+      },
+      {
+        "id": "gallery",
+        "name": "작은 미디어 전시관",
+        "phoneNumber": null,
+        "tags": [
+          "전시",
+          "미디어아트"
+        ],
+        "contentSummary": "작은 미디어 전시관 mock 장소입니다.",
+        "mainCategory": "전시",
+        "subCategory": "미디어아트",
+        "operationInfo": {
+          "timezone": "Asia/Seoul",
+          "schedules": {
+            "MONDAY": {
+              "status": "OPEN",
+              "open": "10:00",
+              "close": "23:00",
+              "breakTimes": []
+            },
+            "TUESDAY": {
+              "status": "OPEN",
+              "open": "10:00",
+              "close": "23:00",
+              "breakTimes": []
+            },
+            "WEDNESDAY": {
+              "status": "OPEN",
+              "open": "10:00",
+              "close": "23:00",
+              "breakTimes": []
+            },
+            "THURSDAY": {
+              "status": "OPEN",
+              "open": "10:00",
+              "close": "23:00",
+              "breakTimes": []
+            },
+            "FRIDAY": {
+              "status": "OPEN",
+              "open": "10:00",
+              "close": "23:00",
+              "breakTimes": []
+            },
+            "SATURDAY": {
+              "status": "OPEN",
+              "open": "10:00",
+              "close": "23:00",
+              "breakTimes": []
+            },
+            "SUNDAY": {
+              "status": "OPEN",
+              "open": "10:00",
+              "close": "23:00",
+              "breakTimes": []
+            }
+          }
+        },
+        "availabilityAtRequestedTime": {
+          "status": "OPEN",
+          "requestedDateISO": "2026-08-03",
+          "requestedTime24h": "18:30",
+          "stayDurationMinutes": 60,
+          "reason": "mock 영업시간 기준 방문 가능합니다."
+        },
+        "referenceUrls": {
+          "kakaoMap": "https://place.map.kakao.com/gallery"
+        },
+        "accessibility": {
+          "score": 80,
+          "distanceMeters": 500,
+          "perOrigin": [
+            {
+              "originId": "host",
+              "distanceMeters": 500
+            }
+          ]
+        },
+        "location": {
+          "lat": 37.5,
+          "lng": 127,
+          "placeName": "작은 미디어 전시관",
+          "roadAddressKo": "서울시 mock로 1"
+        },
+        "priceRangePerPerson": [
+          15000,
+          18000
+        ],
+        "score": 92,
+        "scoreBreakdown": {
+          "inputMatch": 92,
+          "trust": 92,
+          "accessibility": 80,
+          "diversity": 80,
+          "total": 92
+        },
+        "reasons": [
+          "mock 추천 근거"
+        ]
+      },
+      {
+        "id": "cafe",
+        "name": "조용한 루프탑 카페",
+        "phoneNumber": null,
+        "tags": [
+          "카페",
+          "디저트"
+        ],
+        "contentSummary": "조용한 루프탑 카페 mock 장소입니다.",
+        "mainCategory": "카페",
+        "subCategory": "디저트",
+        "operationInfo": {
+          "timezone": "Asia/Seoul",
+          "schedules": {
+            "MONDAY": {
+              "status": "OPEN",
+              "open": "10:00",
+              "close": "23:00",
+              "breakTimes": []
+            },
+            "TUESDAY": {
+              "status": "OPEN",
+              "open": "10:00",
+              "close": "23:00",
+              "breakTimes": []
+            },
+            "WEDNESDAY": {
+              "status": "OPEN",
+              "open": "10:00",
+              "close": "23:00",
+              "breakTimes": []
+            },
+            "THURSDAY": {
+              "status": "OPEN",
+              "open": "10:00",
+              "close": "23:00",
+              "breakTimes": []
+            },
+            "FRIDAY": {
+              "status": "OPEN",
+              "open": "10:00",
+              "close": "23:00",
+              "breakTimes": []
+            },
+            "SATURDAY": {
+              "status": "OPEN",
+              "open": "10:00",
+              "close": "23:00",
+              "breakTimes": []
+            },
+            "SUNDAY": {
+              "status": "OPEN",
+              "open": "10:00",
+              "close": "23:00",
+              "breakTimes": []
+            }
+          }
+        },
+        "availabilityAtRequestedTime": {
+          "status": "OPEN",
+          "requestedDateISO": "2026-08-03",
+          "requestedTime24h": "18:30",
+          "stayDurationMinutes": 60,
+          "reason": "mock 영업시간 기준 방문 가능합니다."
+        },
+        "referenceUrls": {
+          "kakaoMap": "https://place.map.kakao.com/cafe"
+        },
+        "accessibility": {
+          "score": 80,
+          "distanceMeters": 500,
+          "perOrigin": [
+            {
+              "originId": "host",
+              "distanceMeters": 500
+            }
+          ]
+        },
+        "location": {
+          "lat": 37.5,
+          "lng": 127,
+          "placeName": "조용한 루프탑 카페",
+          "roadAddressKo": "서울시 mock로 1"
+        },
+        "priceRangePerPerson": [
+          8000,
+          16000
+        ],
+        "score": 90,
+        "scoreBreakdown": {
+          "inputMatch": 90,
+          "trust": 90,
+          "accessibility": 80,
+          "diversity": 80,
+          "total": 90
+        },
+        "reasons": [
+          "mock 추천 근거"
+        ]
+      },
+      {
+        "id": "bookshop",
+        "name": "독립서점 산책",
+        "phoneNumber": null,
+        "tags": [
+          "쇼핑",
+          "서점"
+        ],
+        "contentSummary": "독립서점 산책 mock 장소입니다.",
+        "mainCategory": "쇼핑",
+        "subCategory": "서점",
+        "operationInfo": {
+          "timezone": "Asia/Seoul",
+          "schedules": {
+            "MONDAY": {
+              "status": "OPEN",
+              "open": "10:00",
+              "close": "23:00",
+              "breakTimes": []
+            },
+            "TUESDAY": {
+              "status": "OPEN",
+              "open": "10:00",
+              "close": "23:00",
+              "breakTimes": []
+            },
+            "WEDNESDAY": {
+              "status": "OPEN",
+              "open": "10:00",
+              "close": "23:00",
+              "breakTimes": []
+            },
+            "THURSDAY": {
+              "status": "OPEN",
+              "open": "10:00",
+              "close": "23:00",
+              "breakTimes": []
+            },
+            "FRIDAY": {
+              "status": "OPEN",
+              "open": "10:00",
+              "close": "23:00",
+              "breakTimes": []
+            },
+            "SATURDAY": {
+              "status": "OPEN",
+              "open": "10:00",
+              "close": "23:00",
+              "breakTimes": []
+            },
+            "SUNDAY": {
+              "status": "OPEN",
+              "open": "10:00",
+              "close": "23:00",
+              "breakTimes": []
+            }
+          }
+        },
+        "availabilityAtRequestedTime": {
+          "status": "OPEN",
+          "requestedDateISO": "2026-08-03",
+          "requestedTime24h": "18:30",
+          "stayDurationMinutes": 60,
+          "reason": "mock 영업시간 기준 방문 가능합니다."
+        },
+        "referenceUrls": {
+          "kakaoMap": "https://place.map.kakao.com/bookshop"
+        },
+        "accessibility": {
+          "score": 80,
+          "distanceMeters": 500,
+          "perOrigin": [
+            {
+              "originId": "host",
+              "distanceMeters": 500
+            }
+          ]
+        },
+        "location": {
+          "lat": 37.5,
+          "lng": 127,
+          "placeName": "독립서점 산책",
+          "roadAddressKo": "서울시 mock로 1"
+        },
+        "priceRangePerPerson": [
+          0,
+          20000
+        ],
+        "score": 77,
+        "scoreBreakdown": {
+          "inputMatch": 77,
+          "trust": 77,
+          "accessibility": 80,
+          "diversity": 80,
+          "total": 77
+        },
+        "reasons": [
+          "mock 추천 근거"
+        ]
+      },
+      {
+        "id": "bar",
+        "name": "캐주얼 와인바",
+        "phoneNumber": null,
+        "tags": [
+          "술집",
+          "와인바"
+        ],
+        "contentSummary": "캐주얼 와인바 mock 장소입니다.",
+        "mainCategory": "술집",
+        "subCategory": "와인바",
+        "operationInfo": {
+          "timezone": "Asia/Seoul",
+          "schedules": {
+            "MONDAY": {
+              "status": "OPEN",
+              "open": "10:00",
+              "close": "23:00",
+              "breakTimes": []
+            },
+            "TUESDAY": {
+              "status": "OPEN",
+              "open": "10:00",
+              "close": "23:00",
+              "breakTimes": []
+            },
+            "WEDNESDAY": {
+              "status": "OPEN",
+              "open": "10:00",
+              "close": "23:00",
+              "breakTimes": []
+            },
+            "THURSDAY": {
+              "status": "OPEN",
+              "open": "10:00",
+              "close": "23:00",
+              "breakTimes": []
+            },
+            "FRIDAY": {
+              "status": "OPEN",
+              "open": "10:00",
+              "close": "23:00",
+              "breakTimes": []
+            },
+            "SATURDAY": {
+              "status": "OPEN",
+              "open": "10:00",
+              "close": "23:00",
+              "breakTimes": []
+            },
+            "SUNDAY": {
+              "status": "OPEN",
+              "open": "10:00",
+              "close": "23:00",
+              "breakTimes": []
+            }
+          }
+        },
+        "availabilityAtRequestedTime": {
+          "status": "OPEN",
+          "requestedDateISO": "2026-08-03",
+          "requestedTime24h": "18:30",
+          "stayDurationMinutes": 60,
+          "reason": "mock 영업시간 기준 방문 가능합니다."
+        },
+        "referenceUrls": {
+          "kakaoMap": "https://place.map.kakao.com/bar"
+        },
+        "accessibility": {
+          "score": 80,
+          "distanceMeters": 500,
+          "perOrigin": [
+            {
+              "originId": "host",
+              "distanceMeters": 500
+            }
+          ]
+        },
+        "location": {
+          "lat": 37.5,
+          "lng": 127,
+          "placeName": "캐주얼 와인바",
+          "roadAddressKo": "서울시 mock로 1"
+        },
+        "priceRangePerPerson": [
+          25000,
+          45000
+        ],
+        "score": 84,
+        "scoreBreakdown": {
+          "inputMatch": 84,
+          "trust": 84,
+          "accessibility": 80,
+          "diversity": 80,
+          "total": 84
+        },
+        "reasons": [
+          "mock 추천 근거"
+        ]
+      }
+    ],
+    "numberOfPeople": 2
+  },
+  "userOutput": {
+    "courses": [
+      {
+        "id": "course-3-19w19fv",
+        "title": "전시까지 챙기는 긴 데이트 코스",
+        "courseType": {
+          "key": "DIVERSE_CATEGORIES",
+          "label": "다양한 코스",
+          "description": "mock 큐레이터가 부여한 코스 유형입니다."
+        },
+        "places": [
+          {
+            "id": "gallery",
+            "name": "작은 미디어 전시관",
+            "phoneNumber": null,
+            "tags": [
+              "전시",
+              "미디어아트"
+            ],
+            "contentSummary": "작은 미디어 전시관 mock 장소입니다.",
+            "mainCategory": "전시",
+            "subCategory": "미디어아트",
+            "operationInfo": {
+              "timezone": "Asia/Seoul",
+              "schedules": {
+                "MONDAY": {
+                  "status": "OPEN",
+                  "open": "10:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "TUESDAY": {
+                  "status": "OPEN",
+                  "open": "10:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "WEDNESDAY": {
+                  "status": "OPEN",
+                  "open": "10:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "THURSDAY": {
+                  "status": "OPEN",
+                  "open": "10:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "FRIDAY": {
+                  "status": "OPEN",
+                  "open": "10:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "SATURDAY": {
+                  "status": "OPEN",
+                  "open": "10:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "SUNDAY": {
+                  "status": "OPEN",
+                  "open": "10:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                }
+              }
+            },
+            "availabilityAtRequestedTime": {
+              "status": "OPEN",
+              "requestedDateISO": "2026-08-03",
+              "requestedTime24h": "18:30",
+              "stayDurationMinutes": 60,
+              "reason": "mock 영업시간 기준 방문 가능합니다."
+            },
+            "referenceUrls": {
+              "kakaoMap": "https://place.map.kakao.com/gallery"
+            },
+            "accessibility": {
+              "score": 80,
+              "distanceMeters": 500,
+              "perOrigin": [
+                {
+                  "originId": "host",
+                  "distanceMeters": 500
+                }
+              ]
+            },
+            "location": {
+              "lat": 37.5,
+              "lng": 127,
+              "placeName": "작은 미디어 전시관",
+              "roadAddressKo": "서울시 mock로 1"
+            },
+            "priceRangePerPerson": [
+              15000,
+              18000
+            ],
+            "score": 92,
+            "scoreBreakdown": {
+              "inputMatch": 92,
+              "trust": 92,
+              "accessibility": 80,
+              "diversity": 80,
+              "total": 92
+            },
+            "reasons": [
+              "mock 추천 근거"
+            ]
+          },
+          {
+            "id": "dinner",
+            "name": "연남 저녁식당",
+            "phoneNumber": null,
+            "tags": [
+              "식당",
+              "이탈리안"
+            ],
+            "contentSummary": "연남 저녁식당 mock 장소입니다.",
+            "mainCategory": "식당",
+            "subCategory": "이탈리안",
+            "operationInfo": {
+              "timezone": "Asia/Seoul",
+              "schedules": {
+                "MONDAY": {
+                  "status": "OPEN",
+                  "open": "10:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "TUESDAY": {
+                  "status": "OPEN",
+                  "open": "10:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "WEDNESDAY": {
+                  "status": "OPEN",
+                  "open": "10:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "THURSDAY": {
+                  "status": "OPEN",
+                  "open": "10:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "FRIDAY": {
+                  "status": "OPEN",
+                  "open": "10:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "SATURDAY": {
+                  "status": "OPEN",
+                  "open": "10:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "SUNDAY": {
+                  "status": "OPEN",
+                  "open": "10:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                }
+              }
+            },
+            "availabilityAtRequestedTime": {
+              "status": "OPEN",
+              "requestedDateISO": "2026-08-03",
+              "requestedTime24h": "18:30",
+              "stayDurationMinutes": 60,
+              "reason": "mock 영업시간 기준 방문 가능합니다."
+            },
+            "referenceUrls": {
+              "kakaoMap": "https://place.map.kakao.com/dinner"
+            },
+            "accessibility": {
+              "score": 80,
+              "distanceMeters": 500,
+              "perOrigin": [
+                {
+                  "originId": "host",
+                  "distanceMeters": 500
+                }
+              ]
+            },
+            "location": {
+              "lat": 37.5,
+              "lng": 127,
+              "placeName": "연남 저녁식당",
+              "roadAddressKo": "서울시 mock로 1"
+            },
+            "priceRangePerPerson": [
+              22000,
+              38000
+            ],
+            "score": 88,
+            "scoreBreakdown": {
+              "inputMatch": 88,
+              "trust": 88,
+              "accessibility": 80,
+              "diversity": 80,
+              "total": 88
+            },
+            "reasons": [
+              "mock 추천 근거"
+            ]
+          },
+          {
+            "id": "cafe",
+            "name": "조용한 루프탑 카페",
+            "phoneNumber": null,
+            "tags": [
+              "카페",
+              "디저트"
+            ],
+            "contentSummary": "조용한 루프탑 카페 mock 장소입니다.",
+            "mainCategory": "카페",
+            "subCategory": "디저트",
+            "operationInfo": {
+              "timezone": "Asia/Seoul",
+              "schedules": {
+                "MONDAY": {
+                  "status": "OPEN",
+                  "open": "10:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "TUESDAY": {
+                  "status": "OPEN",
+                  "open": "10:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "WEDNESDAY": {
+                  "status": "OPEN",
+                  "open": "10:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "THURSDAY": {
+                  "status": "OPEN",
+                  "open": "10:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "FRIDAY": {
+                  "status": "OPEN",
+                  "open": "10:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "SATURDAY": {
+                  "status": "OPEN",
+                  "open": "10:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "SUNDAY": {
+                  "status": "OPEN",
+                  "open": "10:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                }
+              }
+            },
+            "availabilityAtRequestedTime": {
+              "status": "OPEN",
+              "requestedDateISO": "2026-08-03",
+              "requestedTime24h": "18:30",
+              "stayDurationMinutes": 60,
+              "reason": "mock 영업시간 기준 방문 가능합니다."
+            },
+            "referenceUrls": {
+              "kakaoMap": "https://place.map.kakao.com/cafe"
+            },
+            "accessibility": {
+              "score": 80,
+              "distanceMeters": 500,
+              "perOrigin": [
+                {
+                  "originId": "host",
+                  "distanceMeters": 500
+                }
+              ]
+            },
+            "location": {
+              "lat": 37.5,
+              "lng": 127,
+              "placeName": "조용한 루프탑 카페",
+              "roadAddressKo": "서울시 mock로 1"
+            },
+            "priceRangePerPerson": [
+              8000,
+              16000
+            ],
+            "score": 90,
+            "scoreBreakdown": {
+              "inputMatch": 90,
+              "trust": 90,
+              "accessibility": 80,
+              "diversity": 80,
+              "total": 90
+            },
+            "reasons": [
+              "mock 추천 근거"
+            ]
+          }
+        ],
+        "summary": {
+          "estimatedCostPerPerson": [
+            45000,
+            72000
+          ],
+          "estimatedTotalMinutes": 370,
+          "estimatedTravelMinutes": 20,
+          "totalStayMinutes": 350,
+          "stopCount": 3,
+          "categoryCount": 3,
+          "mealIncluded": true
+        },
+        "selection": {
+          "reasonCodes": [
+            "LOW_TRAVEL",
+            "MEAL_INCLUDED"
+          ],
+          "reasonTexts": [
+            "20분 이동으로 동선 부담이 낮습니다.",
+            "식사 시간대 장소를 포함합니다."
+          ],
+          "tradeoffs": []
+        },
+        "timeline": [
+          {
+            "placeId": "gallery",
+            "placeName": "작은 미디어 전시관",
+            "categoryLabel": "전시 · 미디어아트",
+            "time24h": "10:00",
+            "stayDurationMinutes": 140,
+            "travelMinutesFromPrevious": 0,
+            "waitMinutesFromPrevious": 0,
+            "label": "10:00 작은 미디어 전시관(140분 체류)"
+          },
+          {
+            "placeId": "dinner",
+            "placeName": "연남 저녁식당",
+            "categoryLabel": "식당 · 이탈리안",
+            "time24h": "12:28",
+            "stayDurationMinutes": 110,
+            "travelMinutesFromPrevious": 8,
+            "waitMinutesFromPrevious": 0,
+            "label": "12:28 연남 저녁식당(110분 체류)"
+          },
+          {
+            "placeId": "cafe",
+            "placeName": "조용한 루프탑 카페",
+            "categoryLabel": "카페 · 디저트",
+            "time24h": "14:30",
+            "stayDurationMinutes": 100,
+            "travelMinutesFromPrevious": 12,
+            "waitMinutesFromPrevious": 0,
+            "label": "14:30 조용한 루프탑 카페(100분 체류)"
+          }
+        ],
+        "startTime24h": "10:00",
+        "endTime24h": "16:10",
+        "totalStayMinutes": 350,
+        "totalTravelMinutes": 20,
+        "mealPlan": {
+          "status": "SATISFIED",
+          "reason": "점심 시간대에 식사 장소를 포함했습니다."
+        },
+        "score": 86,
+        "scoreBreakdown": {
+          "placeScore": 45,
+          "mealFit": 25,
+          "travelEfficiency": -7,
+          "waitEfficiency": 0,
+          "durationFit": 7.4,
+          "categoryDiversity": 8,
+          "costFit": 0,
+          "unknownHours": 0,
+          "flow": 8,
+          "total": 86.4
+        },
+        "reasons": [
+          "20분 이동으로 동선 부담이 낮습니다.",
+          "식사 시간대 장소를 포함합니다."
+        ]
+      },
+      {
+        "id": "course-4-11uwl2p",
+        "title": "짧게 움직이는 가벼운 코스",
+        "courseType": {
+          "key": "LOW_TRAVEL",
+          "label": "이동 적은 코스",
+          "description": "mock 큐레이터가 부여한 코스 유형입니다."
+        },
+        "places": [
+          {
+            "id": "gallery",
+            "name": "작은 미디어 전시관",
+            "phoneNumber": null,
+            "tags": [
+              "전시",
+              "미디어아트"
+            ],
+            "contentSummary": "작은 미디어 전시관 mock 장소입니다.",
+            "mainCategory": "전시",
+            "subCategory": "미디어아트",
+            "operationInfo": {
+              "timezone": "Asia/Seoul",
+              "schedules": {
+                "MONDAY": {
+                  "status": "OPEN",
+                  "open": "10:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "TUESDAY": {
+                  "status": "OPEN",
+                  "open": "10:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "WEDNESDAY": {
+                  "status": "OPEN",
+                  "open": "10:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "THURSDAY": {
+                  "status": "OPEN",
+                  "open": "10:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "FRIDAY": {
+                  "status": "OPEN",
+                  "open": "10:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "SATURDAY": {
+                  "status": "OPEN",
+                  "open": "10:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "SUNDAY": {
+                  "status": "OPEN",
+                  "open": "10:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                }
+              }
+            },
+            "availabilityAtRequestedTime": {
+              "status": "OPEN",
+              "requestedDateISO": "2026-08-03",
+              "requestedTime24h": "18:30",
+              "stayDurationMinutes": 60,
+              "reason": "mock 영업시간 기준 방문 가능합니다."
+            },
+            "referenceUrls": {
+              "kakaoMap": "https://place.map.kakao.com/gallery"
+            },
+            "accessibility": {
+              "score": 80,
+              "distanceMeters": 500,
+              "perOrigin": [
+                {
+                  "originId": "host",
+                  "distanceMeters": 500
+                }
+              ]
+            },
+            "location": {
+              "lat": 37.5,
+              "lng": 127,
+              "placeName": "작은 미디어 전시관",
+              "roadAddressKo": "서울시 mock로 1"
+            },
+            "priceRangePerPerson": [
+              15000,
+              18000
+            ],
+            "score": 92,
+            "scoreBreakdown": {
+              "inputMatch": 92,
+              "trust": 92,
+              "accessibility": 80,
+              "diversity": 80,
+              "total": 92
+            },
+            "reasons": [
+              "mock 추천 근거"
+            ]
+          },
+          {
+            "id": "dinner",
+            "name": "연남 저녁식당",
+            "phoneNumber": null,
+            "tags": [
+              "식당",
+              "이탈리안"
+            ],
+            "contentSummary": "연남 저녁식당 mock 장소입니다.",
+            "mainCategory": "식당",
+            "subCategory": "이탈리안",
+            "operationInfo": {
+              "timezone": "Asia/Seoul",
+              "schedules": {
+                "MONDAY": {
+                  "status": "OPEN",
+                  "open": "10:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "TUESDAY": {
+                  "status": "OPEN",
+                  "open": "10:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "WEDNESDAY": {
+                  "status": "OPEN",
+                  "open": "10:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "THURSDAY": {
+                  "status": "OPEN",
+                  "open": "10:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "FRIDAY": {
+                  "status": "OPEN",
+                  "open": "10:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "SATURDAY": {
+                  "status": "OPEN",
+                  "open": "10:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "SUNDAY": {
+                  "status": "OPEN",
+                  "open": "10:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                }
+              }
+            },
+            "availabilityAtRequestedTime": {
+              "status": "OPEN",
+              "requestedDateISO": "2026-08-03",
+              "requestedTime24h": "18:30",
+              "stayDurationMinutes": 60,
+              "reason": "mock 영업시간 기준 방문 가능합니다."
+            },
+            "referenceUrls": {
+              "kakaoMap": "https://place.map.kakao.com/dinner"
+            },
+            "accessibility": {
+              "score": 80,
+              "distanceMeters": 500,
+              "perOrigin": [
+                {
+                  "originId": "host",
+                  "distanceMeters": 500
+                }
+              ]
+            },
+            "location": {
+              "lat": 37.5,
+              "lng": 127,
+              "placeName": "연남 저녁식당",
+              "roadAddressKo": "서울시 mock로 1"
+            },
+            "priceRangePerPerson": [
+              22000,
+              38000
+            ],
+            "score": 88,
+            "scoreBreakdown": {
+              "inputMatch": 88,
+              "trust": 88,
+              "accessibility": 80,
+              "diversity": 80,
+              "total": 88
+            },
+            "reasons": [
+              "mock 추천 근거"
+            ]
+          },
+          {
+            "id": "cafe",
+            "name": "조용한 루프탑 카페",
+            "phoneNumber": null,
+            "tags": [
+              "카페",
+              "디저트"
+            ],
+            "contentSummary": "조용한 루프탑 카페 mock 장소입니다.",
+            "mainCategory": "카페",
+            "subCategory": "디저트",
+            "operationInfo": {
+              "timezone": "Asia/Seoul",
+              "schedules": {
+                "MONDAY": {
+                  "status": "OPEN",
+                  "open": "10:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "TUESDAY": {
+                  "status": "OPEN",
+                  "open": "10:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "WEDNESDAY": {
+                  "status": "OPEN",
+                  "open": "10:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "THURSDAY": {
+                  "status": "OPEN",
+                  "open": "10:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "FRIDAY": {
+                  "status": "OPEN",
+                  "open": "10:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "SATURDAY": {
+                  "status": "OPEN",
+                  "open": "10:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "SUNDAY": {
+                  "status": "OPEN",
+                  "open": "10:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                }
+              }
+            },
+            "availabilityAtRequestedTime": {
+              "status": "OPEN",
+              "requestedDateISO": "2026-08-03",
+              "requestedTime24h": "18:30",
+              "stayDurationMinutes": 60,
+              "reason": "mock 영업시간 기준 방문 가능합니다."
+            },
+            "referenceUrls": {
+              "kakaoMap": "https://place.map.kakao.com/cafe"
+            },
+            "accessibility": {
+              "score": 80,
+              "distanceMeters": 500,
+              "perOrigin": [
+                {
+                  "originId": "host",
+                  "distanceMeters": 500
+                }
+              ]
+            },
+            "location": {
+              "lat": 37.5,
+              "lng": 127,
+              "placeName": "조용한 루프탑 카페",
+              "roadAddressKo": "서울시 mock로 1"
+            },
+            "priceRangePerPerson": [
+              8000,
+              16000
+            ],
+            "score": 90,
+            "scoreBreakdown": {
+              "inputMatch": 90,
+              "trust": 90,
+              "accessibility": 80,
+              "diversity": 80,
+              "total": 90
+            },
+            "reasons": [
+              "mock 추천 근거"
+            ]
+          },
+          {
+            "id": "bar",
+            "name": "캐주얼 와인바",
+            "phoneNumber": null,
+            "tags": [
+              "술집",
+              "와인바"
+            ],
+            "contentSummary": "캐주얼 와인바 mock 장소입니다.",
+            "mainCategory": "술집",
+            "subCategory": "와인바",
+            "operationInfo": {
+              "timezone": "Asia/Seoul",
+              "schedules": {
+                "MONDAY": {
+                  "status": "OPEN",
+                  "open": "10:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "TUESDAY": {
+                  "status": "OPEN",
+                  "open": "10:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "WEDNESDAY": {
+                  "status": "OPEN",
+                  "open": "10:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "THURSDAY": {
+                  "status": "OPEN",
+                  "open": "10:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "FRIDAY": {
+                  "status": "OPEN",
+                  "open": "10:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "SATURDAY": {
+                  "status": "OPEN",
+                  "open": "10:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "SUNDAY": {
+                  "status": "OPEN",
+                  "open": "10:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                }
+              }
+            },
+            "availabilityAtRequestedTime": {
+              "status": "OPEN",
+              "requestedDateISO": "2026-08-03",
+              "requestedTime24h": "18:30",
+              "stayDurationMinutes": 60,
+              "reason": "mock 영업시간 기준 방문 가능합니다."
+            },
+            "referenceUrls": {
+              "kakaoMap": "https://place.map.kakao.com/bar"
+            },
+            "accessibility": {
+              "score": 80,
+              "distanceMeters": 500,
+              "perOrigin": [
+                {
+                  "originId": "host",
+                  "distanceMeters": 500
+                }
+              ]
+            },
+            "location": {
+              "lat": 37.5,
+              "lng": 127,
+              "placeName": "캐주얼 와인바",
+              "roadAddressKo": "서울시 mock로 1"
+            },
+            "priceRangePerPerson": [
+              25000,
+              45000
+            ],
+            "score": 84,
+            "scoreBreakdown": {
+              "inputMatch": 84,
+              "trust": 84,
+              "accessibility": 80,
+              "diversity": 80,
+              "total": 84
+            },
+            "reasons": [
+              "mock 추천 근거"
+            ]
+          }
+        ],
+        "summary": {
+          "estimatedCostPerPerson": [
+            70000,
+            117000
+          ],
+          "estimatedTotalMinutes": 559,
+          "estimatedTravelMinutes": 29,
+          "totalStayMinutes": 530,
+          "stopCount": 4,
+          "categoryCount": 4,
+          "mealIncluded": true
+        },
+        "selection": {
+          "reasonCodes": [
+            "LOW_TRAVEL",
+            "MEAL_INCLUDED"
+          ],
+          "reasonTexts": [
+            "29분 이동으로 동선 부담이 낮습니다.",
+            "식사 시간대 장소를 포함합니다."
+          ],
+          "tradeoffs": []
+        },
+        "timeline": [
+          {
+            "placeId": "gallery",
+            "placeName": "작은 미디어 전시관",
+            "categoryLabel": "전시 · 미디어아트",
+            "time24h": "10:00",
+            "stayDurationMinutes": 140,
+            "travelMinutesFromPrevious": 0,
+            "waitMinutesFromPrevious": 0,
+            "label": "10:00 작은 미디어 전시관(140분 체류)"
+          },
+          {
+            "placeId": "dinner",
+            "placeName": "연남 저녁식당",
+            "categoryLabel": "식당 · 이탈리안",
+            "time24h": "12:28",
+            "stayDurationMinutes": 110,
+            "travelMinutesFromPrevious": 8,
+            "waitMinutesFromPrevious": 0,
+            "label": "12:28 연남 저녁식당(110분 체류)"
+          },
+          {
+            "placeId": "cafe",
+            "placeName": "조용한 루프탑 카페",
+            "categoryLabel": "카페 · 디저트",
+            "time24h": "14:30",
+            "stayDurationMinutes": 100,
+            "travelMinutesFromPrevious": 12,
+            "waitMinutesFromPrevious": 0,
+            "label": "14:30 조용한 루프탑 카페(100분 체류)"
+          },
+          {
+            "placeId": "bar",
+            "placeName": "캐주얼 와인바",
+            "categoryLabel": "술집 · 와인바",
+            "time24h": "16:19",
+            "stayDurationMinutes": 180,
+            "travelMinutesFromPrevious": 9,
+            "waitMinutesFromPrevious": 0,
+            "label": "16:19 캐주얼 와인바(180분 체류)"
+          }
+        ],
+        "startTime24h": "10:00",
+        "endTime24h": "19:19",
+        "totalStayMinutes": 530,
+        "totalTravelMinutes": 29,
+        "mealPlan": {
+          "status": "SATISFIED",
+          "reason": "점심 시간대에 식사 장소를 포함했습니다."
+        },
+        "score": 86,
+        "scoreBreakdown": {
+          "placeScore": 44.25,
+          "mealFit": 25,
+          "travelEfficiency": -10.15,
+          "waitEfficiency": 0,
+          "durationFit": 11.18,
+          "categoryDiversity": 8,
+          "costFit": 0,
+          "unknownHours": 0,
+          "flow": 8,
+          "total": 86.28
+        },
+        "reasons": [
+          "29분 이동으로 동선 부담이 낮습니다.",
+          "식사 시간대 장소를 포함합니다."
+        ]
+      },
+      {
+        "id": "course-4-srzekv",
+        "title": "식사 중심의 안정적인 코스",
+        "courseType": {
+          "key": "MEAL_INCLUDED",
+          "label": "식사 우선 코스",
+          "description": "mock 큐레이터가 부여한 코스 유형입니다."
+        },
+        "places": [
+          {
+            "id": "gallery",
+            "name": "작은 미디어 전시관",
+            "phoneNumber": null,
+            "tags": [
+              "전시",
+              "미디어아트"
+            ],
+            "contentSummary": "작은 미디어 전시관 mock 장소입니다.",
+            "mainCategory": "전시",
+            "subCategory": "미디어아트",
+            "operationInfo": {
+              "timezone": "Asia/Seoul",
+              "schedules": {
+                "MONDAY": {
+                  "status": "OPEN",
+                  "open": "10:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "TUESDAY": {
+                  "status": "OPEN",
+                  "open": "10:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "WEDNESDAY": {
+                  "status": "OPEN",
+                  "open": "10:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "THURSDAY": {
+                  "status": "OPEN",
+                  "open": "10:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "FRIDAY": {
+                  "status": "OPEN",
+                  "open": "10:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "SATURDAY": {
+                  "status": "OPEN",
+                  "open": "10:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "SUNDAY": {
+                  "status": "OPEN",
+                  "open": "10:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                }
+              }
+            },
+            "availabilityAtRequestedTime": {
+              "status": "OPEN",
+              "requestedDateISO": "2026-08-03",
+              "requestedTime24h": "18:30",
+              "stayDurationMinutes": 60,
+              "reason": "mock 영업시간 기준 방문 가능합니다."
+            },
+            "referenceUrls": {
+              "kakaoMap": "https://place.map.kakao.com/gallery"
+            },
+            "accessibility": {
+              "score": 80,
+              "distanceMeters": 500,
+              "perOrigin": [
+                {
+                  "originId": "host",
+                  "distanceMeters": 500
+                }
+              ]
+            },
+            "location": {
+              "lat": 37.5,
+              "lng": 127,
+              "placeName": "작은 미디어 전시관",
+              "roadAddressKo": "서울시 mock로 1"
+            },
+            "priceRangePerPerson": [
+              15000,
+              18000
+            ],
+            "score": 92,
+            "scoreBreakdown": {
+              "inputMatch": 92,
+              "trust": 92,
+              "accessibility": 80,
+              "diversity": 80,
+              "total": 92
+            },
+            "reasons": [
+              "mock 추천 근거"
+            ]
+          },
+          {
+            "id": "dinner",
+            "name": "연남 저녁식당",
+            "phoneNumber": null,
+            "tags": [
+              "식당",
+              "이탈리안"
+            ],
+            "contentSummary": "연남 저녁식당 mock 장소입니다.",
+            "mainCategory": "식당",
+            "subCategory": "이탈리안",
+            "operationInfo": {
+              "timezone": "Asia/Seoul",
+              "schedules": {
+                "MONDAY": {
+                  "status": "OPEN",
+                  "open": "10:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "TUESDAY": {
+                  "status": "OPEN",
+                  "open": "10:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "WEDNESDAY": {
+                  "status": "OPEN",
+                  "open": "10:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "THURSDAY": {
+                  "status": "OPEN",
+                  "open": "10:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "FRIDAY": {
+                  "status": "OPEN",
+                  "open": "10:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "SATURDAY": {
+                  "status": "OPEN",
+                  "open": "10:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "SUNDAY": {
+                  "status": "OPEN",
+                  "open": "10:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                }
+              }
+            },
+            "availabilityAtRequestedTime": {
+              "status": "OPEN",
+              "requestedDateISO": "2026-08-03",
+              "requestedTime24h": "18:30",
+              "stayDurationMinutes": 60,
+              "reason": "mock 영업시간 기준 방문 가능합니다."
+            },
+            "referenceUrls": {
+              "kakaoMap": "https://place.map.kakao.com/dinner"
+            },
+            "accessibility": {
+              "score": 80,
+              "distanceMeters": 500,
+              "perOrigin": [
+                {
+                  "originId": "host",
+                  "distanceMeters": 500
+                }
+              ]
+            },
+            "location": {
+              "lat": 37.5,
+              "lng": 127,
+              "placeName": "연남 저녁식당",
+              "roadAddressKo": "서울시 mock로 1"
+            },
+            "priceRangePerPerson": [
+              22000,
+              38000
+            ],
+            "score": 88,
+            "scoreBreakdown": {
+              "inputMatch": 88,
+              "trust": 88,
+              "accessibility": 80,
+              "diversity": 80,
+              "total": 88
+            },
+            "reasons": [
+              "mock 추천 근거"
+            ]
+          },
+          {
+            "id": "cafe",
+            "name": "조용한 루프탑 카페",
+            "phoneNumber": null,
+            "tags": [
+              "카페",
+              "디저트"
+            ],
+            "contentSummary": "조용한 루프탑 카페 mock 장소입니다.",
+            "mainCategory": "카페",
+            "subCategory": "디저트",
+            "operationInfo": {
+              "timezone": "Asia/Seoul",
+              "schedules": {
+                "MONDAY": {
+                  "status": "OPEN",
+                  "open": "10:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "TUESDAY": {
+                  "status": "OPEN",
+                  "open": "10:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "WEDNESDAY": {
+                  "status": "OPEN",
+                  "open": "10:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "THURSDAY": {
+                  "status": "OPEN",
+                  "open": "10:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "FRIDAY": {
+                  "status": "OPEN",
+                  "open": "10:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "SATURDAY": {
+                  "status": "OPEN",
+                  "open": "10:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "SUNDAY": {
+                  "status": "OPEN",
+                  "open": "10:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                }
+              }
+            },
+            "availabilityAtRequestedTime": {
+              "status": "OPEN",
+              "requestedDateISO": "2026-08-03",
+              "requestedTime24h": "18:30",
+              "stayDurationMinutes": 60,
+              "reason": "mock 영업시간 기준 방문 가능합니다."
+            },
+            "referenceUrls": {
+              "kakaoMap": "https://place.map.kakao.com/cafe"
+            },
+            "accessibility": {
+              "score": 80,
+              "distanceMeters": 500,
+              "perOrigin": [
+                {
+                  "originId": "host",
+                  "distanceMeters": 500
+                }
+              ]
+            },
+            "location": {
+              "lat": 37.5,
+              "lng": 127,
+              "placeName": "조용한 루프탑 카페",
+              "roadAddressKo": "서울시 mock로 1"
+            },
+            "priceRangePerPerson": [
+              8000,
+              16000
+            ],
+            "score": 90,
+            "scoreBreakdown": {
+              "inputMatch": 90,
+              "trust": 90,
+              "accessibility": 80,
+              "diversity": 80,
+              "total": 90
+            },
+            "reasons": [
+              "mock 추천 근거"
+            ]
+          },
+          {
+            "id": "bookshop",
+            "name": "독립서점 산책",
+            "phoneNumber": null,
+            "tags": [
+              "쇼핑",
+              "서점"
+            ],
+            "contentSummary": "독립서점 산책 mock 장소입니다.",
+            "mainCategory": "쇼핑",
+            "subCategory": "서점",
+            "operationInfo": {
+              "timezone": "Asia/Seoul",
+              "schedules": {
+                "MONDAY": {
+                  "status": "OPEN",
+                  "open": "10:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "TUESDAY": {
+                  "status": "OPEN",
+                  "open": "10:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "WEDNESDAY": {
+                  "status": "OPEN",
+                  "open": "10:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "THURSDAY": {
+                  "status": "OPEN",
+                  "open": "10:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "FRIDAY": {
+                  "status": "OPEN",
+                  "open": "10:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "SATURDAY": {
+                  "status": "OPEN",
+                  "open": "10:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "SUNDAY": {
+                  "status": "OPEN",
+                  "open": "10:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                }
+              }
+            },
+            "availabilityAtRequestedTime": {
+              "status": "OPEN",
+              "requestedDateISO": "2026-08-03",
+              "requestedTime24h": "18:30",
+              "stayDurationMinutes": 60,
+              "reason": "mock 영업시간 기준 방문 가능합니다."
+            },
+            "referenceUrls": {
+              "kakaoMap": "https://place.map.kakao.com/bookshop"
+            },
+            "accessibility": {
+              "score": 80,
+              "distanceMeters": 500,
+              "perOrigin": [
+                {
+                  "originId": "host",
+                  "distanceMeters": 500
+                }
+              ]
+            },
+            "location": {
+              "lat": 37.5,
+              "lng": 127,
+              "placeName": "독립서점 산책",
+              "roadAddressKo": "서울시 mock로 1"
+            },
+            "priceRangePerPerson": [
+              0,
+              20000
+            ],
+            "score": 77,
+            "scoreBreakdown": {
+              "inputMatch": 77,
+              "trust": 77,
+              "accessibility": 80,
+              "diversity": 80,
+              "total": 77
+            },
+            "reasons": [
+              "mock 추천 근거"
+            ]
+          }
+        ],
+        "summary": {
+          "estimatedCostPerPerson": [
+            45000,
+            92000
+          ],
+          "estimatedTotalMinutes": 446,
+          "estimatedTravelMinutes": 26,
+          "totalStayMinutes": 420,
+          "stopCount": 4,
+          "categoryCount": 4,
+          "mealIncluded": true
+        },
+        "selection": {
+          "reasonCodes": [
+            "LOW_TRAVEL",
+            "MEAL_INCLUDED"
+          ],
+          "reasonTexts": [
+            "26분 이동으로 동선 부담이 낮습니다.",
+            "식사 시간대 장소를 포함합니다."
+          ],
+          "tradeoffs": []
+        },
+        "timeline": [
+          {
+            "placeId": "gallery",
+            "placeName": "작은 미디어 전시관",
+            "categoryLabel": "전시 · 미디어아트",
+            "time24h": "10:00",
+            "stayDurationMinutes": 140,
+            "travelMinutesFromPrevious": 0,
+            "waitMinutesFromPrevious": 0,
+            "label": "10:00 작은 미디어 전시관(140분 체류)"
+          },
+          {
+            "placeId": "dinner",
+            "placeName": "연남 저녁식당",
+            "categoryLabel": "식당 · 이탈리안",
+            "time24h": "12:28",
+            "stayDurationMinutes": 110,
+            "travelMinutesFromPrevious": 8,
+            "waitMinutesFromPrevious": 0,
+            "label": "12:28 연남 저녁식당(110분 체류)"
+          },
+          {
+            "placeId": "cafe",
+            "placeName": "조용한 루프탑 카페",
+            "categoryLabel": "카페 · 디저트",
+            "time24h": "14:30",
+            "stayDurationMinutes": 100,
+            "travelMinutesFromPrevious": 12,
+            "waitMinutesFromPrevious": 0,
+            "label": "14:30 조용한 루프탑 카페(100분 체류)"
+          },
+          {
+            "placeId": "bookshop",
+            "placeName": "독립서점 산책",
+            "categoryLabel": "쇼핑 · 서점",
+            "time24h": "16:16",
+            "stayDurationMinutes": 70,
+            "travelMinutesFromPrevious": 6,
+            "waitMinutesFromPrevious": 0,
+            "label": "16:16 독립서점 산책(70분 체류)"
+          }
+        ],
+        "startTime24h": "10:00",
+        "endTime24h": "17:26",
+        "totalStayMinutes": 420,
+        "totalTravelMinutes": 26,
+        "mealPlan": {
+          "status": "SATISFIED",
+          "reason": "점심 시간대에 식사 장소를 포함했습니다."
+        },
+        "score": 84,
+        "scoreBreakdown": {
+          "placeScore": 43.38,
+          "mealFit": 25,
+          "travelEfficiency": -9.1,
+          "waitEfficiency": 0,
+          "durationFit": 8.92,
+          "categoryDiversity": 8,
+          "costFit": 0,
+          "unknownHours": 0,
+          "flow": 8,
+          "total": 84.2
+        },
+        "reasons": [
+          "26분 이동으로 동선 부담이 낮습니다.",
+          "식사 시간대 장소를 포함합니다."
+        ]
+      }
+    ]
+  },
+  "meta": {
+    "candidateCount": 26,
+    "curationPoolSize": 26,
+    "curatedByLlm": true,
+    "curationFallbackReason": null,
+    "measuredTravelPairCount": 10,
+    "estimatedTravelPairCount": 0,
+    "travelCalibration": null,
+    "travelMatrixFallbackReason": null,
+    "llmRefinedStayPlaceCount": 0,
+    "stayEstimateFallbackReason": null,
+    "generationMillis": 37
+  }
+}
