@@ -1,3 +1,4 @@
+import type { CourseRoutePoint, CreateCourseRequest } from '@monorepo/api-contracts';
 import type { PlaceRecommendationItem, UserInput, UserOutput } from '@monorepo/recommendation-engine/v1/contracts';
 import { sql } from 'drizzle-orm';
 import {
@@ -46,6 +47,7 @@ export const signupVerificationCodes = pgTable('signup_verification_codes', {
 export const placeRecommendationHistories = pgTable('place_recommendation_histories', {
   id: uuid('id').primaryKey().defaultRandom(),
   userIds: uuid('user_ids').array().notNull().default(sql`'{}'`),
+  title: text('title').notNull().default('추천 기록'),
   input: jsonb('input').$type<UserInput>().notNull(),
   output: jsonb('output').$type<UserOutput>(),
   errorCode: text('error_code'),
@@ -54,13 +56,22 @@ export const placeRecommendationHistories = pgTable('place_recommendation_histor
 });
 
 // 추천 결과에서 저장(하트)한 장소 스냅샷
-export const savedPlaces = pgTable('saved_places', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  userId: uuid('user_id').notNull().references(() => users.id),
-  historyId: uuid('history_id').references(() => placeRecommendationHistories.id, { onDelete: 'set null' }),
-  placeData: jsonb('place_data').$type<PlaceRecommendationItem>().notNull(),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-});
+export const savedPlaces = pgTable(
+  'saved_places',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id').notNull().references(() => users.id),
+    historyId: uuid('history_id').references(() => placeRecommendationHistories.id, { onDelete: 'set null' }),
+    placeData: jsonb('place_data').$type<PlaceRecommendationItem>().notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex('saved_places_user_place_id_unique').on(
+      table.userId,
+      sql`(${table.placeData}->>'id')`,
+    ),
+  ],
+);
 
 // 즐겨찾기 장소
 export const favoritePlaces = pgTable(
@@ -92,6 +103,9 @@ export const courses = pgTable('courses', {
   userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   title: text('title'), // rename 가능
   status: text('status').notNull(), // 'PENDING' | 'SUCCESS' | 'FAILED'
+  input: jsonb('input').$type<CreateCourseRequest>().notNull(),
+  errorCode: text('error_code'),
+  errorMessage: text('error_message'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   deletedAt: timestamp('deleted_at', { withTimezone: true }),
 });
@@ -106,6 +120,7 @@ export const courseOptions = pgTable('course_options', {
   totalTravelMinutes: integer('total_travel_minutes').notNull(),
   pricePerPersonWon: integer('price_per_person_won').notNull(),
   reason: text('reason'), // "코스 구성 이유" 설명문
+  routePath: jsonb('route_path').$type<readonly CourseRoutePoint[]>().notNull().default(sql`'[]'`),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 

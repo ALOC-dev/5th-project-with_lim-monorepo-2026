@@ -2,11 +2,11 @@ import type {
   ResolveSelectedLocationParams,
   ResolveSelectedLocationResult,
   ReverseGeocodeCoordinates,
-} from "../../pages/RecommendationForm/utils/selectedLocationResult";
+} from "../../pages/PlaceRecommendationForm/utils/selectedLocationResult";
 import {
   selectAddressName,
   toResolveSelectedLocationFailure,
-} from "../../pages/RecommendationForm/utils/selectedLocationResult";
+} from "../../pages/PlaceRecommendationForm/utils/selectedLocationResult";
 import { searchNearestPlace } from "./nearestPlaceSearch";
 
 export type {
@@ -14,7 +14,7 @@ export type {
   ResolveSelectedLocationParams,
   ResolveSelectedLocationResult,
   ReverseGeocodeCoordinates,
-} from "../../pages/RecommendationForm/utils/selectedLocationResult";
+} from "../../pages/PlaceRecommendationForm/utils/selectedLocationResult";
 
 /**
  * 지도 중심 좌표를 지도 아래에 표시할 위치 라벨로 변환한다.

@@ -1,0 +1,47 @@
+{
+  "name": "@monorepo/course-recommendation-engine",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/v1/index.ts",
+  "types": "./src/v1/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/v1/index.ts",
+      "import": "./src/v1/index.ts"
+    },
+    "./v1": {
+      "types": "./src/v1/index.ts",
+      "import": "./src/v1/index.ts"
+    },
+    "./v1/contracts": {
+      "types": "./src/v1/contracts.ts",
+      "import": "./src/v1/contracts.ts"
+    },
+    "./v1/persistence": {
+      "types": "./src/v1/persistence.ts",
+      "import": "./src/v1/persistence.ts"
+    }
+  },
+  "files": [
+    "src"
+  ],
+  "scripts": {
+    "mock": "node --import tsx src/v1/scripts/mock-run.ts",
+    "bench": "node --import tsx src/v1/scripts/bench.ts",
+    "test": "node --import tsx src/v1/course-engine.test.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@ai-sdk/openai": "^3.0.64",
+    "@monorepo/recommendation-engine": "workspace:*",
+    "ai": "^6.0.183",
+    "ky": "^2.0.2",
+    "zod": "^4.4.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.17",
+    "tsx": "^4.19.3"
+  }
+}
