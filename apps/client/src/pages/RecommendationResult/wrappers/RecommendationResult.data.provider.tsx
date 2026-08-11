@@ -2,7 +2,7 @@ import type { EngineOutput } from "@monorepo/recommendation-engine/v1/contracts"
 import { EngineOutputSchema } from "@monorepo/recommendation-engine/v1/contracts";
 import { useQueryClient } from "@tanstack/react-query";
 import type { ReactNode } from "react";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocation, useParams } from "react-router-dom";
 
 import {
@@ -24,7 +24,7 @@ const isRecord = (value: unknown): value is Readonly<Record<string, unknown>> =>
   return typeof value === "object" && value !== null;
 };
 
-const toDataContextValue = (
+export const toRecommendationResultDataContextValue = (
   output: EngineOutput | null | undefined,
 ): RecommendationResultDataContextType => {
   if (output === null || output === undefined) {
@@ -33,8 +33,12 @@ const toDataContextValue = (
 
   switch (output.status) {
     case "ERROR":
-      return { status: "error" };
+      return { message: output.error.message, status: "error" };
     case "SUCCESS":
+      if (output.userOutput.recommendations.length === 0) {
+        return { status: "empty" };
+      }
+
       return {
         result: output,
         status: "success",
@@ -54,25 +58,25 @@ export const RecommendationResultDataProvider = ({
     () => getEngineOutputFromLocationState(location.state),
     [location.state],
   );
+  const [contextValue, setContextValue] = useState<RecommendationResultDataContextType>({
+    status: "loading",
+  });
 
   useEffect(() => {
-    if (recommendationId === undefined || routeStateOutput === null) {
+    if (recommendationId === undefined) {
+      setContextValue({ status: "error" });
       return;
     }
 
-    queryClient.setQueryData(getRecommendationResultQueryKey(recommendationId), routeStateOutput);
-  }, [queryClient, recommendationId, routeStateOutput]);
-
-  const contextValue = useMemo<RecommendationResultDataContextType>(() => {
-    if (recommendationId === undefined) {
-      return { status: "error" };
+    if (routeStateOutput !== null) {
+      queryClient.setQueryData(getRecommendationResultQueryKey(recommendationId), routeStateOutput);
     }
 
     const cachedOutput = queryClient.getQueryData<EngineOutput>(
       getRecommendationResultQueryKey(recommendationId),
     );
 
-    return toDataContextValue(routeStateOutput ?? cachedOutput);
+    setContextValue(toRecommendationResultDataContextValue(routeStateOutput ?? cachedOutput));
   }, [queryClient, recommendationId, routeStateOutput]);
 
   return (

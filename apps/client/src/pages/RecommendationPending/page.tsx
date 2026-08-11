@@ -10,12 +10,13 @@ import {
   type RecommendationProgressStep,
   RecommendationResultSseEventSchema,
 } from "../../apis/server/recommendation";
-import PageRoot from "../../components/PageRoot/PageRoot";
-import { tokens } from "../../design-system/tokens.generated";
+import {
+  RecommendationProgress,
+  type RecommendationProgressStepStatus,
+} from "../../components/RecommendationProgress";
 import { getRecommendationResultQueryKey } from "../RecommendationResult/wrappers/RecommendationResult.query-key";
-import { type RecommendationPendingStepStatus, S } from "./RecommendationPending.styled";
 
-type StepStatus = RecommendationPendingStepStatus;
+type StepStatus = RecommendationProgressStepStatus;
 
 const STEP_LABELS = {
   discovering: "장소 후보 탐색 중",
@@ -237,41 +238,37 @@ const RecommendationPendingPage = () => {
 
   if (visibleErrorMessage !== null) {
     return (
-      <PageRoot backgroundColor={tokens.color.neutral[50]} layout="contained">
-        <S.Page>
-          <S.Body>
-            <S.Title>추천 결과를 만들지 못했어요</S.Title>
-            <S.Subtitle>{visibleErrorMessage}</S.Subtitle>
-            <S.BackButton type="button" onClick={() => navigate("/place/recommendation/form")}>
-              폼으로 돌아가기
-            </S.BackButton>
-          </S.Body>
-        </S.Page>
-      </PageRoot>
+      <RecommendationProgress
+        error={{
+          title: "추천 결과를 만들지 못했어요",
+          description: visibleErrorMessage,
+          action: {
+            label: "추천 폼으로",
+            onClick: () => void navigate("/place/recommendation/form"),
+          },
+        }}
+        headerTitle="장소 추천 중"
+        onBack={() => void navigate("/place/recommendation/form")}
+        title="추천 결과를 만들고 있어요"
+      />
     );
   }
 
   return (
-    <PageRoot backgroundColor={tokens.color.neutral[50]} layout="contained">
-      <S.Page>
-        <S.Body>
-          <S.Spinner />
-          <S.Title>추천 결과를 만들고 있어요</S.Title>
-          <S.Subtitle>
-            장소 후보를 수집하고 점수를 계산하는 중입니다.{"\n"}잠시만 기다려 주세요.
-          </S.Subtitle>
-          <S.StepList>
-            {STEP_KEYS.map((key) => (
-              <S.StepItem key={key} $status={steps[key]}>
-                {steps[key] === "done" ? "✓" : steps[key] === "active" ? "▶" : "○"}{" "}
-                {STEP_LABELS[key]}
-                {steps[key] === "active" && elapsed > 0 && <S.Elapsed>{elapsed}초</S.Elapsed>}
-              </S.StepItem>
-            ))}
-          </S.StepList>
-        </S.Body>
-      </S.Page>
-    </PageRoot>
+    <RecommendationProgress
+      description={
+        <>장소 후보를 수집하고 점수를 계산하는 중입니다.{"\n"}잠시만 기다려 주세요.</>
+      }
+      headerTitle="장소 추천 중"
+      onBack={() => void navigate("/place/recommendation/form")}
+      steps={STEP_KEYS.map((key) => ({
+        id: key,
+        label: STEP_LABELS[key],
+        status: steps[key],
+        meta: steps[key] === "active" && elapsed > 0 ? `${elapsed}초` : undefined,
+      }))}
+      title="추천 결과를 만들고 있어요"
+    />
   );
 };
 

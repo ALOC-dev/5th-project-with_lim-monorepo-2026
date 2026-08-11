@@ -31,15 +31,6 @@ export const S = {
     margin: 0;
   `,
 
-  LoadingWrapper: styled.div`
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    padding: 40px 0;
-    color: ${tokens.color.neutral["900"]};
-    font-size: 14px;
-  `,
-
   List: styled.ul`
     display: flex;
     flex-direction: column;
@@ -66,13 +57,15 @@ export const S = {
         $status === "failed" ? tokens.color.warning["500"] : tokens.color.neutral["200"]};
   `,
 
-  CardOpenButton: styled.div`
+  CardOpenButton: styled.button`
     display: flex;
     flex: 1;
     align-self: stretch;
+    min-width: 0;
+    flex-direction: column;
     padding: 0;
     border: 0;
-    background: none;
+    background: transparent;
     color: inherit;
     cursor: pointer;
     text-align: left;
@@ -90,12 +83,13 @@ export const S = {
 
   CardInfo: styled.div`
     display: flex;
+    min-width: 0;
     flex-direction: column;
     gap: 3px;
     flex: 1;
   `,
 
-  DateLabel: styled.span`
+  DateLabel: styled.time`
     ${tokens.typography.body.xs};
     font-size: 12px;
     font-weight: 500;
@@ -110,6 +104,9 @@ export const S = {
     line-height: 24px;
     color: ${tokens.color.neutral["900"]};
     margin: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   `,
 
   CardDescription: styled.p<{ $status?: HistoryDisplayStatus }>`
@@ -132,10 +129,14 @@ export const S = {
 
   IconButton: styled.button<{ $iconType?: "edit" | "close" }>`
     display: flex;
+    width: 44px;
+    height: 44px;
+    flex: none;
     justify-content: center;
     align-items: center;
     background: none;
     border: none;
+    border-radius: 50%;
     padding: 0;
     color: ${tokens.color.primary["500"]};
     cursor: pointer;
@@ -150,6 +151,11 @@ export const S = {
 
     &:hover {
       opacity: 0.7;
+    }
+
+    &:focus-visible {
+      outline: 2px solid ${tokens.color.primary["500"]};
+      outline-offset: 2px;
     }
   `,
 
@@ -167,39 +173,6 @@ export const S = {
       }
       100% {
         transform: rotate(360deg);
-      }
-    }
-  `,
-  SkeletonCard: styled.li`
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    gap: 12px;
-    padding: 20px 16px;
-    width: 100%;
-    box-sizing: border-box;
-    border-radius: 12px;
-    background-color: ${tokens.color.neutral["0"]};
-    border: 1px solid ${tokens.color.neutral["200"]};
-  `,
-
-  SkeletonBar: styled.div<{ $width: string; $height: string }>`
-    height: ${({ $height }) => $height};
-    width: ${({ $width }) => $width};
-    border-radius: 6px;
-    background-color: ${tokens.color.neutral["200"]};
-
-    animation: skeleton-pulse 1.5s ease-in-out infinite;
-
-    @keyframes skeleton-pulse {
-      0% {
-        opacity: 0.5;
-      }
-      50% {
-        opacity: 1;
-      }
-      100% {
-        opacity: 0.5;
       }
     }
   `,

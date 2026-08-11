@@ -39,6 +39,8 @@ export const RecommendationHistoryProvider = ({ children }: { readonly children:
     queryFn: async () =>
       unwrapRecommendationHistoryApiResponse(await getPlaceRecommendationHistories()),
     retry: false,
+    refetchInterval: (query) =>
+      query.state.data?.items.some((item) => item.status === "PENDING") ? 5_000 : false,
   });
 
   const loadCompletedHistory = useCallback(

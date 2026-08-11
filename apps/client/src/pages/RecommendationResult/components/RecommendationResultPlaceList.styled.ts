@@ -13,6 +13,25 @@ export const S = {
     gap: 12px;
     padding-bottom: calc(18px + env(safe-area-inset-bottom));
   `,
+  ResultSummary: styled.div`
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 0 2px 2px;
+  `,
+  ResultCount: styled.h2`
+    margin: 0;
+    color: ${tokens.color.neutral[900]};
+    ${typography.title.xs}
+  `,
+  SelectionStatus: styled.p`
+    margin: 0;
+    overflow: hidden;
+    color: ${tokens.color.neutral[700]};
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    ${typography.body.xs}
+  `,
   Card: styled.article<{ readonly $isSelected: boolean }>`
     display: flex;
     flex-direction: column;
@@ -102,6 +121,9 @@ export const S = {
     justify-content: flex-end;
   `,
   DetailLink: styled(Link)`
+    display: inline-flex;
+    min-height: 36px;
+    align-items: center;
     padding: 6px 12px;
     border: 1px solid ${tokens.color.neutral[200]};
     border-radius: 999px;

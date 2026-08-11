@@ -5,7 +5,14 @@ export type RecommendationResultSuccess = Extract<EngineOutput, { status: "SUCCE
 
 export type RecommendationResultDataContextType =
   | {
-      readonly status: "loading" | "error";
+      readonly status: "loading";
+    }
+  | {
+      readonly status: "empty";
+    }
+  | {
+      readonly status: "error";
+      readonly message?: string;
     }
   | {
       readonly status: "success";

@@ -183,7 +183,9 @@ const RecommendationResultUiStateProvider = ({
     uiModel.initialMapCenter,
   );
   const [mapZoom, setMapZoom] = useState(DEFAULT_MAP_ZOOM);
-  const [selectedPlaceId, setSelectedPlaceId] = useState<string | null>(null);
+  const [selectedPlaceId, setSelectedPlaceId] = useState<string | null>(
+    uiModel.places[0]?.id ?? null,
+  );
 
   const selectedPlace = useMemo(
     () => uiModel.places.find((place) => place.id === selectedPlaceId) ?? null,

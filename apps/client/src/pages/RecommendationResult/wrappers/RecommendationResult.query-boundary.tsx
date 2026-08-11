@@ -8,6 +8,7 @@ import {
 export type RecommendationResultQueryBoundaryProps = {
   readonly views: {
     readonly loading: ComponentType;
+    readonly empty: ComponentType;
     readonly error: ComponentType;
     readonly success: ComponentType<{ readonly result: RecommendationResultSuccess }>;
   };
@@ -22,6 +23,10 @@ export const RecommendationResultQueryBoundary = ({
     case "loading": {
       const LoadingView = views.loading;
       return <LoadingView />;
+    }
+    case "empty": {
+      const EmptyView = views.empty;
+      return <EmptyView />;
     }
     case "error": {
       const ErrorView = views.error;

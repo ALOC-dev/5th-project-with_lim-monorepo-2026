@@ -13,6 +13,10 @@ import { Icon } from "../../components/Icon";
 import { Input } from "../../components/Input";
 import Modal from "../../components/Modal/Modal";
 import PageRoot from "../../components/PageRoot/PageRoot";
+import {
+  RecommendationProgress,
+  type RecommendationProgressStep,
+} from "../../components/RecommendationProgress";
 import { SearchInput } from "../../components/SearchInput";
 import { tokens } from "../../design-system/tokens.generated";
 import { getCourseRoutePath } from "./courseMap";
@@ -26,6 +30,34 @@ const formatMinutes = (value: number) =>
     ? `${Math.floor(value / 60)}시간`
     : `${Math.floor(value / 60)}시간 ${value % 60}분`;
 const formatDate = (value: string) => value.slice(0, 10).replace(/-/g, ". ");
+
+const COURSE_PROGRESS_STEP_IDS = [
+  "input_validated",
+  "generating_options",
+  "persisting_results",
+] as const;
+
+type CourseProgressStep = (typeof COURSE_PROGRESS_STEP_IDS)[number];
+type CourseHistoryDisplayStatus = "pending" | "success" | "failed" | "empty" | "cancelled";
+
+const COURSE_PROGRESS_LABELS = {
+  input_validated: "선택한 장소와 약속 시간을 확인하고 있어요.",
+  generating_options: "여러 코스 옵션을 만들고 있어요.",
+  persisting_results: "추천 결과를 저장하고 있어요.",
+} satisfies Record<CourseProgressStep, string>;
+
+const toCourseProgressSteps = (
+  activeStep: CourseProgressStep,
+): readonly RecommendationProgressStep[] => {
+  const activeIndex = COURSE_PROGRESS_STEP_IDS.indexOf(activeStep);
+
+  return COURSE_PROGRESS_STEP_IDS.map((id, index) => ({
+    id,
+    label: COURSE_PROGRESS_LABELS[id],
+    status: index < activeIndex ? "done" : index === activeIndex ? "active" : "pending",
+  }));
+};
+
 const historySummary = (item: CourseHistoryItem) =>
   item.status === "PENDING"
     ? "추천 결과를 만드는 중이에요"
@@ -37,11 +69,29 @@ const historySummary = (item: CourseHistoryItem) =>
           ? "조건에 맞는 코스를 찾지 못했어요"
           : `추천 코스 ${item.optionCount ?? 0}개`;
 
-const historyDisplayStatus = (item: CourseHistoryItem) =>
-  item.status === "PENDING" ? "pending" : item.status === "FAILED" ? "failed" : "default";
+const historyDisplayStatus = (item: CourseHistoryItem): CourseHistoryDisplayStatus => {
+  switch (item.status) {
+    case "PENDING":
+      return "pending";
+    case "SUCCESS":
+      return "success";
+    case "FAILED":
+      return "failed";
+    case "EMPTY":
+      return "empty";
+    case "CANCELLED":
+      return "cancelled";
+  }
+};
+
+const historyStatusLabel = (item: CourseHistoryItem) => {
+  if (item.status === "EMPTY") return "결과 없음";
+  if (item.status === "CANCELLED") return "생성 취소됨";
+  return null;
+};
 
 const canOpenHistory = (item: CourseHistoryItem) =>
-  item.status !== "PENDING" && item.status !== "CANCELLED";
+  item.status === "SUCCESS" || item.status === "EMPTY";
 
 const CoursePage = ({
   children,
@@ -360,7 +410,7 @@ export const CourseRecommendationPendingPage = () => {
   const navigate = useNavigate();
   const { courseId } = useParams();
   const [error, setError] = useState<string | null>(null);
-  const [progress, setProgress] = useState("선택한 장소와 약속 시간을 확인하고 있어요.");
+  const [progressStep, setProgressStep] = useState<CourseProgressStep>("input_validated");
   useEffect(() => {
     if (!courseId) {
       setError("추천 요청을 찾을 수 없습니다.");
@@ -374,12 +424,10 @@ export const CourseRecommendationPendingPage = () => {
         if (typeof data !== "object" || data === null) return;
         const record = data as { type?: string; step?: string };
         if (record.type !== "progress") return;
-        setProgress(
-          record.step === "generating_options"
-            ? "여러 코스 옵션을 만들고 있어요."
-            : record.step === "persisting_results"
-              ? "추천 결과를 저장하고 있어요."
-              : "선택한 장소와 약속 시간을 확인하고 있어요.",
+        setProgressStep(
+          record.step === "generating_options" || record.step === "persisting_results"
+            ? record.step
+            : "input_validated",
         );
       } catch {
         // A malformed progress event must not end a valid stream.
@@ -414,20 +462,25 @@ export const CourseRecommendationPendingPage = () => {
     return () => source.close();
   }, [courseId, navigate]);
   return (
-    <CoursePage onBack={() => navigate("/course/recommendation/form")} title="코스 추천 중">
-      {error ? (
-        <FeedbackState
-          action={{
-            label: "추천 폼으로",
-            onClick: () => void navigate("/course/recommendation/form"),
-          }}
-          kind="error"
-          title={error}
-        />
-      ) : (
-        <FeedbackState description={progress} kind="loading" title="코스를 추천하는 중이에요" />
-      )}
-    </CoursePage>
+    <RecommendationProgress
+      description={COURSE_PROGRESS_LABELS[progressStep]}
+      error={
+        error
+          ? {
+              title: "추천 결과를 만들지 못했어요",
+              description: error,
+              action: {
+                label: "추천 폼으로",
+                onClick: () => void navigate("/course/recommendation/form"),
+              },
+            }
+          : undefined
+      }
+      headerTitle="코스 추천 중"
+      onBack={() => void navigate("/course/recommendation/form")}
+      steps={toCourseProgressSteps(progressStep)}
+      title="코스 추천을 만드는 중이에요"
+    />
   );
 };
 
@@ -454,7 +507,15 @@ export const CourseRecommendationResultPage = () => {
   if (!recommendation || !courseId)
     return (
       <CoursePage onBack={() => navigate("/course/recommendation/form")} title="코스 결과">
-        <FeedbackState kind="error" title="추천 결과를 찾을 수 없어요" />
+        <FeedbackState
+          action={{
+            label: "다시 추천받기",
+            onClick: () => void navigate("/course/recommendation/form"),
+          }}
+          description="추천 기록에서 다시 열거나 새 추천을 요청해 주세요."
+          kind="error"
+          title="추천 결과를 찾을 수 없어요"
+        />
       </CoursePage>
     );
   if (recommendation.status === "EMPTY")
@@ -474,22 +535,40 @@ export const CourseRecommendationResultPage = () => {
     return (
       <CoursePage onBack={() => navigate("/course/recommendation/history")} title="코스 결과">
         <FeedbackState
+          action={{
+            label: "다시 추천받기",
+            onClick: () => void navigate("/course/recommendation/form"),
+          }}
+          description={recommendation.errorMessage}
           kind="error"
-          title={recommendation.errorMessage ?? "추천 결과를 불러오지 못했어요"}
+          title="추천 결과를 불러오지 못했어요"
         />
       </CoursePage>
     );
   const selected =
     recommendation.options.find(({ id }) => id === selectedId) ?? recommendation.options[0];
   if (!selected) return null;
+  const selectedIndex = Math.max(
+    0,
+    recommendation.options.findIndex(({ id }) => id === selected.id),
+  );
   return (
     <CoursePage onBack={() => navigate("/course/recommendation/history")} title="코스 결과">
       <S.ResultMap>
-        <S.MapLabel>선택 코스 · {selected.type}</S.MapLabel>
+        <S.MapLabel aria-live="polite">
+          {selectedIndex + 1}번 코스 · {selected.type}
+        </S.MapLabel>
         <CourseMap option={selected} />
       </S.ResultMap>
       <S.Result>
-        <S.Heading>추천 코스 {recommendation.options.length}개</S.Heading>
+        <S.ResultHeader>
+          <S.ResultTitle>
+            추천 코스 <S.ResultCount>{recommendation.options.length}개</S.ResultCount>
+          </S.ResultTitle>
+          <S.SelectionStatus aria-live="polite">
+            {selectedIndex + 1}번 코스 선택됨
+          </S.SelectionStatus>
+        </S.ResultHeader>
         {recommendation.options.map((option, index) => (
           <S.Option $selected={option.id === selected.id} key={option.id}>
             <S.OptionSelect
@@ -509,6 +588,7 @@ export const CourseRecommendationResultPage = () => {
               </span>
             </S.OptionSelect>
             <S.TextButton
+              aria-label={`${index + 1}번 ${option.type} 코스 상세 보기`}
               onClick={() =>
                 void navigate(
                   `/course/recommendation/result/${encodeURIComponent(courseId)}/option/${encodeURIComponent(option.id)}`,
@@ -668,18 +748,23 @@ export const CourseRecommendationHistoryPage = () => {
             <S.HistoryNotice>추천 요청을 시작하면 기록이 자동으로 저장됩니다.</S.HistoryNotice>
             <S.HistoryList>
               {histories.data.map((item) => {
+                const displayStatus = historyDisplayStatus(item);
+                const statusLabel = historyStatusLabel(item);
                 const cardInfo = (
                   <S.HistoryInfo>
                     <S.HistoryDate>{formatDate(item.requestedAt)}</S.HistoryDate>
                     <S.HistoryTitle>{item.title}</S.HistoryTitle>
-                    <S.HistoryDescription $status={historyDisplayStatus(item)}>
+                    <S.HistoryDescription $status={displayStatus}>
                       {historySummary(item)}
                     </S.HistoryDescription>
+                    {statusLabel ? (
+                      <S.HistoryStatusBadge $status={displayStatus}>{statusLabel}</S.HistoryStatusBadge>
+                    ) : null}
                   </S.HistoryInfo>
                 );
 
                 return (
-                  <S.History $status={historyDisplayStatus(item)} key={item.id}>
+                  <S.History $status={displayStatus} key={item.id}>
                     {canOpenHistory(item) ? (
                       <S.HistoryOpen
                         aria-label={`${item.title} 추천 기록 열기`}
@@ -697,7 +782,7 @@ export const CourseRecommendationHistoryPage = () => {
                     )}
                     <S.HistoryActions>
                       {item.status === "PENDING" ? (
-                        <S.HistorySpinner aria-label="추천 생성 중" />
+                        <S.HistorySpinner aria-label="추천 생성 중" role="status" />
                       ) : null}
                       {item.status === "SUCCESS" ? (
                         <S.IconButton
@@ -1106,8 +1191,32 @@ const S = {
     gap: 12px;
     padding: 20px 24px;
   `,
+  ResultHeader: styled.div`
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  `,
+  ResultTitle: styled.h2`
+    margin: 0;
+    color: ${tokens.color.neutral[900]};
+    ${tokens.typography.title.xs};
+  `,
+  ResultCount: styled.span`
+    color: ${tokens.color.primary[700]};
+  `,
+  SelectionStatus: styled.p`
+    margin: 0;
+    padding: 5px 10px;
+    border-radius: 999px;
+    background: ${tokens.color.primary[100]};
+    color: ${tokens.color.primary[700]};
+    white-space: nowrap;
+    ${tokens.typography.label.xs};
+  `,
   Option: styled.article<{ $selected: boolean }>`
     display: flex;
+    align-items: center;
     gap: 8px;
     padding: 12px;
     border: 1px solid
@@ -1123,6 +1232,7 @@ const S = {
     gap: 10px;
     border: 0;
     background: transparent;
+    cursor: pointer;
     text-align: left;
     b {
       display: grid;
@@ -1145,11 +1255,28 @@ const S = {
       text-overflow: ellipsis;
       white-space: nowrap;
     }
+
+    &:focus-visible {
+      outline: 2px solid ${tokens.color.primary[500]};
+      outline-offset: 2px;
+      border-radius: 8px;
+    }
   `,
   TextButton: styled.button`
-    border: 0;
-    background: transparent;
+    min-height: 36px;
+    flex: none;
+    padding: 6px 12px;
+    border: 1px solid ${tokens.color.neutral[200]};
+    border-radius: 999px;
+    background: ${tokens.color.neutral[0]};
     color: ${tokens.color.primary[700]};
+    cursor: pointer;
+    ${tokens.typography.label.xs};
+
+    &:focus-visible {
+      outline: 2px solid ${tokens.color.primary[500]};
+      outline-offset: 2px;
+    }
   `,
   Detail: styled.div`
     display: flex;
@@ -1223,16 +1350,22 @@ const S = {
     padding: 0;
     list-style: none;
   `,
-  History: styled.li<{ $status: "pending" | "failed" | "default" }>`
+  History: styled.li<{ $status: CourseHistoryDisplayStatus }>`
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
     padding: 16px 12px;
     border: 1px solid
       ${({ $status }) =>
-        $status === "failed" ? tokens.color.warning[500] : tokens.color.neutral[200]};
+        $status === "failed"
+          ? tokens.color.warning[500]
+          : $status === "empty" || $status === "cancelled"
+            ? tokens.color.secondary[300]
+            : tokens.color.neutral[200]};
     border-radius: 12px;
-    background: ${tokens.color.neutral[0]};
+    background: ${({ $status }) =>
+      $status === "empty" ? tokens.color.secondary[50] : tokens.color.neutral[0]};
+    opacity: ${({ $status }) => ($status === "cancelled" ? 0.72 : 1)};
   `,
   HistoryOpen: styled.button`
     display: flex;
@@ -1279,13 +1412,27 @@ const S = {
     font-size: 16px;
     line-height: 24px;
   `,
-  HistoryDescription: styled.p<{ $status: "pending" | "failed" | "default" }>`
+  HistoryDescription: styled.p<{ $status: CourseHistoryDisplayStatus }>`
     margin: 0;
     color: ${({ $status }) =>
-      $status === "failed" ? tokens.color.warning[500] : tokens.color.neutral[700]};
+      $status === "failed"
+        ? tokens.color.warning[500]
+        : $status === "empty" || $status === "cancelled"
+          ? tokens.color.secondary[700]
+          : tokens.color.neutral[700]};
     ${tokens.typography.body.xs};
     font-size: 12px;
     line-height: 18px;
+  `,
+  HistoryStatusBadge: styled.span<{ $status: CourseHistoryDisplayStatus }>`
+    width: fit-content;
+    margin-top: 2px;
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: ${({ $status }) =>
+      $status === "empty" ? tokens.color.secondary[100] : tokens.color.neutral[200]};
+    color: ${tokens.color.secondary[700]};
+    ${tokens.typography.label.xs};
   `,
   HistoryActions: styled.div`
     display: flex;

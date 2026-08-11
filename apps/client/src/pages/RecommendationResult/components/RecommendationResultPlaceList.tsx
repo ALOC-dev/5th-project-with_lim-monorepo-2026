@@ -6,10 +6,18 @@ import { S } from "./RecommendationResultPlaceList.styled";
 
 const RecommendationResultPlaceList = () => {
   const { recommendationId } = useParams();
-  const { places, selectPlace, selectedPlaceId } = useRecommendationResultUiContext();
+  const { places, selectPlace, selectedPlace, selectedPlaceId } = useRecommendationResultUiContext();
 
   return (
     <S.List aria-label="추천 장소 목록">
+      <S.ResultSummary aria-live="polite">
+        <S.ResultCount>추천 장소 {places.length}개</S.ResultCount>
+        <S.SelectionStatus>
+          {selectedPlace
+            ? `${selectedPlace.rank}번 ${selectedPlace.name} 선택됨`
+            : "장소를 선택하면 지도에서 확인할 수 있어요"}
+        </S.SelectionStatus>
+      </S.ResultSummary>
       {places.map((place) => {
         const isSelected = selectedPlaceId === place.id;
         const detailPath = `/place/recommendation/result/${recommendationId ?? ""}/place/${place.id}`;
@@ -18,6 +26,8 @@ const RecommendationResultPlaceList = () => {
           <S.Card
             key={place.id}
             $isSelected={isSelected}
+            aria-label={`${place.rank}번 ${place.name} ${isSelected ? "선택됨" : "선택"}`}
+            aria-pressed={isSelected}
             role="button"
             tabIndex={0}
             onClick={() => selectPlace(place.id)}
@@ -44,7 +54,11 @@ const RecommendationResultPlaceList = () => {
               ))}
             </S.TagRow>
             <S.DetailRow>
-              <S.DetailLink to={detailPath} onClick={(event) => event.stopPropagation()}>
+              <S.DetailLink
+                aria-label={`${place.name} 상세 보기`}
+                to={detailPath}
+                onClick={(event) => event.stopPropagation()}
+              >
                 상세 보기
               </S.DetailLink>
             </S.DetailRow>

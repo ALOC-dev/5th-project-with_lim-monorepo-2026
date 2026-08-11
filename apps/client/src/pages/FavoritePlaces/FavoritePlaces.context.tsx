@@ -17,7 +17,7 @@ export type FavoritePlacesContextType = {
   readonly deleteErrorMessage: string | null;
   readonly handleToggleFavorite: (id: string) => void;
   readonly handleRetry: () => void;
-  readonly handleGoToRecommendations: () => void;
+  readonly handleGoToRecommendationHistory: () => void;
 };
 
 export const FavoritePlacesContext = createContext<FavoritePlacesContextType | null>(null);
