@@ -1,16 +1,16 @@
 import {
   isLocationSearchPlace,
   toLocationSearchPlace,
-} from "../../pages/RecommendationForm/utils/locationSearchPlace";
-import type { SearchLocationsResult } from "../../pages/RecommendationForm/utils/locationSearchResult";
-import { toSearchLocationsFailure } from "../../pages/RecommendationForm/utils/locationSearchResult";
+} from "../../pages/PlaceRecommendationForm/utils/locationSearchPlace";
+import type { SearchLocationsResult } from "../../pages/PlaceRecommendationForm/utils/locationSearchResult";
+import { toSearchLocationsFailure } from "../../pages/PlaceRecommendationForm/utils/locationSearchResult";
 
-export type { LocationSearchPlace } from "../../pages/RecommendationForm/utils/locationSearchPlace";
-export { toLocationFromSearchPlace } from "../../pages/RecommendationForm/utils/locationSearchPlace";
+export type { LocationSearchPlace } from "../../pages/PlaceRecommendationForm/utils/locationSearchPlace";
+export { toLocationFromSearchPlace } from "../../pages/PlaceRecommendationForm/utils/locationSearchPlace";
 export type {
   LocationSearchFailureReason,
   SearchLocationsResult,
-} from "../../pages/RecommendationForm/utils/locationSearchResult";
+} from "../../pages/PlaceRecommendationForm/utils/locationSearchResult";
 
 export type LocationSearchCoordinates = {
   readonly lat: number;

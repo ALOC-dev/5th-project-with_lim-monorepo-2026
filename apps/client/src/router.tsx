@@ -2,10 +2,10 @@ import { createBrowserRouter, Navigate } from "react-router-dom";
 
 import { ActivityHubPage } from "./pages/ActivityHub/ActivityHubPage";
 import { CourseFavoritePage } from "./pages/CourseFavorite/CourseFavoritePage";
-import { CourseRecommendationDetailPage } from "./pages/CourseRecommendationDetail/CourseRecommendationDetailPage";
 import { CourseRecommendationFormPage } from "./pages/CourseRecommendationForm/CourseRecommendationFormPage";
 import { CourseRecommendationHistoryPage } from "./pages/CourseRecommendationHistory/CourseRecommendationHistoryPage";
-import { CourseRecommendationOptionDetailPage } from "./pages/CourseRecommendationOptionDetail/CourseRecommendationOptionDetailPage";
+import { CourseRecommendationResultPage } from "./pages/CourseRecommendationResult/CourseRecommendationResultPage";
+import { CourseRecommendationResultItemDetailPage } from "./pages/CourseRecommendationResultItemDetail/CourseRecommendationResultItemDetailPage";
 import FavoritePlacesPage from "./pages/FavoritePlaces/FavoritePlacesPage";
 import ForgotPasswordForm from "./pages/ForgotPassword/ForgotPasswordForm";
 import ForgotPasswordPage from "./pages/ForgotPassword/ForgotPasswordPage";
@@ -13,9 +13,10 @@ import ForgotPasswordResetForm from "./pages/ForgotPassword/ForgotPasswordResetF
 import HealthCheckPage from "./pages/HealthCheck/page";
 import HomePage from "./pages/Home/HomePage";
 import LoginPage from "./pages/Login/LoginPage";
-import RecommendationDetailPage from "./pages/RecommendationDetail/RecommendationDetailPage";
-import RecommendationFormPage from "./pages/RecommendationForm/RecommendationForm.page";
-import RecommendationHistoryPage from "./pages/RecommendationHistory/RecommendationHistoryPage";
+import PlaceRecommendationFormPage from "./pages/PlaceRecommendationForm/PlaceRecommendationFormPage";
+import PlaceRecommendationHistoryPage from "./pages/PlaceRecommendationHistory/PlaceRecommendationHistoryPage";
+import PlaceRecommendationResultPage from "./pages/PlaceRecommendationResult/PlaceRecommendationResultPage";
+import PlaceRecommendationResultItemDetailPage from "./pages/PlaceRecommendationResultItemDetail/PlaceRecommendationResultItemDetailPage";
 import SignupPage from "./pages/Signup/SignupPage";
 import { ProtectedRoute, PublicRoute } from "./routes/AuthRouteGuards";
 const NotFoundPage = () => <div>NotFoundPage</div>;
@@ -34,15 +35,15 @@ export const router = createBrowserRouter([
       },
       {
         path: "/place/recommendation/form",
-        element: <RecommendationFormPage />,
+        element: <PlaceRecommendationFormPage />,
       },
       {
         path: "/place/recommendation/:recommendationId",
-        element: <RecommendationDetailPage />,
+        element: <PlaceRecommendationResultPage />,
       },
       {
         path: "/place/recommendation/:recommendationId/place/:placeId",
-        element: <RecommendationDetailPage />,
+        element: <PlaceRecommendationResultItemDetailPage />,
       },
       {
         path: "/place/recommendation/member",
@@ -50,7 +51,7 @@ export const router = createBrowserRouter([
       },
       {
         path: "/place/recommendation/history",
-        element: <RecommendationHistoryPage />,
+        element: <PlaceRecommendationHistoryPage />,
       },
       {
         path: "/place/favorite",
@@ -62,11 +63,11 @@ export const router = createBrowserRouter([
       },
       {
         path: "/course/recommendation/:courseId",
-        element: <CourseRecommendationDetailPage />,
+        element: <CourseRecommendationResultPage />,
       },
       {
         path: "/course/recommendation/:courseId/option/:optionId",
-        element: <CourseRecommendationOptionDetailPage />,
+        element: <CourseRecommendationResultItemDetailPage />,
       },
       {
         path: "/course/recommendation/history",

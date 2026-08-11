@@ -1,4 +1,4 @@
 export * from "./health";
 export * from "./placeRecommendationHistories";
-export * from "./recommendation";
+export * from "./placeRecommendation";
 export * from "./savedPlaces";
