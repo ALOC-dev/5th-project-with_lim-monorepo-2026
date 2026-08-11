@@ -13,6 +13,7 @@ vi.mock("../base", () => ({
 import {
   deletePlaceRecommendationHistory,
   getPlaceRecommendationHistories,
+  getPlaceRecommendationHistory,
   renamePlaceRecommendationHistory,
 } from "./placeRecommendationHistories";
 
@@ -66,6 +67,44 @@ describe("place recommendation histories server API", () => {
       },
     });
     expect(serverApiMock.get).toHaveBeenCalledWith("api/place-recommendation-histories");
+  });
+
+  it.each([
+    {
+      id: historyId,
+      requestedAt: "2026-08-10T10:00:00.000Z",
+      status: "PENDING",
+      title: "생성 중인 추천",
+    },
+    {
+      id: historyId,
+      input: { request: "저녁 식사" },
+      output: { recommendations: [] },
+      requestedAt: "2026-08-10T10:00:00.000Z",
+      status: "COMPLETED",
+      title: "완료된 추천",
+    },
+    {
+      errorMessage: "추천을 생성하지 못했습니다.",
+      id: historyId,
+      requestedAt: "2026-08-10T10:00:00.000Z",
+      status: "FAILED",
+      title: "실패한 추천",
+    },
+  ] as const)("parses the %s detail state", async (data) => {
+    // Given
+    serverApiMock.get.mockReturnValue({
+      json: () => Promise.resolve({ success: true, data }),
+    });
+
+    // When
+    const result = await getPlaceRecommendationHistory(historyId);
+
+    // Then
+    expect(result).toEqual({ success: true, data });
+    expect(serverApiMock.get).toHaveBeenCalledWith(
+      "api/place-recommendation-histories/" + historyId,
+    );
   });
 
   it("normalizes and sends the historical rename request body", async () => {

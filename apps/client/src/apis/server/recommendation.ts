@@ -1,9 +1,6 @@
 import type { ApiResponse } from "@monorepo/api-contracts";
 import { createApiError, createApiResponse } from "@monorepo/api-contracts";
-import {
-  type UserInput,
-  UserOutputSchema,
-} from "@monorepo/recommendation-engine/v1/contracts";
+import type { UserInput } from "@monorepo/recommendation-engine/v1/contracts";
 import { z } from "zod";
 
 import { serverApi, serverApiBaseUrl } from "../base";
@@ -32,13 +29,6 @@ export const RecommendationProgressSseEventSchema = z
   })
   .strict();
 
-export const RecommendationResultSseEventSchema = z
-  .object({
-    type: z.literal("result"),
-    data: UserOutputSchema,
-  })
-  .strict();
-
 export const RecommendationErrorSseEventSchema = z
   .object({
     type: z.literal("error"),
@@ -61,6 +51,5 @@ export const createRecommendationJob = async (
 };
 
 export const getRecommendationStreamUrl = (jobId: string): string => {
-  return new URL(`api/recommend/stream/${encodeURIComponent(jobId)}`, `${serverApiBaseUrl}/`)
-    .href;
+  return new URL(`api/recommend/stream/${encodeURIComponent(jobId)}`, `${serverApiBaseUrl}/`).href;
 };

@@ -10,8 +10,18 @@ export const iconNames = [
   "circle-x",
   "chevron-left",
   "chevron-right",
+  "home",
+  "person",
+  "history",
+  "map",
+  "account-settings",
+  "logout",
   "heart-outline",
   "heart-filled",
+  "activity-place-history",
+  "activity-place-favorite",
+  "activity-course-history",
+  "activity-course-favorite",
 ] as const;
 
 export type IconName = (typeof iconNames)[number];

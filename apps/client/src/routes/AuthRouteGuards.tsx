@@ -26,5 +26,5 @@ export const PublicRoute = () => {
 
   if (isLoading) return <AuthLoadingState />;
 
-  return isAuthenticated ? <Navigate to="/place/recommendation/form" replace /> : <Outlet />;
+  return isAuthenticated ? <Navigate to="/" replace /> : <Outlet />;
 };

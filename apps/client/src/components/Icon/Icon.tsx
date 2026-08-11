@@ -1,5 +1,11 @@
 import type { ReactNode } from "react";
 
+import courseFavoriteIcon from "../../assets/activity-icons/course-favorite.svg";
+import courseHistoryIcon from "../../assets/activity-icons/course-history.svg";
+import courseMapIcon from "../../assets/activity-icons/course-map.svg";
+import placeFavoriteIcon from "../../assets/activity-icons/place-favorite.svg";
+import placePinIcon from "../../assets/activity-icons/place-pin.svg";
+import recommendationHistoryIcon from "../../assets/activity-icons/recommendation-history.svg";
 import type { IconName, IconProps } from "./Icon.types";
 
 type IconRenderer = () => ReactNode;
@@ -76,6 +82,79 @@ const iconRenderers = {
       strokeWidth={2.4}
     />
   ),
+  home: () => (
+    <path
+      d="M4 10.9 12 4l8 6.9V20a1 1 0 0 1-1 1h-4.5v-5.5h-5V21H5a1 1 0 0 1-1-1z"
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+    />
+  ),
+  person: () => (
+    <g
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+    >
+      <circle cx={12} cy={8} r={3.5} />
+      <path d="M4.5 20c.8-4 3.3-6 7.5-6s6.7 2 7.5 6" />
+    </g>
+  ),
+  history: () => (
+    <g
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+    >
+      <path d="M4 7v4h4" />
+      <path d="M5.2 11A7 7 0 1 0 7 6.2" />
+      <path d="M12 8v4l2.7 1.6" />
+    </g>
+  ),
+  map: () => (
+    <g
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+    >
+      <path d="m3.5 6 5-2 7 2 5-2v14l-5 2-7-2-5 2z" />
+      <path d="M8.5 4v14M15.5 6v14" />
+    </g>
+  ),
+  "account-settings": () => (
+    <g
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+    >
+      <circle cx={9} cy={8} r={3} />
+      <path d="M3.5 19c.7-3.3 2.6-5 5.5-5 1.3 0 2.5.4 3.4 1.2" />
+      <circle cx={18} cy={17.5} r={2.5} />
+      <path d="M18 13.5v1M18 20.5v1M14 17.5h1M21 17.5h-1M15.2 14.7l.7.7M20.1 19.6l.7.7M20.8 14.7l-.7.7M15.9 19.6l-.7.7" />
+    </g>
+  ),
+  logout: () => (
+    <g
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+    >
+      <path d="M10 4H5.5A1.5 1.5 0 0 0 4 5.5v13A1.5 1.5 0 0 0 5.5 20H10" />
+      <path d="M13 8l4 4-4 4M7 12h10" />
+    </g>
+  ),
   edit: () => (
     <g
       fill="none"
@@ -104,7 +183,38 @@ const iconRenderers = {
       d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
     />
   ),
+  "activity-place-history": () => (
+    <>
+      <image height="22" href={recommendationHistoryIcon} width="22" x="0" y="5" />
+      <image height="12.651" href={placePinIcon} width="10.419" x="13" y="1" />
+    </>
+  ),
+  "activity-place-favorite": () => (
+    <>
+      <image height="16.821" href={placeFavoriteIcon} width="18.333" x="1.833" y="7.75" />
+      <image height="12.651" href={placePinIcon} width="10.419" x="13" y="1" />
+    </>
+  ),
+  "activity-course-history": () => (
+    <>
+      <image height="22" href={courseHistoryIcon} width="22" x="0" y="5" />
+      <image height="12.875" href={courseMapIcon} width="12" x="13" y="2" />
+    </>
+  ),
+  "activity-course-favorite": () => (
+    <>
+      <image height="16.821" href={courseFavoriteIcon} width="18.333" x="1.833" y="7.75" />
+      <image height="12.875" href={courseMapIcon} width="12" x="13" y="2" />
+    </>
+  ),
 } satisfies Record<IconName, IconRenderer>;
+
+const iconViewBoxes: Partial<Record<IconName, string>> = {
+  "activity-place-history": "0 0 28 28",
+  "activity-place-favorite": "0 0 28 28",
+  "activity-course-history": "0 0 28 28",
+  "activity-course-favorite": "0 0 28 28",
+};
 
 export const Icon = ({
   name,
@@ -127,7 +237,7 @@ export const Icon = ({
       height={size}
       role={ariaLabel === undefined ? role : (role ?? "img")}
       style={{ display: "block", flexShrink: 0, ...style }}
-      viewBox="0 0 24 24"
+      viewBox={iconViewBoxes[name] ?? "0 0 24 24"}
       width={size}
       xmlns="http://www.w3.org/2000/svg"
       {...svgProps}

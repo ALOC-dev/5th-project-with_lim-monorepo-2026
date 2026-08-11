@@ -24,7 +24,7 @@ export default function LoginFormContent() {
       if (response.success) {
         alert("로그인에 성공했습니다!");
         login();
-        void navigate("/activity", { replace: true });
+        void navigate("/", { replace: true });
       }
     } catch (error) {
       alert(toApiClientErrorMessage(error));

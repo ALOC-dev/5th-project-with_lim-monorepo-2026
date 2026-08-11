@@ -136,19 +136,17 @@ export default function RecommendationHistoryContent() {
 
                   return (
                     <S.Card key={item.id} $status={item.displayStatus}>
-                      {item.status === "COMPLETED" ? (
+                      {
                         <S.CardOpenButton
                           aria-label={`${item.title} 추천 기록 열기`}
                           onClick={() => {
-                            void handleCardClick(item.id, item.status);
+                            void handleCardClick(item.id);
                           }}
                           type="button"
                         >
                           {cardInfo}
                         </S.CardOpenButton>
-                      ) : (
-                        cardInfo
-                      )}
+                      }
 
                       <S.CardActions>
                         {item.status === "PENDING" && (

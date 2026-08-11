@@ -74,6 +74,10 @@ export const unwrapRecommendationHistoryApiResponse = <T>(response: ApiResponse<
 export const toCompletedEngineOutput = (
   detail: PlaceRecommendationHistoryDetailResponseData,
 ): EngineOutput | null => {
+  if (detail.status !== "COMPLETED") {
+    return null;
+  }
+
   const parsedInput = UserInputSchema.safeParse(detail.input);
   if (!parsedInput.success) {
     return null;

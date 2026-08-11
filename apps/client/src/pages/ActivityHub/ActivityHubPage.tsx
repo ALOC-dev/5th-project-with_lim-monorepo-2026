@@ -1,14 +1,18 @@
+import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 import { useNavigate } from "react-router-dom";
 
-import Header from "../../components/Header/Header";
 import { Icon } from "../../components/Icon";
 import PageRoot from "../../components/PageRoot/PageRoot";
+import { useAuth } from "../../contexts/Auth.context";
 import { tokens } from "../../design-system/tokens.generated";
 
 type ActivityLink = {
-  readonly description: string;
-  readonly icon: "heart-outline" | "map-pin";
+  readonly icon:
+    | "activity-place-history"
+    | "activity-place-favorite"
+    | "activity-course-history"
+    | "activity-course-favorite";
   readonly label: string;
   readonly to: string;
 };
@@ -16,229 +20,178 @@ type ActivityLink = {
 const activityLinks: readonly ActivityLink[] = [
   {
     label: "장소 추천 기록",
-    description: "이전에 추천받은 장소를 확인해요.",
-    icon: "map-pin",
+    icon: "activity-place-history",
     to: "/place/recommendation/history",
   },
   {
-    label: "찜한 장소",
-    description: "마음에 든 장소를 다시 살펴봐요.",
-    icon: "heart-outline",
+    label: "저장한 장소",
+    icon: "activity-place-favorite",
     to: "/place/favorite",
   },
   {
     label: "코스 추천 기록",
-    description: "추천받은 코스를 다시 확인해요.",
-    icon: "map-pin",
+    icon: "activity-course-history",
     to: "/course/recommendation/history",
   },
   {
-    label: "찜한 코스",
-    description: "저장해 둔 코스를 모아봐요.",
-    icon: "heart-outline",
+    label: "저장한 코스",
+    icon: "activity-course-favorite",
     to: "/course/favorite",
   },
 ];
 
 export const ActivityHubPage = () => {
   const navigate = useNavigate();
+  const { logout } = useAuth();
 
   return (
     <PageRoot backgroundColor={tokens.color.neutral[50]} layout="contained">
-      <Header title="내 활동" />
       <S.Content>
-        <S.Intro>
-          <h2>오늘은 어디로 떠나볼까요?</h2>
-          <p>장소 또는 코스를 추천받고, 마음에 든 기록을 모아보세요.</p>
-        </S.Intro>
+        <S.PageTitle>마이</S.PageTitle>
 
-        <S.RecommendationGrid aria-label="추천 시작">
-          <S.RecommendationCard
-            aria-label="장소 추천"
-            onClick={() => void navigate("/place/recommendation/form")}
-            type="button"
-          >
-            <S.CardEyebrow>PLACE</S.CardEyebrow>
-            <strong>장소 추천</strong>
-            <span>지금 필요한 장소를 추천받아요.</span>
-            <Icon name="chevron-right" size={20} />
-          </S.RecommendationCard>
-          <S.RecommendationCard
-            aria-label="코스 추천"
-            onClick={() => void navigate("/course/recommendation/form")}
-            type="button"
-          >
-            <S.CardEyebrow>COURSE</S.CardEyebrow>
-            <strong>코스 추천</strong>
-            <span>선택한 장소를 자연스럽게 이어드려요.</span>
-            <Icon name="chevron-right" size={20} />
-          </S.RecommendationCard>
-        </S.RecommendationGrid>
-
-        <S.Section>
-          <h2>내 활동</h2>
-          <S.ActivityList>
+        <S.Section aria-labelledby="activity-heading">
+          <S.SectionTitle id="activity-heading">내 활동</S.SectionTitle>
+          <S.MenuList>
             {activityLinks.map((item) => (
-              <S.ActivityButton
+              <S.MenuButton
                 aria-label={item.label}
                 key={item.to}
                 onClick={() => void navigate(item.to)}
                 type="button"
               >
-                <S.ActivityIcon>
-                  <Icon name={item.icon} size={20} />
-                </S.ActivityIcon>
-                <span>
-                  <strong>{item.label}</strong>
-                  <small>{item.description}</small>
-                </span>
-                <Icon name="chevron-right" size={20} />
-              </S.ActivityButton>
+                <Icon name={item.icon} size={28} />
+                <span>{item.label}</span>
+                <Icon name="chevron-right" size={16} />
+              </S.MenuButton>
             ))}
-          </S.ActivityList>
+          </S.MenuList>
+        </S.Section>
+
+        <S.Section aria-labelledby="settings-heading">
+          <S.SectionTitle id="settings-heading">설정</S.SectionTitle>
+          <S.MenuList>
+            <S.StaticMenuItem>
+              <Icon name="account-settings" size={20} />
+              <span>계정 관리</span>
+              <Icon name="chevron-right" size={16} />
+            </S.StaticMenuItem>
+            <S.MenuButton aria-label="로그아웃" onClick={logout} type="button">
+              <Icon name="logout" size={20} />
+              <span>로그아웃</span>
+              <Icon name="chevron-right" size={16} />
+            </S.MenuButton>
+          </S.MenuList>
         </S.Section>
       </S.Content>
+
+      <S.BottomNavigation aria-label="주요 메뉴">
+        <S.NavigationButton
+          aria-label="홈"
+          onClick={() => void navigate("/")}
+          type="button"
+        >
+          <Icon name="home" size={22} />
+          <span>홈</span>
+        </S.NavigationButton>
+        <S.NavigationButton $active aria-current="page" aria-label="마이" type="button">
+          <Icon name="person" size={22} />
+          <span>마이</span>
+        </S.NavigationButton>
+      </S.BottomNavigation>
     </PageRoot>
   );
 };
 
+const menuItemStyle = css`
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  min-height: 50px;
+  gap: 10px;
+  width: 100%;
+  padding: 12px;
+  border: 1px solid ${tokens.color.neutral[200]};
+  border-radius: 10px;
+  background: ${tokens.color.neutral[0]};
+  color: ${tokens.color.neutral[900]};
+  text-align: left;
+
+  span {
+    min-width: 0;
+    ${tokens.typography.body.sm};
+    font-weight: 500;
+  }
+
+  > svg:last-child {
+    color: ${tokens.color.secondary[500]};
+  }
+`;
+
 const S = {
   Content: styled.div`
     display: flex;
-    flex: 1;
     flex-direction: column;
-    gap: 32px;
-    padding: 24px;
+    gap: 20px;
+    padding: 52px 24px 24px;
   `,
-  Intro: styled.section`
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-
-    h2,
-    p {
-      margin: 0;
-    }
-
-    h2 {
-      color: ${tokens.color.neutral[900]};
-      ${tokens.typography.title.md};
-    }
-
-    p {
-      color: ${tokens.color.neutral[700]};
-      ${tokens.typography.body.sm};
-    }
-  `,
-  RecommendationGrid: styled.section`
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
-  `,
-  RecommendationCard: styled.button`
-    display: grid;
-    grid-template-columns: 1fr auto;
-    gap: 6px 8px;
-    min-height: 152px;
-    padding: 18px 16px;
-    border: 1px solid ${tokens.color.primary[300]};
-    border-radius: 16px;
-    background: ${tokens.color.primary[50]};
+  PageTitle: styled.h1`
+    margin: 0;
     color: ${tokens.color.neutral[900]};
-    text-align: left;
-
-    strong {
-      grid-column: 1;
-      ${tokens.typography.title.xs};
-    }
-
-    span {
-      grid-column: 1;
-      color: ${tokens.color.neutral[700]};
-      ${tokens.typography.body.xs};
-    }
-
-    svg {
-      grid-column: 2;
-      grid-row: 2 / span 2;
-      align-self: center;
-      color: ${tokens.color.primary[700]};
-    }
-
-    &:focus-visible {
-      outline: 2px solid ${tokens.color.primary[500]};
-      outline-offset: 2px;
-    }
-  `,
-  CardEyebrow: styled.span`
-    grid-column: 1 / -1;
-    color: ${tokens.color.primary[700]}!important;
-    ${tokens.typography.body.xs};
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.08em;
+    ${tokens.typography.title.sm};
   `,
   Section: styled.section`
     display: flex;
     flex-direction: column;
-    gap: 12px;
-
-    h2 {
-      margin: 0;
-      color: ${tokens.color.neutral[900]};
-      ${tokens.typography.title.xs};
-    }
+    gap: 8px;
   `,
-  ActivityList: styled.div`
+  SectionTitle: styled.h2`
+    margin: 0;
+    color: ${tokens.color.neutral[900]};
+    ${tokens.typography.utility.cta};
+  `,
+  MenuList: styled.div`
     display: flex;
     flex-direction: column;
     gap: 8px;
   `,
-  ActivityButton: styled.button`
-    display: grid;
-    grid-template-columns: auto 1fr auto;
-    align-items: center;
-    gap: 12px;
-    width: 100%;
-    padding: 14px 12px;
-    border: 1px solid ${tokens.color.neutral[200]};
-    border-radius: 12px;
-    background: ${tokens.color.neutral[0]};
-    color: ${tokens.color.neutral[900]};
-    text-align: left;
-
-    span {
-      display: flex;
-      min-width: 0;
-      flex-direction: column;
-      gap: 2px;
-    }
-
-    strong {
-      ${tokens.typography.body.sm};
-      font-weight: 700;
-    }
-
-    small {
-      overflow: hidden;
-      color: ${tokens.color.neutral[700]};
-      ${tokens.typography.body.xs};
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
+  MenuButton: styled.button`
+    ${menuItemStyle}
 
     &:focus-visible {
       outline: 2px solid ${tokens.color.primary[500]};
       outline-offset: 2px;
     }
   `,
-  ActivityIcon: styled.span`
+  StaticMenuItem: styled.div`
+    ${menuItemStyle}
+  `,
+  BottomNavigation: styled.nav`
     display: grid;
-    width: 40px;
-    height: 40px;
-    place-items: center;
-    border-radius: 12px;
-    background: ${tokens.color.primary[100]};
-    color: ${tokens.color.primary[700]};
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin-top: auto;
+    padding: 8px 20px calc(8px + env(safe-area-inset-bottom));
+    border-top: 1px solid ${tokens.color.neutral[200]};
+    background: ${tokens.color.neutral[0]};
+  `,
+  NavigationButton: styled.button<{ $active?: boolean }>`
+    display: flex;
+    height: 52px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    border-radius: 14px;
+    color: ${({ $active = false }) =>
+      $active ? tokens.color.primary[500] : tokens.color.secondary[500]};
+    background: ${({ $active = false }) => ($active ? tokens.color.primary[50] : "transparent")};
+
+    span {
+      ${tokens.typography.label.xs};
+    }
+
+    &:focus-visible {
+      outline: 2px solid ${tokens.color.primary[500]};
+      outline-offset: 2px;
+    }
   `,
 };

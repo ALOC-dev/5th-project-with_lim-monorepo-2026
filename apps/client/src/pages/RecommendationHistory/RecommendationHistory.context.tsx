@@ -20,7 +20,7 @@ export type RecommendationHistoryContextType = {
   readonly isError: boolean;
   readonly retry: () => void;
 
-  readonly handleCardClick: (id: string, status: HistoryStatus) => Promise<void>;
+  readonly handleCardClick: (id: string) => Promise<void>;
   readonly handleDeleteItem: (id: string) => Promise<boolean>;
   readonly handleUpdateTitle: (id: string, newTitle: string) => Promise<boolean>;
 };

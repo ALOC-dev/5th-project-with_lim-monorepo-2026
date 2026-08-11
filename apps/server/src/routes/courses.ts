@@ -2,14 +2,19 @@ import { EventEmitter } from "node:events";
 
 import {
   CancelCourseResponseDataSchema,
+  type CourseOptionDetail,
   CourseOptionDetailSchema,
+  type CourseOptionSummary,
   CourseOptionSummarySchema,
+  type CourseRecommendationSseEvent,
   CourseResultSchema,
   CourseStatusSchema,
-  CreateCourseRequestSchema,
-  CreateCourseResponseDataSchema,
+  type CourseStop,
   createApiError,
   createApiResponse,
+  type CreateCourseRequest,
+  CreateCourseRequestSchema,
+  CreateCourseResponseDataSchema,
   DeleteCourseResponseDataSchema,
   ListCoursesResponseDataSchema,
   ListFavoriteCourseOptionsResponseDataSchema,
@@ -17,19 +22,14 @@ import {
   RenameCourseResponseDataSchema,
   SetCourseOptionFavoriteRequestSchema,
   SetCourseOptionFavoriteResponseDataSchema,
-  type CourseOptionDetail,
-  type CourseOptionSummary,
-  type CourseRecommendationSseEvent,
-  type CourseStop,
-  type CreateCourseRequest,
 } from "@monorepo/api-contracts";
-import { and, desc, eq, inArray, isNull } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, ne } from "drizzle-orm";
 import { type Response, Router } from "express";
 import { z } from "zod";
 
 import {
-  createMockCourseRecommendationEngine,
   type CourseRecommendationEngine,
+  createMockCourseRecommendationEngine,
 } from "../courseRecommendation/engine.js";
 import { db } from "../db/client.js";
 import { courseOptions, coursePlaces, courses } from "../db/schema.js";
@@ -401,7 +401,13 @@ export const createCoursesRouter = (
       const rows = await db
         .select()
         .from(courses)
-        .where(and(eq(courses.userId, req.userId), isNull(courses.deletedAt)))
+        .where(
+          and(
+            eq(courses.userId, req.userId),
+            isNull(courses.deletedAt),
+            ne(courses.status, "CANCELLED"),
+          ),
+        )
         .orderBy(desc(courses.createdAt));
       const counts = await db
         .select()
@@ -573,16 +579,14 @@ export const createCoursesRouter = (
         .set({ favorite: body.data.favorite })
         .where(eq(courseOptions.id, owned.option.id))
         .returning();
-      res
-        .status(200)
-        .json(
-          createApiResponse(
-            SetCourseOptionFavoriteResponseDataSchema.parse({
-              id: updated?.id,
-              favorite: updated?.favorite,
-            }),
-          ),
-        );
+      res.status(200).json(
+        createApiResponse(
+          SetCourseOptionFavoriteResponseDataSchema.parse({
+            id: updated?.id,
+            favorite: updated?.favorite,
+          }),
+        ),
+      );
     }),
   );
 

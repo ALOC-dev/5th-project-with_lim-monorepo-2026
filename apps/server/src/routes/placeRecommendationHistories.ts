@@ -71,20 +71,33 @@ router.get(
       return;
     }
 
-    if (deriveRecommendationHistoryStatus(history) !== "COMPLETED" || !history.output) {
-      res.status(409).json(createApiError("history is incomplete"));
-      return;
-    }
+    const base = {
+      id: history.id,
+      title: history.title,
+      requestedAt: history.createdAt.toISOString(),
+    };
+    const status = deriveRecommendationHistoryStatus(history);
 
-    res.status(200).json(
-      createApiResponse({
-        id: history.id,
-        title: history.title,
-        requestedAt: history.createdAt.toISOString(),
-        input: history.input,
-        output: history.output,
-      } satisfies PlaceRecommendationHistoryDetailResponseData),
-    );
+    const data: PlaceRecommendationHistoryDetailResponseData =
+      status === "COMPLETED" && history.output
+        ? {
+            ...base,
+            status,
+            input: history.input,
+            output: history.output,
+          }
+        : status === "FAILED"
+          ? {
+              ...base,
+              status,
+              errorMessage: history.errorMessage ?? "추천 결과를 만드는 중 문제가 발생했습니다.",
+            }
+          : {
+              ...base,
+              status: "PENDING",
+            };
+
+    res.status(200).json(createApiResponse(data));
   }),
 );
 

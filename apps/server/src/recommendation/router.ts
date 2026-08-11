@@ -9,6 +9,7 @@ import {
   type RecommendationEngineSecrets,
 } from "@monorepo/recommendation-engine";
 import { type UserInput, UserInputSchema } from "@monorepo/recommendation-engine/v1/contracts";
+import { and, arrayContains, eq } from "drizzle-orm";
 import { Router } from "express";
 import { z } from "zod";
 
@@ -18,6 +19,7 @@ import { asyncHandler } from "../lib/asyncHandler.js";
 import { requireAuth } from "../middleware/auth.js";
 import { presentRecommendationError, RECOMMENDATION_FAILURE_EVENT } from "./error-presentation.js";
 import {
+  deriveRecommendationHistoryStatus,
   deriveRecommendationHistoryTitle,
   type RecommendationTerminalDelivery,
   resolveRecommendationTerminalDelivery,
@@ -75,150 +77,204 @@ export const createRecommendationRouter = (secrets: RecommendationEngineSecrets)
     }
 
     const jobId = parsedJobId.data;
-    const jobState = jobStore.get(jobId);
-    if (!jobState || jobState.userId !== req.userId) {
-      res.status(404).json(createApiError("recommendation job not found"));
-      return;
-    }
+    void (async () => {
+      const [history] = await db
+        .select()
+        .from(placeRecommendationHistories)
+        .where(
+          and(
+            eq(placeRecommendationHistories.id, jobId),
+            arrayContains(placeRecommendationHistories.userIds, [req.userId]),
+          ),
+        );
+      if (!history) {
+        res.status(404).json(createApiError("recommendation job not found"));
+        return;
+      }
 
-    res.setHeader("Content-Type", "text/event-stream");
-    res.setHeader("Cache-Control", "no-cache");
-    res.setHeader("Connection", "keep-alive");
-    res.flushHeaders();
+      res.setHeader("Content-Type", "text/event-stream");
+      res.setHeader("Cache-Control", "no-cache");
+      res.setHeader("Connection", "keep-alive");
+      res.flushHeaders();
 
-    for (const event of [...jobState.bufferedEvents]) {
-      res.write(`event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`);
-      if (event.type === "result" || event.type === "error") {
+      const storedStatus = deriveRecommendationHistoryStatus(history);
+      if (storedStatus === "COMPLETED" && history.output !== null) {
+        res.write(
+          `event: result\ndata: ${JSON.stringify({ type: "result", data: history.output })}\n\n`,
+        );
         res.end();
         return;
       }
-    }
-
-    jobState.emitter ??= new EventEmitter();
-    const emitter = jobState.emitter;
-    const sseHandler = (event: PlaceRecommendationSseEvent) => {
-      if (res.writableEnded) return;
-      res.write(`event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`);
-      if (event.type === "result" || event.type === "error") res.end();
-    };
-    const closeHandler = () => {
-      if (!res.writableEnded) res.end();
-    };
-    emitter.on("sse", sseHandler);
-    emitter.on("close", closeHandler);
-
-    const heartbeatInterval = setInterval(() => {
-      if (res.writableEnded) {
-        clearInterval(heartbeatInterval);
+      if (storedStatus === "FAILED") {
+        res.write(
+          `event: error\ndata: ${JSON.stringify({
+            type: "error",
+            message: history.errorMessage ?? RECOMMENDATION_FAILURE_EVENT.message,
+          })}\n\n`,
+        );
+        res.end();
         return;
       }
-      res.write(`event: heartbeat\ndata: {}\n\n`);
-    }, 10_000);
 
-    if (!jobState.started) {
-      jobState.started = true;
-      const emitEvent = (event: PlaceRecommendationSseEvent) => {
-        jobState.bufferedEvents.push(event);
-        emitter.emit("sse", event);
+      const jobState =
+        jobStore.get(jobId) ??
+        ({
+          userId: req.userId,
+          userInput: history.input,
+          emitter: null,
+          bufferedEvents: [],
+          started: false,
+        } satisfies JobState);
+      jobStore.set(jobId, jobState);
+      jobState.emitter ??= new EventEmitter();
+      const emitter = jobState.emitter;
+      const sseHandler = (event: PlaceRecommendationSseEvent) => {
+        if (res.writableEnded) return;
+        res.write(`event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`);
+        if (event.type === "result" || event.type === "error") res.end();
       };
-      const closeSubscribersAndDiscardJob = (): void => {
-        emitter.emit("close");
-        emitter.removeAllListeners();
-        jobStore.delete(jobId);
+      const closeHandler = () => {
+        if (!res.writableEnded) res.end();
       };
-      const emitTerminalDelivery = (
-        delivery: RecommendationTerminalDelivery,
-        output: Extract<EngineOutput, { readonly status: "SUCCESS" }> | null,
-      ): void => {
-        switch (delivery) {
-          case "result":
-            if (output === null) {
-              closeSubscribersAndDiscardJob();
-              return;
-            }
-            emitEvent({ type: "result", data: output.userOutput });
-            return;
-          case "error":
-            emitEvent(RECOMMENDATION_FAILURE_EVENT);
-            return;
-          case "disconnect":
-            closeSubscribersAndDiscardJob();
-            return;
-        }
-      };
-      const persistFailureFallback = () =>
-        persistRecommendationTerminalState(jobId, {
-          kind: "FAILED",
-          code: HISTORY_PERSISTENCE_FAILURE.code,
-          message: HISTORY_PERSISTENCE_FAILURE.message,
-        });
-      const handleEngineFailure = async (failure: unknown): Promise<void> => {
-        const presentation = presentRecommendationError(failure, secrets);
-        console.error(
-          JSON.stringify({ event: "recommendation.process.failure", ...presentation.internal }),
-        );
-        const delivery = await resolveRecommendationTerminalDelivery(
-          "error",
-          () =>
-            persistRecommendationTerminalState(jobId, {
-              kind: "FAILED",
-              code: presentation.internal.code,
-              message: presentation.internal.message,
-            }),
-          persistFailureFallback,
-        );
-        emitTerminalDelivery(delivery, null);
-      };
-      const processRecommendation = async (): Promise<void> => {
-        let result: EngineOutput;
-        try {
-          result = await new RecommendationEngine(jobState.userInput, DEFAULT_ENGINE_CONFIG, {
-            loggingActivated: true,
-            onProgress: (step) => emitEvent({ type: "progress", step }),
-            secrets,
-          }).process();
-        } catch (error: unknown) {
-          await handleEngineFailure(error);
+      emitter.on("sse", sseHandler);
+      emitter.on("close", closeHandler);
+
+      const heartbeatInterval = setInterval(() => {
+        if (res.writableEnded) {
+          clearInterval(heartbeatInterval);
           return;
         }
+        res.write(`event: heartbeat\ndata: {}\n\n`);
+      }, 10_000);
 
-        switch (result.status) {
-          case "SUCCESS": {
-            const delivery = await resolveRecommendationTerminalDelivery(
-              "result",
-              () =>
-                persistRecommendationTerminalState(jobId, {
-                  kind: "COMPLETED",
-                  output: result.userOutput,
-                }),
-              persistFailureFallback,
-            );
-            emitTerminalDelivery(delivery, result);
+      for (const event of [...jobState.bufferedEvents]) {
+        sseHandler(event);
+        if (res.writableEnded) {
+          clearInterval(heartbeatInterval);
+          emitter.removeListener("sse", sseHandler);
+          emitter.removeListener("close", closeHandler);
+          return;
+        }
+      }
+
+      if (!jobState.started) {
+        jobState.started = true;
+        const emitEvent = (event: PlaceRecommendationSseEvent) => {
+          jobState.bufferedEvents.push(event);
+          emitter.emit("sse", event);
+        };
+        const closeSubscribersAndDiscardJob = (): void => {
+          emitter.emit("close");
+          emitter.removeAllListeners();
+          jobStore.delete(jobId);
+        };
+        const emitTerminalDelivery = (
+          delivery: RecommendationTerminalDelivery,
+          output: Extract<EngineOutput, { readonly status: "SUCCESS" }> | null,
+        ): void => {
+          switch (delivery) {
+            case "result":
+              if (output === null) {
+                closeSubscribersAndDiscardJob();
+                return;
+              }
+              emitEvent({ type: "result", data: output.userOutput });
+              return;
+            case "error":
+              emitEvent(RECOMMENDATION_FAILURE_EVENT);
+              return;
+            case "disconnect":
+              closeSubscribersAndDiscardJob();
+              return;
+          }
+        };
+        const persistFailureFallback = () =>
+          persistRecommendationTerminalState(jobId, {
+            kind: "FAILED",
+            code: HISTORY_PERSISTENCE_FAILURE.code,
+            message: HISTORY_PERSISTENCE_FAILURE.message,
+          });
+        const handleEngineFailure = async (failure: unknown): Promise<void> => {
+          const presentation = presentRecommendationError(failure, secrets);
+          console.error(
+            JSON.stringify({ event: "recommendation.process.failure", ...presentation.internal }),
+          );
+          const delivery = await resolveRecommendationTerminalDelivery(
+            "error",
+            () =>
+              persistRecommendationTerminalState(jobId, {
+                kind: "FAILED",
+                code: presentation.internal.code,
+                message: presentation.publicEvent.message,
+              }),
+            persistFailureFallback,
+          );
+          emitTerminalDelivery(delivery, null);
+        };
+        const processRecommendation = async (): Promise<void> => {
+          let result: EngineOutput;
+          try {
+            result = await new RecommendationEngine(jobState.userInput, DEFAULT_ENGINE_CONFIG, {
+              loggingActivated: true,
+              onProgress: (step) => emitEvent({ type: "progress", step }),
+              secrets,
+            }).process();
+          } catch (error: unknown) {
+            await handleEngineFailure(error);
             return;
           }
-          case "ERROR":
-            await handleEngineFailure(result.error);
-            return;
-        }
-      };
-      void processRecommendation()
-        .catch((error: unknown) => {
-          console.error(
-            JSON.stringify({
-              event: "recommendation.delivery.failure",
-              jobId,
-              errorName: error instanceof Error ? error.name : "UnknownError",
-            }),
-          );
-          closeSubscribersAndDiscardJob();
-        })
-        .finally(() => setTimeout(() => jobStore.delete(jobId), 5000));
-    }
 
-    req.on("close", () => {
-      clearInterval(heartbeatInterval);
-      emitter.removeListener("sse", sseHandler);
-      emitter.removeListener("close", closeHandler);
+          switch (result.status) {
+            case "SUCCESS": {
+              const delivery = await resolveRecommendationTerminalDelivery(
+                "result",
+                () =>
+                  persistRecommendationTerminalState(jobId, {
+                    kind: "COMPLETED",
+                    output: result.userOutput,
+                  }),
+                persistFailureFallback,
+              );
+              emitTerminalDelivery(delivery, result);
+              return;
+            }
+            case "ERROR":
+              await handleEngineFailure(result.error);
+              return;
+          }
+        };
+        void processRecommendation()
+          .catch((error: unknown) => {
+            console.error(
+              JSON.stringify({
+                event: "recommendation.delivery.failure",
+                jobId,
+                errorName: error instanceof Error ? error.name : "UnknownError",
+              }),
+            );
+            closeSubscribersAndDiscardJob();
+          })
+          .finally(() => setTimeout(() => jobStore.delete(jobId), 5000));
+      }
+
+      req.on("close", () => {
+        clearInterval(heartbeatInterval);
+        emitter.removeListener("sse", sseHandler);
+        emitter.removeListener("close", closeHandler);
+      });
+    })().catch((error: unknown) => {
+      console.error(
+        JSON.stringify({
+          event: "recommendation.stream.failure",
+          jobId,
+          errorName: error instanceof Error ? error.name : "UnknownError",
+        }),
+      );
+      if (!res.headersSent) {
+        res.status(500).json(createApiError("failed to open recommendation stream"));
+        return;
+      }
+      if (!res.writableEnded) res.end();
     });
   });
 
