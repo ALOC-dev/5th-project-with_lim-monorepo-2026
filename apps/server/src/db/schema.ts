@@ -56,13 +56,22 @@ export const placeRecommendationHistories = pgTable('place_recommendation_histor
 });
 
 // 추천 결과에서 저장(하트)한 장소 스냅샷
-export const savedPlaces = pgTable('saved_places', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  userId: uuid('user_id').notNull().references(() => users.id),
-  historyId: uuid('history_id').references(() => placeRecommendationHistories.id, { onDelete: 'set null' }),
-  placeData: jsonb('place_data').$type<PlaceRecommendationItem>().notNull(),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-});
+export const savedPlaces = pgTable(
+  'saved_places',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id').notNull().references(() => users.id),
+    historyId: uuid('history_id').references(() => placeRecommendationHistories.id, { onDelete: 'set null' }),
+    placeData: jsonb('place_data').$type<PlaceRecommendationItem>().notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex('saved_places_user_place_id_unique').on(
+      table.userId,
+      sql`(${table.placeData}->>'id')`,
+    ),
+  ],
+);
 
 // 즐겨찾기 장소
 export const favoritePlaces = pgTable(
