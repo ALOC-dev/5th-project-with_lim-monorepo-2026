@@ -58,6 +58,15 @@ NAVER_SEARCH_CLIENT_ID=
 NAVER_SEARCH_CLIENT_SECRET=
 ```
 
+코스/장소 결과 지도를 표시하려면 클라이언트 환경변수도 설정합니다.
+
+```env
+# apps/client/.env
+VITE_KAKAO_MAP_KEY=
+```
+
+Kakao Developers 콘솔에서 개발·운영 도메인을 JavaScript 키의 허용 도메인으로 등록해야 합니다.
+
 ## 로컬 개발 서버 실행
 
 전체 앱을 한 번에 실행합니다.

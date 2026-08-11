@@ -23,9 +23,11 @@ export type SignupFormInputContextType = {
   readonly setPasswordConfirm: Dispatch<SetStateAction<string>>;
   readonly setIsAgreed: Dispatch<SetStateAction<boolean>>;
 
-  readonly handleCheckNickname: () => void;
-  readonly handleSendAuthCode: () => void;
-  readonly handleVerifyAuthCode: () => void;
+  readonly handleCheckNickname: () => Promise<void>;
+  readonly handleSendAuthCode: () => Promise<void>;
+  readonly handleVerifyAuthCode: () => Promise<void>;
+  readonly handleResetEmail: () => void;
+  readonly handleResetNickname: () => void;
   readonly resetForm: () => void;
 };
 

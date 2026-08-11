@@ -1,23 +1,39 @@
+import { useNavigate } from "react-router-dom";
+
+import { requestLogin } from "../../apis/auth";
+import { toApiClientErrorMessage } from "../../apis/errors";
+import Header from "../../components/Header/Header";
+import { useAuth } from "../../contexts/Auth.context";
 import { useLoginFormInput } from "./Login.context";
 import { S } from "./Login.styled";
 
 export default function LoginFormContent() {
-  const { email, password, isLoginReady, setEmail, setPassword, resetForm } = useLoginFormInput();
+  const { email, password, isLoginReady, setEmail, setPassword } = useLoginFormInput();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const navigate = useNavigate();
+
+  const { login } = useAuth();
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isLoginReady) return;
-    // console.log("Login attempt:", { email, password });
+
+    try {
+      const response = await requestLogin({ email, password });
+
+      if (response.success) {
+        alert("로그인에 성공했습니다!");
+        login();
+        void navigate("/", { replace: true });
+      }
+    } catch (error) {
+      alert(toApiClientErrorMessage(error));
+    }
   };
+
   return (
     <S.Container>
-      <S.Header>
-        <S.StatusBarMock>
-          <span>9:41</span>
-          <span>•••</span>
-        </S.StatusBarMock>
-        <S.Title>로그인</S.Title>
-      </S.Header>
+      <Header title="로그인" />
 
       <S.Form onSubmit={handleSubmit}>
         <S.InputGroup>

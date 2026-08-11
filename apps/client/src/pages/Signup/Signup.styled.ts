@@ -3,58 +3,10 @@ import styled from "@emotion/styled";
 import { tokens } from "../../design-system/tokens.generated";
 
 export const S = {
-  Container: styled.main`
+  Container: styled.div`
     display: flex;
     width: 100%;
     flex-direction: column;
-  `,
-
-  Header: styled.header`
-    display: flex;
-    width: 100%;
-    padding: 18px 24px 6px 24px;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 4px;
-    background: ${tokens.color.neutral["50"]};
-  `,
-
-  StatusBarMock: styled.div`
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    width: 100%;
-    font-size: 13px;
-    font-weight: 600;
-    color: ${tokens.color.neutral["900"]};
-  `,
-
-  NavBar: styled.div`
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    width: 100%;
-  `,
-
-  BackButton: styled.button`
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 10px;
-    width: 24px;
-    height: 24px;
-    background: none;
-    border: none;
-    padding: 0;
-    cursor: pointer;
-  `,
-
-  Title: styled.h1`
-    font-size: 16px;
-    font-weight: 600;
-    color: ${tokens.color.neutral["900"]};
-    line-height: 22px;
-    margin: 0;
   `,
 
   Form: styled.form`
@@ -75,11 +27,11 @@ export const S = {
   `,
 
   Label: styled.label`
-    font-family: "Noto Sans KR";
+    ${tokens.typography.label.sm}
     font-size: 13px;
-    font-weight: 500;
-    color: ${tokens.color.neutral["900"]};
     line-height: 18px;
+    font-weight: 700;
+    color: ${tokens.color.neutral["900"]};
   `,
 
   InputRow: styled.div`
@@ -103,11 +55,15 @@ export const S = {
     border: 1px solid ${tokens.color.neutral["200"]};
     background: ${tokens.color.neutral["0"]};
     color: ${tokens.color.neutral["900"]};
-    font-size: 14px;
+    ${tokens.typography.body.md};
+    font-size: 16px;
+    font-weight: 400;
+    line-height: 22px;
     transition: border-color 0.2s ease;
 
+    outline: none;
     &:focus {
-      border-color: ${tokens.color.primary["500"]}; // 포커스 효과
+      border-color: ${tokens.color.primary["500"]};
     }
 
     &::placeholder {
@@ -115,7 +71,7 @@ export const S = {
     }
   `,
 
-  ActionButton: styled.button`
+  ActionButton: styled.button<{ $variant?: "primary" | "secondary" | "disabled" }>`
     display: flex;
     height: 56px;
     width: 116px;
@@ -124,21 +80,41 @@ export const S = {
     flex-shrink: 0;
     justify-content: center;
     align-items: center;
-    background-color: ${tokens.color.primary["500"]};
-    color: ${tokens.color.neutral["0"]};
+
+    background-color: ${({ $variant }) => {
+      if ($variant === "secondary") return tokens.color.neutral["0"];
+      if ($variant === "disabled") return tokens.color.neutral["200"];
+      return tokens.color.primary["500"];
+    }};
+
+    color: ${({ $variant }) => {
+      if ($variant === "secondary") return tokens.color.neutral["900"];
+      if ($variant === "disabled") return tokens.color.neutral["700"];
+      return tokens.color.neutral["0"];
+    }};
+
+    border: ${({ $variant }) =>
+      $variant === "secondary" ? `1px solid ${tokens.color.neutral["200"]}` : "none"};
+
+    ${tokens.typography.utility.cta};
     font-size: 14px;
     font-weight: 700;
     line-height: 20px;
-    cursor: pointer;
+    cursor: ${({ $variant }) => ($variant === "disabled" ? "not-allowed" : "pointer")};
   `,
 
-  HelperText: styled.span`
+  HelperText: styled.span<{ $state?: "default" | "success" | "error" }>`
     width: 100%;
     flex-shrink: 0;
+    ${tokens.typography.body.xs};
     font-size: 13px;
     font-weight: 400;
     line-height: 20px;
-    color: ${tokens.color.neutral["700"]};
+    color: ${({ $state }) => {
+      if ($state === "success") return tokens.color.tertiary["500"];
+      if ($state === "error") return tokens.color.primary["700"];
+      return tokens.color.neutral["700"];
+    }};
   `,
 
   SubmitButton: styled.button<{ disabled?: boolean }>`
@@ -155,6 +131,7 @@ export const S = {
     color: ${({ disabled }) =>
       disabled ? tokens.color.neutral["700"] : tokens.color.neutral["0"]};
 
+    ${tokens.typography.utility.cta};
     font-size: 14px;
     font-weight: 700;
     cursor: ${({ disabled }) => (disabled ? "not-allowed" : "pointer")};
@@ -179,10 +156,12 @@ export const S = {
 
   AgreementText: styled.label`
     color: ${tokens.color.neutral["700"]};
-    font-family: "Noto Sans KR";
+    ${tokens.typography.body.xs};
     font-size: 13px;
     font-style: normal;
     font-weight: 400;
     line-height: 20px;
+    word-break: keep-all;
+    overflow-wrap: break-word;
   `,
 };

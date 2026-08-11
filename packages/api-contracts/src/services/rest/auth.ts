@@ -8,13 +8,56 @@ export const AuthenticatedUserSchema = z.object({
 
 export type AuthenticatedUser = z.infer<typeof AuthenticatedUserSchema>;
 
+export const PasswordSchema = z
+  .string()
+  .min(8)
+  .max(20)
+  .regex(/^(?=.*[A-Za-z])(?=.*\d).+$/, "password must include letters and numbers");
+
 export const SignupRequestSchema = z.object({
   email: z.email(),
-  password: z.string().min(8),
+  password: PasswordSchema,
   nickname: z.string().min(1),
 });
 
 export type SignupRequest = z.infer<typeof SignupRequestSchema>;
+
+export const SendSignupCodeRequestSchema = z.object({
+  email: z.email(),
+});
+
+export type SendSignupCodeRequest = z.infer<typeof SendSignupCodeRequestSchema>;
+
+export const SendSignupCodeResponseDataSchema = z.object({
+  sent: z.literal(true),
+});
+
+export type SendSignupCodeResponseData = z.infer<typeof SendSignupCodeResponseDataSchema>;
+
+export const VerifySignupCodeRequestSchema = z.object({
+  email: z.email(),
+  code: z.string().length(6),
+});
+
+export type VerifySignupCodeRequest = z.infer<typeof VerifySignupCodeRequestSchema>;
+
+export const VerifySignupCodeResponseDataSchema = z.object({
+  verified: z.literal(true),
+});
+
+export type VerifySignupCodeResponseData = z.infer<typeof VerifySignupCodeResponseDataSchema>;
+
+export const NicknameCheckQuerySchema = z.object({
+  nickname: z.string().min(1),
+});
+
+export type NicknameCheckQuery = z.infer<typeof NicknameCheckQuerySchema>;
+
+export const NicknameCheckResponseDataSchema = z.object({
+  available: z.boolean(),
+});
+
+export type NicknameCheckResponseData = z.infer<typeof NicknameCheckResponseDataSchema>;
 
 export const LoginRequestSchema = z.object({
   email: z.email(),
@@ -29,18 +72,29 @@ export const ForgotPasswordRequestSchema = z.object({
 
 export type ForgotPasswordRequest = z.infer<typeof ForgotPasswordRequestSchema>;
 
+export const VerifyForgotPasswordCodeRequestSchema = z.object({
+  email: z.email(),
+  code: z.string().length(6),
+});
+
+export type VerifyForgotPasswordCodeRequest = z.infer<
+  typeof VerifyForgotPasswordCodeRequestSchema
+>;
+
+export const VerifyForgotPasswordCodeResponseDataSchema = z.object({
+  verified: z.literal(true),
+});
+
+export type VerifyForgotPasswordCodeResponseData = z.infer<
+  typeof VerifyForgotPasswordCodeResponseDataSchema
+>;
+
 export const ResetPasswordRequestSchema = z.object({
-  token: z.string().min(1),
-  newPassword: z.string().min(8),
+  email: z.email(),
+  newPassword: PasswordSchema,
 });
 
 export type ResetPasswordRequest = z.infer<typeof ResetPasswordRequestSchema>;
-
-export const VerifyEmailQuerySchema = z.object({
-  token: z.string().min(1),
-});
-
-export type VerifyEmailQuery = z.infer<typeof VerifyEmailQuerySchema>;
 
 export const AuthenticatedUserResponseDataSchema = z.object({
   user: AuthenticatedUserSchema,
@@ -53,21 +107,6 @@ export const LogoutResponseDataSchema = z.object({
 });
 
 export type LogoutResponseData = z.infer<typeof LogoutResponseDataSchema>;
-
-export const VerifyEmailResponseDataSchema = z.object({
-  verified: z.literal(true),
-});
-
-export type VerifyEmailResponseData = z.infer<typeof VerifyEmailResponseDataSchema>;
-
-export const ResendVerificationEmailResponseDataSchema = z.union([
-  z.object({ alreadyVerified: z.literal(true) }),
-  z.object({ sent: z.literal(true) }),
-]);
-
-export type ResendVerificationEmailResponseData = z.infer<
-  typeof ResendVerificationEmailResponseDataSchema
->;
 
 export const ForgotPasswordResponseDataSchema = z.object({
   sent: z.literal(true),

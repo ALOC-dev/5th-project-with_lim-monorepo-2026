@@ -1,22 +1,36 @@
 import {
-  type BookmarkPlaceRecommendationHistoryItemResponseData,
   createApiError,
   createApiResponse,
   type DeletePlaceRecommendationHistoryResponseData,
   type PlaceRecommendationHistoryDetailResponseData,
+  type PlaceRecommendationHistoryListItem,
   type PlaceRecommendationHistoryListResponseData,
   RenamePlaceRecommendationHistoryRequestSchema,
   type RenamePlaceRecommendationHistoryResponseData,
 } from "@monorepo/api-contracts";
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, arrayContains, desc, eq } from "drizzle-orm";
 import { Router } from "express";
+import { z } from "zod";
 
 import { db } from "../db/client.js";
-import { placeRecommendationHistories, savedPlaces } from "../db/schema.js";
+import { placeRecommendationHistories } from "../db/schema.js";
 import { asyncHandler } from "../lib/asyncHandler.js";
 import { requireAuth } from "../middleware/auth.js";
+import { deriveRecommendationHistoryStatus } from "../recommendation/history.js";
 
 const router = Router();
+
+const ownedBy = (userId: string) => arrayContains(placeRecommendationHistories.userIds, [userId]);
+
+const toListItem = (
+  row: typeof placeRecommendationHistories.$inferSelect,
+): PlaceRecommendationHistoryListItem => ({
+  id: row.id,
+  title: row.title,
+  status: deriveRecommendationHistoryStatus(row),
+  requestedAt: row.createdAt.toISOString(),
+  recommendationCount: row.output?.recommendations.length ?? null,
+});
 
 router.get(
   "/",
@@ -25,22 +39,12 @@ router.get(
     const rows = await db
       .select()
       .from(placeRecommendationHistories)
-      .where(sql`${req.userId} = ANY(${placeRecommendationHistories.userIds})`)
-      .orderBy(desc(placeRecommendationHistories.createdAt))
-      .limit(20);
-
-    const items = rows.map((row) => ({
-      id: row.id,
-      title: row.title,
-      status: row.status,
-      requestedAt: row.createdAt.toISOString(),
-      recommendationCount:
-        row.status === "COMPLETED" ? (row.output?.recommendations.length ?? 0) : null,
-    }));
+      .where(ownedBy(req.userId))
+      .orderBy(desc(placeRecommendationHistories.createdAt));
 
     res.status(200).json(
       createApiResponse({
-        items,
+        items: rows.map(toListItem),
         nextCursor: null,
       } satisfies PlaceRecommendationHistoryListResponseData),
     );
@@ -51,41 +55,49 @@ router.get(
   "/:id",
   requireAuth,
   asyncHandler(async (req, res) => {
-    const { id } = req.params;
-    if (!id) {
-      res.status(400).json(createApiError("invalid recommendation history id"));
+    const id = z.uuid().safeParse(req.params.id);
+    if (!id.success) {
+      res.status(400).json(createApiError("invalid input"));
       return;
     }
 
     const [history] = await db
       .select()
       .from(placeRecommendationHistories)
-      .where(
-        and(
-          eq(placeRecommendationHistories.id, id),
-          sql`${req.userId} = ANY(${placeRecommendationHistories.userIds})`,
-        ),
-      );
+      .where(and(eq(placeRecommendationHistories.id, id.data), ownedBy(req.userId)));
 
     if (!history) {
-      res.status(404).json(createApiError("place recommendation history not found"));
+      res.status(404).json(createApiError("history not found"));
       return;
     }
 
-    if (history.status !== "COMPLETED" || !history.output) {
-      res.status(409).json(createApiError("place recommendation history is not completed"));
-      return;
-    }
+    const base = {
+      id: history.id,
+      title: history.title,
+      requestedAt: history.createdAt.toISOString(),
+    };
+    const status = deriveRecommendationHistoryStatus(history);
 
-    res.status(200).json(
-      createApiResponse({
-        id: history.id,
-        title: history.title,
-        requestedAt: history.createdAt.toISOString(),
-        input: history.input,
-        output: history.output,
-      } satisfies PlaceRecommendationHistoryDetailResponseData),
-    );
+    const data: PlaceRecommendationHistoryDetailResponseData =
+      status === "COMPLETED" && history.output
+        ? {
+            ...base,
+            status,
+            input: history.input,
+            output: history.output,
+          }
+        : status === "FAILED"
+          ? {
+              ...base,
+              status,
+              errorMessage: history.errorMessage ?? "추천 결과를 만드는 중 문제가 발생했습니다.",
+            }
+          : {
+              ...base,
+              status: "PENDING",
+            };
+
+    res.status(200).json(createApiResponse(data));
   }),
 );
 
@@ -93,53 +105,43 @@ router.patch(
   "/:id/rename",
   requireAuth,
   asyncHandler(async (req, res) => {
-    const { id } = req.params;
-    if (!id) {
-      res.status(400).json(createApiError("invalid recommendation history id"));
-      return;
-    }
-
-    const parsed = RenamePlaceRecommendationHistoryRequestSchema.safeParse(req.body);
-    if (!parsed.success) {
-      res.status(400).json(createApiError("invalid recommendation history title"));
+    const id = z.uuid().safeParse(req.params.id);
+    const body = RenamePlaceRecommendationHistoryRequestSchema.safeParse(req.body);
+    if (!id.success || !body.success) {
+      res.status(400).json(createApiError("invalid input"));
       return;
     }
 
     const [history] = await db
       .select()
       .from(placeRecommendationHistories)
-      .where(
-        and(
-          eq(placeRecommendationHistories.id, id),
-          sql`${req.userId} = ANY(${placeRecommendationHistories.userIds})`,
-        ),
-      );
+      .where(and(eq(placeRecommendationHistories.id, id.data), ownedBy(req.userId)));
 
     if (!history) {
-      res.status(404).json(createApiError("place recommendation history not found"));
+      res.status(404).json(createApiError("history not found"));
       return;
     }
 
-    if (history.status !== "COMPLETED") {
-      res.status(409).json(createApiError("place recommendation history is not editable"));
+    if (deriveRecommendationHistoryStatus(history) !== "COMPLETED") {
+      res.status(409).json(createApiError("history is incomplete"));
       return;
     }
 
-    const [updated] = await db
+    const [renamed] = await db
       .update(placeRecommendationHistories)
-      .set({ title: parsed.data.title })
-      .where(eq(placeRecommendationHistories.id, history.id))
+      .set({ title: body.data.title })
+      .where(and(eq(placeRecommendationHistories.id, id.data), ownedBy(req.userId)))
       .returning();
 
-    if (!updated) {
-      res.status(404).json(createApiError("place recommendation history not found"));
+    if (!renamed) {
+      res.status(404).json(createApiError("history not found"));
       return;
     }
 
     res.status(200).json(
       createApiResponse({
-        id: updated.id,
-        title: updated.title,
+        id: renamed.id,
+        title: renamed.title,
       } satisfies RenamePlaceRecommendationHistoryResponseData),
     );
   }),
@@ -149,103 +151,26 @@ router.delete(
   "/:id",
   requireAuth,
   asyncHandler(async (req, res) => {
-    const { id } = req.params;
-    if (!id) {
-      res.status(400).json(createApiError("invalid recommendation history id"));
+    const id = z.uuid().safeParse(req.params.id);
+    if (!id.success) {
+      res.status(400).json(createApiError("invalid input"));
       return;
     }
 
-    const [history] = await db
-      .select()
-      .from(placeRecommendationHistories)
-      .where(
-        and(
-          eq(placeRecommendationHistories.id, id),
-          sql`${req.userId} = ANY(${placeRecommendationHistories.userIds})`,
-        ),
-      );
-
-    if (!history) {
-      res.status(404).json(createApiError("place recommendation history not found"));
-      return;
-    }
-
-    await db
-      .update(savedPlaces)
-      .set({ historyId: null })
-      .where(eq(savedPlaces.historyId, history.id));
-
-    await db
+    const [deleted] = await db
       .delete(placeRecommendationHistories)
-      .where(eq(placeRecommendationHistories.id, history.id));
+      .where(and(eq(placeRecommendationHistories.id, id.data), ownedBy(req.userId)))
+      .returning({ id: placeRecommendationHistories.id });
+
+    if (!deleted) {
+      res.status(404).json(createApiError("history not found"));
+      return;
+    }
 
     res.status(200).json(
       createApiResponse({
-        deletedId: history.id,
+        deletedId: id.data,
       } satisfies DeletePlaceRecommendationHistoryResponseData),
-    );
-  }),
-);
-
-router.patch(
-  "/:historyId/items/:itemId/bookmark",
-  requireAuth,
-  asyncHandler(async (req, res) => {
-    const { historyId, itemId } = req.params;
-    if (!historyId || !itemId) {
-      res.status(400).json(createApiError("invalid bookmark request"));
-      return;
-    }
-
-    const [history] = await db
-      .select()
-      .from(placeRecommendationHistories)
-      .where(
-        and(
-          eq(placeRecommendationHistories.id, historyId),
-          sql`${req.userId} = ANY(${placeRecommendationHistories.userIds})`,
-        ),
-      );
-
-    if (!history || history.status !== "COMPLETED" || !history.output) {
-      res.status(404).json(createApiError("place recommendation history not found"));
-      return;
-    }
-
-    const place = history.output.recommendations.find((item) => item.id === itemId);
-    if (!place) {
-      res.status(404).json(createApiError("place not found in place recommendation history"));
-      return;
-    }
-
-    const [savedPlace] = await db
-      .select()
-      .from(savedPlaces)
-      .where(
-        and(eq(savedPlaces.userId, req.userId), sql`${savedPlaces.placeData}->>'id' = ${place.id}`),
-      );
-
-    if (savedPlace) {
-      await db.delete(savedPlaces).where(eq(savedPlaces.id, savedPlace.id));
-
-      res.status(200).json(
-        createApiResponse({
-          bookmarked: false,
-        } satisfies BookmarkPlaceRecommendationHistoryItemResponseData),
-      );
-      return;
-    }
-
-    await db.insert(savedPlaces).values({
-      userId: req.userId,
-      historyId: history.id,
-      placeData: place,
-    });
-
-    res.status(200).json(
-      createApiResponse({
-        bookmarked: true,
-      } satisfies BookmarkPlaceRecommendationHistoryItemResponseData),
     );
   }),
 );

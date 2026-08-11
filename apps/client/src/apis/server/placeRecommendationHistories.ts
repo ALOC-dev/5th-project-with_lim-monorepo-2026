@@ -1,7 +1,5 @@
 import {
   type ApiResponse,
-  type BookmarkPlaceRecommendationHistoryItemResponseData,
-  BookmarkPlaceRecommendationHistoryItemResponseDataSchema,
   createApiError,
   createApiResponseSchema,
   type DeletePlaceRecommendationHistoryResponseData,
@@ -10,6 +8,7 @@ import {
   PlaceRecommendationHistoryDetailResponseDataSchema,
   type PlaceRecommendationHistoryListResponseData,
   PlaceRecommendationHistoryListResponseDataSchema,
+  RenamePlaceRecommendationHistoryRequestSchema,
   type RenamePlaceRecommendationHistoryResponseData,
   RenamePlaceRecommendationHistoryResponseDataSchema,
 } from "@monorepo/api-contracts";
@@ -19,32 +18,30 @@ import { toApiClientErrorMessage } from "../errors";
 
 const ENDPOINT_PATH = "api/place-recommendation-histories";
 
-const PlaceRecommendationHistoryListResponseSchema = createApiResponseSchema(
+const placeRecommendationHistoryListResponseSchema = createApiResponseSchema(
   PlaceRecommendationHistoryListResponseDataSchema,
 );
 
-const PlaceRecommendationHistoryDetailResponseSchema = createApiResponseSchema(
+const placeRecommendationHistoryDetailResponseSchema = createApiResponseSchema(
   PlaceRecommendationHistoryDetailResponseDataSchema,
 );
 
-const RenamePlaceRecommendationHistoryResponseSchema = createApiResponseSchema(
+const renamePlaceRecommendationHistoryResponseSchema = createApiResponseSchema(
   RenamePlaceRecommendationHistoryResponseDataSchema,
 );
 
-const DeletePlaceRecommendationHistoryResponseSchema = createApiResponseSchema(
+const deletePlaceRecommendationHistoryResponseSchema = createApiResponseSchema(
   DeletePlaceRecommendationHistoryResponseDataSchema,
 );
 
-const BookmarkPlaceRecommendationHistoryItemResponseSchema = createApiResponseSchema(
-  BookmarkPlaceRecommendationHistoryItemResponseDataSchema,
-);
+const getHistoryPath = (id: string): string => ENDPOINT_PATH + "/" + encodeURIComponent(id);
 
 export const getPlaceRecommendationHistories = async (): Promise<
   ApiResponse<PlaceRecommendationHistoryListResponseData>
 > => {
   try {
     const response = await serverApi.get(ENDPOINT_PATH).json<unknown>();
-    return PlaceRecommendationHistoryListResponseSchema.parse(response);
+    return placeRecommendationHistoryListResponseSchema.parse(response);
   } catch (error) {
     return createApiError(toApiClientErrorMessage(error));
   }
@@ -54,8 +51,8 @@ export const getPlaceRecommendationHistory = async (
   id: string,
 ): Promise<ApiResponse<PlaceRecommendationHistoryDetailResponseData>> => {
   try {
-    const response = await serverApi.get(`${ENDPOINT_PATH}/${id}`).json<unknown>();
-    return PlaceRecommendationHistoryDetailResponseSchema.parse(response);
+    const response = await serverApi.get(getHistoryPath(id)).json<unknown>();
+    return placeRecommendationHistoryDetailResponseSchema.parse(response);
   } catch (error) {
     return createApiError(toApiClientErrorMessage(error));
   }
@@ -66,11 +63,12 @@ export const renamePlaceRecommendationHistory = async (
   title: string,
 ): Promise<ApiResponse<RenamePlaceRecommendationHistoryResponseData>> => {
   try {
+    const body = RenamePlaceRecommendationHistoryRequestSchema.parse({ title });
     const response = await serverApi
-      .patch(`${ENDPOINT_PATH}/${id}/rename`, { json: { title } })
+      .patch(getHistoryPath(id) + "/rename", { json: body })
       .json<unknown>();
 
-    return RenamePlaceRecommendationHistoryResponseSchema.parse(response);
+    return renamePlaceRecommendationHistoryResponseSchema.parse(response);
   } catch (error) {
     return createApiError(toApiClientErrorMessage(error));
   }
@@ -80,23 +78,8 @@ export const deletePlaceRecommendationHistory = async (
   id: string,
 ): Promise<ApiResponse<DeletePlaceRecommendationHistoryResponseData>> => {
   try {
-    const response = await serverApi.delete(`${ENDPOINT_PATH}/${id}`).json<unknown>();
-    return DeletePlaceRecommendationHistoryResponseSchema.parse(response);
-  } catch (error) {
-    return createApiError(toApiClientErrorMessage(error));
-  }
-};
-
-export const togglePlaceRecommendationHistoryItemBookmark = async (
-  historyId: string,
-  itemId: string,
-): Promise<ApiResponse<BookmarkPlaceRecommendationHistoryItemResponseData>> => {
-  try {
-    const response = await serverApi
-      .patch(`${ENDPOINT_PATH}/${historyId}/items/${itemId}/bookmark`)
-      .json<unknown>();
-
-    return BookmarkPlaceRecommendationHistoryItemResponseSchema.parse(response);
+    const response = await serverApi.delete(getHistoryPath(id)).json<unknown>();
+    return deletePlaceRecommendationHistoryResponseSchema.parse(response);
   } catch (error) {
     return createApiError(toApiClientErrorMessage(error));
   }

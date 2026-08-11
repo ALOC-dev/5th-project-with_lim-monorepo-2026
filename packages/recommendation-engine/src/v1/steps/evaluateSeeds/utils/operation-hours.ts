@@ -327,14 +327,20 @@ export const toOperationSchedulesRecord = (
 };
 
 export class OperationVerifier {
+  // 체류 시간이 선택되지 않은 경우에는 요청 시각의 영업 여부만 확인한다.
+  // OperationVerification 계약은 양수 체류 시간을 요구하므로 최소 1분 window를 사용한다.
+  private static readonly minimumVerificationWindowMinutes = 1;
   private readonly requestedDay: DayOfWeek;
   private readonly requestedStart: number;
   private readonly requestedEnd: number;
+  private readonly requestedStayDurationMinutes: number;
 
   constructor(private readonly schedule: UserInput["schedule"]) {
     this.requestedDay = toDayOfWeek(schedule.dateISO);
     this.requestedStart = toMinutes(schedule.time24h);
-    this.requestedEnd = this.requestedStart + schedule.stayDurationMinutes;
+    this.requestedStayDurationMinutes =
+      schedule.stayDurationMinutes ?? OperationVerifier.minimumVerificationWindowMinutes;
+    this.requestedEnd = this.requestedStart + this.requestedStayDurationMinutes;
   }
 
   get requestedDayOfWeek(): DayOfWeek {
@@ -374,7 +380,7 @@ export class OperationVerifier {
 
     if (this.requestedStart < open || this.requestedEnd > close) {
       return this.closed({
-        reason: `Requested stay ${this.schedule.time24h}+${this.schedule.stayDurationMinutes}m is outside ${schedule.open}-${schedule.close}`,
+        reason: `Requested stay ${this.schedule.time24h}+${this.requestedStayDurationMinutes}m is outside ${schedule.open}-${schedule.close}`,
         sourceUrls,
         confidence: 0.95,
       });
@@ -439,7 +445,7 @@ export class OperationVerifier {
       status,
       requestedDateISO: this.schedule.dateISO,
       requestedTime24h: this.schedule.time24h,
-      stayDurationMinutes: this.schedule.stayDurationMinutes,
+      stayDurationMinutes: this.requestedStayDurationMinutes,
       reason,
       sourceUrls,
       confidence,

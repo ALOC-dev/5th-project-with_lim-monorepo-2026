@@ -14,7 +14,7 @@ export type CandidateScoringEvidence = {
   userFit: {
     naturalLanguageRequest: string;
     partyType: UserInput["partyType"];
-    numberOfPeople: number;
+    numberOfPeople: UserInput["numberOfPeople"];
     budgetPerPerson: UserInput["budgetPerPerson"];
   };
   placeInfo: {

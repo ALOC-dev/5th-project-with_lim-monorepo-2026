@@ -8,6 +8,13 @@
       "when": 1785156422142,
       "tag": "0000_happy_ultimatum",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1786430498795,
+      "tag": "0001_merge_recommendation_schema",
+      "breakpoints": true
     }
   ]
 }

@@ -2,49 +2,20 @@ import styled from "@emotion/styled";
 import { Link } from "react-router-dom";
 
 import { tokens } from "../../design-system/tokens.generated";
-// import { typography } from "../../design-system/typography.generated";
 
 export const S = {
-  Container: styled.main`
+  Container: styled.div`
     display: flex;
+    flex: 1;
     flex-direction: column;
-    width: 100%;
-    margin: 0 auto;
+    /* width: 100%;
+    margin: 0 auto; */
     background-color: ${tokens.color.neutral["50"]};
     box-sizing: border-box;
     position: relative;
-    min-height: 100vh;
+    min-height: 0;
   `,
 
-  Header: styled.header`
-    display: flex;
-    width: 100%;
-    padding: 18px 24px 6px 24px;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 4px;
-    background: ${tokens.color.neutral["50"]};
-    box-sizing: border-box;
-  `,
-
-  StatusBarMock: styled.div`
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    width: 100%;
-    font-size: 14px;
-    font-weight: 600;
-    padding-bottom: 4px;
-    color: ${tokens.color.neutral["900"]};
-  `,
-
-  Title: styled.h1`
-    font-size: 16px;
-    font-weight: 600;
-    line-height: 22px;
-    color: ${tokens.color.neutral["900"]};
-    margin: 0;
-  `,
   Form: styled.form`
     display: flex;
     padding: 32px 36px 28px 36px;
@@ -66,7 +37,7 @@ export const S = {
     font-style: normal;
     line-height: 18px;
     font-size: 13px;
-    font-weight: 500;
+    font-weight: 700;
     color: ${tokens.color.neutral["900"]};
   `,
 
@@ -78,7 +49,10 @@ export const S = {
     align-self: stretch;
     border-radius: 12px;
     border: 1px solid ${tokens.color.neutral["200"]};
+    ${tokens.typography.body.sm}
+    font-weight: 400;
     font-size: 14px;
+    line-height: 22px;
     background-color: ${tokens.color.neutral["0"]};
     outline: none;
     transition: border-color 0.2s ease;
@@ -99,8 +73,10 @@ export const S = {
     border: none;
     background-color: ${tokens.color.primary["500"]};
     color: ${tokens.color.neutral["0"]};
+    ${tokens.typography.utility.cta}
     font-size: 14px;
     font-weight: 700;
+    line-height: 20px;
     cursor: pointer;
   `,
 
@@ -116,6 +92,7 @@ export const S = {
   StyledLink: styled(Link)`
     color: ${tokens.color.neutral["900"]};
     text-align: center;
+    ${tokens.typography.utility.cta}
     font-size: 14px;
     font-style: normal;
     font-weight: 700;
@@ -135,11 +112,11 @@ export const S = {
     gap: 16px;
     flex-shrink: 0;
     align-self: stretch;
-    /* background: ${tokens.color.neutral["0"]}; */
   `,
 
   FooterText: styled.span`
     color: ${tokens.color.neutral["700"]};
+    ${tokens.typography.body.xs};
     font-size: 13px;
     font-style: normal;
     font-weight: 400;
@@ -148,6 +125,7 @@ export const S = {
 
   SignupLink: styled(Link)`
     color: ${tokens.color.primary["500"]};
+    ${tokens.typography.utility.cta}
     font-size: 13px;
     font-style: normal;
     font-weight: 700;

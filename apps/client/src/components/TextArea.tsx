@@ -8,16 +8,15 @@ type TextAreaProps = TextareaHTMLAttributes<HTMLTextAreaElement>;
 const S = {
   Wrapper: styled.textarea`
     width: 100%;
-    height: 110px; 
+    height: 110px;
     padding: 12px;
     border-radius: 12px;
-    box-sizing: border-box; 
+    box-sizing: border-box;
     resize: none;
-    
+
     border: 1px solid ${({ theme }) => (theme as typeof themeType).tokens.color.neutral["200"]};
     background-color: ${({ theme }) => (theme as typeof themeType).tokens.color.neutral["50"]};
-    
-  
+
     ${({ theme }) => (theme as typeof themeType).tokens.typography.body.md}
     color: ${({ theme }) => (theme as typeof themeType).tokens.color.neutral["900"]};
 

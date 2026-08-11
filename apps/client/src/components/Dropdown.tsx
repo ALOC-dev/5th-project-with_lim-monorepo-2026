@@ -14,6 +14,7 @@ interface DropdownProps {
   onChange: (value: string) => void;
   placeholder?: string;
   width?: string;
+  disabled?: boolean;
 }
 
 const S = {
@@ -35,7 +36,7 @@ const S = {
     border: 1px solid
       ${({ isOpen }) =>
         isOpen ? theme.tokens.color.primary[500] : theme.tokens.color.neutral[200]};
-    border-radius: 12px;
+    border-radius: 8px;
     cursor: pointer;
     transition: all 0.2s ease;
 
