@@ -15,7 +15,7 @@ export default function FavoritePlacesContent() {
     deleteErrorMessage,
     handleToggleFavorite,
     handleRetry,
-    handleGoToRecommendations,
+    handleGoToRecommendationHistory,
   } = useFavoritePlaces();
   const navigate = useNavigate();
 
@@ -25,35 +25,22 @@ export default function FavoritePlacesContent() {
 
       <S.Main>
         {isLoading ? (
-          <>
-            <S.NoticeText>저장한 장소를 불러오고 있습니다.</S.NoticeText>
-            <S.List>
-              {Array.from({ length: 3 }).map((_, i) => (
-                <S.SkeletonCard key={i}>
-                  <S.SkeletonBar $width="30%" $height="14px" />
-                  <S.SkeletonBar $width="60%" $height="20px" />
-                  <S.SkeletonBar $width="40%" $height="24px" />
-                </S.SkeletonCard>
-              ))}
-            </S.List>
-          </>
+          <FeedbackState kind="loading" title="찜한 장소를 불러오는 중이에요" />
         ) : isListError ? (
           <FeedbackState
             action={{ label: "다시 시도", onClick: handleRetry }}
             description="잠시 후 다시 시도해 주세요."
             kind="error"
-            title="찜한 장소를 불러오지 못했습니다."
+            title="찜한 장소를 불러오지 못했어요"
           />
         ) : favoriteList.length === 0 ? (
           <FeedbackState
-            action={{ label: "추천 결과 보러가기", onClick: handleGoToRecommendations }}
-            description="저장한 장소를 여기서 볼 수 있어요."
+            action={{ label: "추천 기록 보기", onClick: handleGoToRecommendationHistory }}
             kind="empty"
             title="아직 찜한 장소가 없어요"
           />
         ) : (
-          <>
-            <S.NoticeText>저장한 장소를 다시 확인합니다.</S.NoticeText>
+          <S.Content>
             {deleteErrorMessage ? (
               <S.DeleteError role="alert">{deleteErrorMessage}</S.DeleteError>
             ) : null}
@@ -77,7 +64,7 @@ export default function FavoritePlacesContent() {
                         $isFavorited
                         onClick={() => handleToggleFavorite(item.id)}
                       >
-                        <Icon name="heart-filled" size={18} />
+                        <Icon name="heart-filled" size={20} />
                       </S.IconButton>
                       <S.ScoreBadge>{item.score}점</S.ScoreBadge>
                     </S.RightControls>
@@ -91,7 +78,7 @@ export default function FavoritePlacesContent() {
                 </S.Card>
               ))}
             </S.List>
-          </>
+          </S.Content>
         )}
       </S.Main>
     </S.Container>

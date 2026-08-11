@@ -27,13 +27,26 @@ export type PlaceRecommendationHistoryListResponseData = z.infer<
   typeof PlaceRecommendationHistoryListResponseDataSchema
 >;
 
-export const PlaceRecommendationHistoryDetailResponseDataSchema = z.object({
+const PlaceRecommendationHistoryDetailBaseSchema = z.object({
   id: z.uuid(),
   title: z.string().trim().min(1).max(60),
   requestedAt: z.iso.datetime({ offset: true }),
-  input: z.unknown(),
-  output: z.unknown(),
 });
+
+export const PlaceRecommendationHistoryDetailResponseDataSchema = z.discriminatedUnion("status", [
+  PlaceRecommendationHistoryDetailBaseSchema.extend({
+    status: z.literal("PENDING"),
+  }),
+  PlaceRecommendationHistoryDetailBaseSchema.extend({
+    status: z.literal("COMPLETED"),
+    input: z.unknown(),
+    output: z.unknown(),
+  }),
+  PlaceRecommendationHistoryDetailBaseSchema.extend({
+    status: z.literal("FAILED"),
+    errorMessage: z.string().trim().min(1),
+  }),
+]);
 
 export type PlaceRecommendationHistoryDetailResponseData = z.infer<
   typeof PlaceRecommendationHistoryDetailResponseDataSchema

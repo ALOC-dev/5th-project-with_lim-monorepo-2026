@@ -1,14 +1,7 @@
-import { keyframes } from "@emotion/react";
 import styled from "@emotion/styled";
 
 import { tokens } from "../../design-system/tokens.generated";
 import { typography } from "../../design-system/typography.generated";
-
-const pulse = keyframes`
-  0% { opacity: 1; }
-  50% { opacity: 0.4; }
-  100% { opacity: 1; }
-`;
 
 export const S = {
   Container: styled.div`
@@ -19,83 +12,73 @@ export const S = {
     background-color: ${tokens.color.neutral[50]};
   `,
   Main: styled.div`
-    flex: 1;
-    min-height: 0;
-    overflow-y: auto;
-    padding: 20px;
     display: flex;
+    min-height: 0;
+    flex: 1;
     flex-direction: column;
   `,
-  NoticeText: styled.p`
-    ${typography.body.sm}
-    font-size: 13px;
-    font-weight: 400;
-    line-height: 20px;
-    color: ${tokens.color.secondary[700]};
-    margin-bottom: 16px;
+  Content: styled.div`
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
   `,
   DeleteError: styled.p`
     ${typography.body.xs}
     color: ${tokens.color.warning[500]};
-    margin: 0 0 12px;
+    margin: 20px 24px 0;
   `,
-  List: styled.div`
+  List: styled.ul`
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 10px;
+    margin: 0;
+    padding: 20px 24px;
+    list-style: none;
   `,
 
-  SkeletonCard: styled.div`
-    padding: 16px;
+  Card: styled.li`
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 6px;
+    padding: 14px;
     background-color: ${tokens.color.neutral[0]};
     border: 1px solid ${tokens.color.neutral[200]};
     border-radius: 12px;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
   `,
-  SkeletonBar: styled.div<{ $width: string; $height: string }>`
-    width: ${({ $width }) => $width};
-    height: ${({ $height }) => $height};
-    background-color: ${tokens.color.neutral[200]};
-    border-radius: 4px;
-    animation: ${pulse} 1.5s ease-in-out infinite;
-  `,
-
-  Card: styled.div`
-    padding: 16px;
-    background-color: ${tokens.color.neutral[0]};
-    border: 1px solid ${tokens.color.neutral[200]};
-    border-radius: 12px;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  `,
-  DateLabel: styled.span`
+  DateLabel: styled.time`
+    grid-column: 1 / -1;
     ${typography.body.xs}
     font-size: 12px;
     font-weight: 500;
     line-height: 18px;
-    color: ${tokens.color.primary[700]};
+    color: ${tokens.color.neutral[700]};
   `,
   CardBody: styled.div`
+    grid-column: 1 / -1;
     display: flex;
-    justify-content: space-between;
+    min-width: 0;
     align-items: center;
+    justify-content: space-between;
   `,
   PlaceInfo: styled.div`
     display: flex;
+    min-width: 0;
     flex-direction: column;
     gap: 2px;
   `,
-  PlaceTitle: styled.div`
-    ${typography.title.md}
-    font-size: 20px;
-    font-weight: 700;
-    line-height: 28px;
+  PlaceTitle: styled.h2`
+    margin: 0;
+    overflow: hidden;
     color: ${tokens.color.neutral[900]};
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    ${typography.title.xs}
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 24px;
   `,
   PlaceCategory: styled.p`
+    margin: 0;
     ${typography.body.xs}
     font-size: 12px;
     font-weight: 400;
@@ -104,19 +87,18 @@ export const S = {
   `,
   RightControls: styled.div`
     display: flex;
+    flex: none;
     align-items: center;
     gap: 8px;
   `,
   IconButton: styled.button<{ $isFavorited?: boolean }>`
-    background-color: ${({ $isFavorited = true }) =>
-      $isFavorited ? tokens.color.primary[500] : tokens.color.neutral[0]};
+    background-color: transparent;
     color: ${({ $isFavorited = true }) =>
-      $isFavorited ? tokens.color.neutral[0] : tokens.color.neutral[700]};
-    border: ${({ $isFavorited = true }) =>
-      $isFavorited ? "none" : `1px solid ${tokens.color.neutral[200]}`};
+      $isFavorited ? tokens.color.primary[500] : tokens.color.neutral[700]};
+    border: 0;
     border-radius: 50%;
-    width: 32px;
-    height: 32px;
+    width: 44px;
+    height: 44px;
     padding: 0;
     cursor: pointer;
     display: flex;
@@ -126,6 +108,11 @@ export const S = {
     &:disabled {
       cursor: not-allowed;
       opacity: 0.6;
+    }
+
+    &:focus-visible {
+      outline: 2px solid ${tokens.color.primary[500]};
+      outline-offset: 2px;
     }
   `,
   ScoreBadge: styled.div`
@@ -143,6 +130,7 @@ export const S = {
     line-height: 18px;
   `,
   TagsRow: styled.div`
+    grid-column: 1 / -1;
     display: flex;
     flex-wrap: wrap;
     gap: 6px;

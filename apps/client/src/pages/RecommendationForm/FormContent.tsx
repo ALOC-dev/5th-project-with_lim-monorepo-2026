@@ -85,16 +85,11 @@ const FormContent = () => {
 
   const recommendationMutation = useMutation({
     mutationFn: createRecommendationJob,
-    onSuccess: (response, submittedUserInput) => {
+    onSuccess: (response) => {
       if (!response.success) {
         return;
       }
-      void navigate(
-        `/place/recommendation/pending?jobId=${encodeURIComponent(response.data.jobId)}`,
-        {
-          state: { userInput: submittedUserInput },
-        },
-      );
+      void navigate(`/place/recommendation/${encodeURIComponent(response.data.jobId)}`);
     },
   });
 

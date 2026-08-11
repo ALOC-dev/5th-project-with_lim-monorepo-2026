@@ -69,16 +69,6 @@ export default function RecommendationHistoryContent() {
     setDeletingItem(item);
   };
 
-  const handleCompletedCardKeyDown = (
-    e: React.KeyboardEvent<HTMLDivElement>,
-    item: HistoryItem,
-  ) => {
-    if (e.key !== "Enter" && e.key !== " " && e.key !== "Space") return;
-
-    e.preventDefault();
-    void handleCardClick(item.id, item.status);
-  };
-
   const closeDeleteModal = () => {
     if (isDeletingItem) return;
 
@@ -109,23 +99,13 @@ export default function RecommendationHistoryContent() {
 
         <S.Main>
           {isLoading ? (
-            <>
-              <S.NoticeText>저장된 추천 기록을 불러오고 있습니다.</S.NoticeText>
-              <S.List>
-                {Array.from({ length: 4 }).map((_, index) => (
-                  <S.SkeletonCard key={index}>
-                    <S.SkeletonBar $width="35%" $height="14px" />
-                    <S.SkeletonBar $width="75%" $height="18px" />
-                  </S.SkeletonCard>
-                ))}
-              </S.List>
-            </>
+            <FeedbackState kind="loading" title="추천 기록을 불러오는 중이에요" />
           ) : isHistoryListError ? (
             <FeedbackState
               action={{ label: "다시 시도", onClick: retry }}
               description="서버 연결을 확인한 뒤 다시 시도해 주세요."
               kind="error"
-              title="추천 기록을 불러오지 못했습니다."
+              title="추천 기록을 불러오지 못했어요"
             />
           ) : historyList.length === 0 ? (
             <FeedbackState
@@ -156,26 +136,22 @@ export default function RecommendationHistoryContent() {
 
                   return (
                     <S.Card key={item.id} $status={item.displayStatus}>
-                      {item.status === "COMPLETED" ? (
+                      {
                         <S.CardOpenButton
-                          role="button"
-                          tabIndex={0}
                           aria-label={`${item.title} 추천 기록 열기`}
                           onClick={() => {
-                            void handleCardClick(item.id, item.status);
+                            void handleCardClick(item.id);
                           }}
-                          onKeyDown={(e: React.KeyboardEvent<HTMLDivElement>) =>
-                            handleCompletedCardKeyDown(e, item)
-                          }
+                          type="button"
                         >
                           {cardInfo}
                         </S.CardOpenButton>
-                      ) : (
-                        cardInfo
-                      )}
+                      }
 
                       <S.CardActions>
-                        {item.status === "PENDING" && <S.SpinnerIcon />}
+                        {item.status === "PENDING" && (
+                          <S.SpinnerIcon aria-label="추천 생성 중" role="status" />
+                        )}
                         {item.status === "COMPLETED" && (
                           <S.IconButton
                             type="button"
@@ -252,13 +228,13 @@ export default function RecommendationHistoryContent() {
         isOpen={Boolean(deletingItem)}
         close={closeDeleteModal}
         title={
-          deletingItem?.status === "FAILED"
-            ? "실패한 추천 기록을 삭제할까요?"
-            : "이 추천 기록을 삭제할까요?"
+          deletingItem?.status === "PENDING"
+            ? "생성 중인 추천 기록을 삭제할까요?"
+            : "추천 기록을 삭제할까요?"
         }
         description={
-          deletingItem?.status === "FAILED"
-            ? "삭제한 기록은 다시 복구할 수 없어요."
+          deletingItem?.status === "PENDING"
+            ? "추천 생성은 계속될 수 있으며, 결과는 기록에서 확인할 수 없어요."
             : "결과 스냅샷만 삭제되며 찜한 장소는 유지됩니다."
         }
         primaryAction={{

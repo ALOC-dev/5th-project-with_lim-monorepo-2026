@@ -1,25 +1,21 @@
 import type { PlaceRecommendationHistoryListResponseData } from "@monorepo/api-contracts";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { type ReactNode, useCallback, useMemo, useState } from "react";
+import { type ReactNode, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 
 import {
   deletePlaceRecommendationHistory,
   getPlaceRecommendationHistories,
-  getPlaceRecommendationHistory,
   renamePlaceRecommendationHistory,
 } from "../../apis/server/placeRecommendationHistories";
 import PageRoot from "../../components/PageRoot/PageRoot";
 import { tokens } from "../../design-system/tokens.generated";
-import { getRecommendationResultQueryKey } from "../RecommendationResult/wrappers/RecommendationResult.query-key";
 import {
-  type HistoryStatus,
   RecommendationHistoryContext,
   type RecommendationHistoryContextType,
 } from "./RecommendationHistory.context";
 import {
   recommendationHistoriesQueryKey,
-  toCompletedEngineOutput,
   toHistoryItem,
   unwrapRecommendationHistoryApiResponse,
 } from "./RecommendationHistory.data";
@@ -28,7 +24,6 @@ import RecommendationHistoryContent from "./RecommendationHistoryForm";
 export const RecommendationHistoryProvider = ({ children }: { readonly children: ReactNode }) => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [failedDetailId, setFailedDetailId] = useState<string | null>(null);
   const {
     data: historyData,
     isError: isHistoryListError,
@@ -39,43 +34,15 @@ export const RecommendationHistoryProvider = ({ children }: { readonly children:
     queryFn: async () =>
       unwrapRecommendationHistoryApiResponse(await getPlaceRecommendationHistories()),
     retry: false,
+    refetchInterval: (query) =>
+      query.state.data?.items.some((item) => item.status === "PENDING") ? 5_000 : false,
   });
 
-  const loadCompletedHistory = useCallback(
-    async (id: string): Promise<void> => {
-      setFailedDetailId(null);
-
-      const response = await getPlaceRecommendationHistory(id);
-      if (!response.success) {
-        setFailedDetailId(id);
-        return;
-      }
-
-      const result = toCompletedEngineOutput(response.data);
-      if (result === null) {
-        setFailedDetailId(id);
-        return;
-      }
-
-      queryClient.setQueryData(getRecommendationResultQueryKey(id), result);
-      void navigate("/place/recommendation/result/" + encodeURIComponent(id), {
-        state: { result },
-      });
-    },
-    [navigate, queryClient],
-  );
-
   const handleCardClick = useCallback(
-    async (id: string, status: HistoryStatus): Promise<void> => {
-      switch (status) {
-        case "PENDING":
-        case "FAILED":
-          return;
-        case "COMPLETED":
-          await loadCompletedHistory(id);
-      }
+    async (id: string): Promise<void> => {
+      await navigate("/place/recommendation/" + encodeURIComponent(id));
     },
-    [loadCompletedHistory],
+    [navigate],
   );
 
   const handleDeleteItem = useCallback(
@@ -137,16 +104,7 @@ export const RecommendationHistoryProvider = ({ children }: { readonly children:
     [historyData?.items],
   );
 
-  const isError = isHistoryListError || failedDetailId !== null;
-
-  const retry = useCallback(() => {
-    if (failedDetailId !== null) {
-      void loadCompletedHistory(failedDetailId);
-      return;
-    }
-
-    void refetch();
-  }, [failedDetailId, loadCompletedHistory, refetch]);
+  const retry = useCallback(() => void refetch(), [refetch]);
 
   const contextValue = useMemo<RecommendationHistoryContextType>(
     () => ({
@@ -154,11 +112,19 @@ export const RecommendationHistoryProvider = ({ children }: { readonly children:
       handleDeleteItem,
       handleUpdateTitle,
       historyList,
-      isError,
+      isError: isHistoryListError,
       isLoading: isPending,
       retry,
     }),
-    [handleCardClick, handleDeleteItem, handleUpdateTitle, historyList, isError, isPending, retry],
+    [
+      handleCardClick,
+      handleDeleteItem,
+      handleUpdateTitle,
+      historyList,
+      isHistoryListError,
+      isPending,
+      retry,
+    ],
   );
 
   return (

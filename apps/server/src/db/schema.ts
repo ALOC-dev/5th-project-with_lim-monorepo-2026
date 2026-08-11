@@ -1,3 +1,4 @@
+import type { CourseRoutePoint, CreateCourseRequest } from '@monorepo/api-contracts';
 import type { PlaceRecommendationItem, UserInput, UserOutput } from '@monorepo/recommendation-engine/v1/contracts';
 import { sql } from 'drizzle-orm';
 import {
@@ -93,6 +94,9 @@ export const courses = pgTable('courses', {
   userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   title: text('title'), // rename 가능
   status: text('status').notNull(), // 'PENDING' | 'SUCCESS' | 'FAILED'
+  input: jsonb('input').$type<CreateCourseRequest>().notNull(),
+  errorCode: text('error_code'),
+  errorMessage: text('error_message'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   deletedAt: timestamp('deleted_at', { withTimezone: true }),
 });
@@ -107,6 +111,7 @@ export const courseOptions = pgTable('course_options', {
   totalTravelMinutes: integer('total_travel_minutes').notNull(),
   pricePerPersonWon: integer('price_per_person_won').notNull(),
   reason: text('reason'), // "코스 구성 이유" 설명문
+  routePath: jsonb('route_path').$type<readonly CourseRoutePoint[]>().notNull().default(sql`'[]'`),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 

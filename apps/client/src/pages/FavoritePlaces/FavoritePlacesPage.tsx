@@ -123,9 +123,8 @@ const FavoritePlacesProvider = ({ children }: { readonly children: ReactNode }) 
     void refetch();
   }, [refetch]);
 
-  // 빈 화면에서 추천 받으러 가기
-  const handleGoToRecommendations = useCallback(() => {
-    void navigate("/place/recommendation/form");
+  const handleGoToRecommendationHistory = useCallback(() => {
+    void navigate("/place/recommendation/history");
   }, [navigate]);
 
   const contextValue = useMemo<FavoritePlacesContextType>(
@@ -137,7 +136,7 @@ const FavoritePlacesProvider = ({ children }: { readonly children: ReactNode }) 
       deleteErrorMessage,
       handleToggleFavorite,
       handleRetry,
-      handleGoToRecommendations,
+      handleGoToRecommendationHistory,
     }),
     [
       favoriteList,
@@ -147,7 +146,7 @@ const FavoritePlacesProvider = ({ children }: { readonly children: ReactNode }) 
       deleteErrorMessage,
       handleToggleFavorite,
       handleRetry,
-      handleGoToRecommendations,
+      handleGoToRecommendationHistory,
     ],
   );
 
