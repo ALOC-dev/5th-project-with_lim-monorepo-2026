@@ -37,7 +37,9 @@ type SemanticRule = {
 const SEMANTIC_RULES: SemanticRule[] = [
   {
     intent: "CAFE",
-    requestKeywords: /카페|커피|디저트|브런치|베이커리|티룸|차\b|tea|coffee|cafe/iu,
+    // `차\b`를 쓰면 안 된다. JS의 `\b`는 ASCII 단어경계라 한글 뒤에서는 성립하지 않아
+    // 한국어 입력에서 절대 매칭되지 않는 죽은 패턴이 된다. 실제 어휘로 대체한다.
+    requestKeywords: /카페|커피|디저트|브런치|베이커리|티룸|찻집|tea|coffee|cafe/iu,
     allowedWhenRequestMentions: /타로|사주|운세|점술|신점|철학관|궁합|운명|작명|상담/iu,
     hardRejectSignals: [
       {
@@ -59,7 +61,9 @@ const SEMANTIC_RULES: SemanticRule[] = [
   {
     intent: "FOOD",
     requestKeywords: /맛집|식당|음식|곱창|고기|파스타|한식|중식|일식|양식|브런치|비건|점심|저녁/iu,
-    allowedWhenRequestMentions: /술집|맥주|펍|호프|바\b|bar\b|포차|와인|칵테일|이자카야/iu,
+    // `바\b`도 같은 이유로 죽은 패턴이었다. 복합어로 명시한다.
+    allowedWhenRequestMentions:
+      /술집|맥주|펍|호프|와인바|칵테일바|위스키바|바텐더|bar\b|포차|와인|칵테일|이자카야|한잔/iu,
     hardRejectSignals: [
       {
         label: "주류 중심 업장 신호",
@@ -160,10 +164,10 @@ export const getSemanticScoreAdjustment = ({
 };
 
 const inferRequestedIntent = (request: string): SemanticIntent => {
-  if (/카페|커피|디저트|브런치|베이커리|티룸|차\b|tea|coffee|cafe/iu.test(request)) {
+  if (/카페|커피|디저트|브런치|베이커리|티룸|찻집|tea|coffee|cafe/iu.test(request)) {
     return "CAFE";
   }
-  if (/맛집|식당|음식|곱창|고기|파스타|한식|중식|일식|양식|술집|바\b|포차/iu.test(request)) {
+  if (/맛집|식당|음식|곱창|고기|파스타|한식|중식|일식|양식|술집|와인바|이자카야|포차/iu.test(request)) {
     return "FOOD";
   }
   return "PLACE";
@@ -181,16 +185,19 @@ const getPositiveSignals = (evidence: CandidateScoringEvidence): string[] => {
   return signals;
 };
 
+/**
+ * 의미 판정에는 구조화된 필드만 쓴다.
+ *
+ * 예전에는 스크랩 원문(`rawTextSnippet`)까지 이어붙여 매칭했는데, 네이버 지도 페이지에는
+ * 주변 가게와 리뷰가 섞여 있어서 리뷰에 "근처 이자카야" 한 줄만 있어도 멀쩡한 식당이
+ * 주류 업장으로 오탐돼 -45점을 먹었다. 업종 판정의 근거는 카테고리와 상호명이어야 한다.
+ */
 const toCandidateSemanticText = (evidence: CandidateScoringEvidence): string =>
   [
     evidence.name,
     evidence.category.mainCategory,
     evidence.category.subCategory,
     ...evidence.category.tags,
-    evidence.placeInfo.address,
-    evidence.placeInfo.roadAddress,
-    evidence.enrichment?.rawTextSnippet,
-    ...(evidence.enrichment?.sourceDetails ?? []).map((detail) => detail.rawTextSnippet),
   ]
     .filter((value): value is string => typeof value === "string")
     .join(" ");

@@ -29,15 +29,33 @@ export type UrlScrapeCache = {
 export type LocalFileUrlScrapeCacheOptions = {
   cacheDir?: string;
   namespace?: string;
+  /** 이 시간이 지난 스냅샷은 없는 것으로 취급하고 다시 긁는다. */
+  maxAgeMs?: number;
 };
 
 const DEFAULT_NAMESPACE = "naver-map-url-scrape-v1";
 
+/**
+ * 기본 7일.
+ *
+ * 예전에는 만료 개념이 아예 없어서 `capturedAt`을 저장만 하고 검사하지 않았고,
+ * `set`도 기존 항목이 있으면 그대로 두어 갱신이 불가능했다. 그 결과 한 번 캐시된
+ * 영업시간이 영원히 쓰였다. 영업시간은 바뀌는 값이라 반드시 늙어야 한다.
+ */
+const DEFAULT_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1_000;
+
 export const createLocalFileUrlScrapeCache = ({
   cacheDir = getDefaultCacheDir(),
   namespace = DEFAULT_NAMESPACE,
+  maxAgeMs = DEFAULT_MAX_AGE_MS,
 }: LocalFileUrlScrapeCacheOptions = {}): UrlScrapeCache => {
   const namespaceDir = path.join(cacheDir, namespace);
+
+  const isFresh = (snapshot: ScrapedUrlSnapshot): boolean => {
+    const capturedAt = Date.parse(snapshot.capturedAt);
+    if (Number.isNaN(capturedAt)) return false;
+    return Date.now() - capturedAt < maxAgeMs;
+  };
 
   const get = async (url: string): Promise<UrlScrapeCacheEntry | undefined> => {
     const canonicalUrl = canonicalizeUrl(url);
@@ -50,6 +68,7 @@ export const createLocalFileUrlScrapeCache = ({
       if (!snapshot || canonicalizeUrl(snapshot.url) !== canonicalUrl) {
         return undefined;
       }
+      if (!isFresh(snapshot)) return undefined;
       return { key, snapshot, path: filePath };
     } catch (error) {
       if (isNodeError(error) && error.code === "ENOENT") return undefined;
@@ -74,10 +93,10 @@ export const createLocalFileUrlScrapeCache = ({
     await fs.writeFile(tmpPath, `${JSON.stringify(normalizedSnapshot, null, 2)}\n`, "utf8");
 
     try {
-      await fs.link(tmpPath, filePath);
-    } catch (error) {
-      if (!(isNodeError(error) && error.code === "EEXIST")) throw error;
-    } finally {
+      // 만료된 항목을 새 스냅샷으로 갈아끼운다. `link`는 기존 파일이 있으면
+      // EEXIST로 실패해서 영영 갱신되지 않았다.
+      await fs.rename(tmpPath, filePath);
+    } catch {
       await fs.unlink(tmpPath).catch(() => undefined);
     }
 

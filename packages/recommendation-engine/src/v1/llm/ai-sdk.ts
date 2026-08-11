@@ -8,7 +8,11 @@ import type {
 } from "./ai-sdk.types.js";
 
 export const RECOMMENDATION_LLM_MODEL_ID = "gpt-5.4-nano";
-export const RECOMMENDATION_LLM_MAX_RETRIES = 0;
+/**
+ * 0이면 일시적인 rate limit이나 네트워크 오류가 그대로 요청 전체의 실패가 된다.
+ * 이 엔진은 한 번의 추천에 LLM을 수십 번 호출하므로 한 번이라도 흔들릴 확률이 높다.
+ */
+export const RECOMMENDATION_LLM_MAX_RETRIES = 2;
 
 export type { RecommendationLlmTask } from "./ai-sdk.types.js";
 

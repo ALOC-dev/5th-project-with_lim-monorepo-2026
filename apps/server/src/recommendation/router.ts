@@ -24,6 +24,7 @@ import {
   type RecommendationTerminalDelivery,
   resolveRecommendationTerminalDelivery,
 } from "./history.js";
+import { createRecommendationRunLog } from "./run-log.js";
 import {
   HISTORY_PERSISTENCE_FAILURE,
   persistRecommendationTerminalState,
@@ -212,17 +213,24 @@ export const createRecommendationRouter = (secrets: RecommendationEngineSecrets)
           emitTerminalDelivery(delivery, null);
         };
         const processRecommendation = async (): Promise<void> => {
+          // 실행 단위로 로그/입력/결과를 파일에 남긴다. stdout만 보던 예전에는
+          // 터미널을 놓치면 실패 원인을 되짚을 방법이 없었다.
+          const runLog = createRecommendationRunLog(jobId);
+          await runLog.writeInput(jobState.userInput);
+
           let result: EngineOutput;
           try {
             result = await new RecommendationEngine(jobState.userInput, DEFAULT_ENGINE_CONFIG, {
-              loggingActivated: true,
+              logger: runLog.logger,
               onProgress: (step) => emitEvent({ type: "progress", step }),
               secrets,
             }).process();
           } catch (error: unknown) {
+            await runLog.writeResult({ status: "THROWN", error });
             await handleEngineFailure(error);
             return;
           }
+          await runLog.writeResult(result);
 
           switch (result.status) {
             case "SUCCESS": {

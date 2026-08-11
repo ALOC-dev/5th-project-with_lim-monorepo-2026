@@ -12,8 +12,10 @@ export {
 } from "./engine.js";
 export * from "./interfaces/index.js";
 export {
+  combineSinks,
   consoleLogger,
   consoleSink,
+  createJsonlFileSink,
   createLogger,
   type LogEvent,
   type Logger,
@@ -28,4 +30,12 @@ export type {
   LlmScoringClient,
 } from "./steps/evaluateSeeds/index.js";
 export { createAgenticWebEnrichmentClient } from "./steps/evaluateSeeds/index.js";
-export { createOpenAiLlmScoringClient } from "./steps/evaluateSeeds/llm/scoring.js";
+export {
+  createOpenAiLlmScoringClient,
+  createScoringPipeline,
+} from "./steps/evaluateSeeds/llm/scoring.js";
+export { OperationVerifier } from "./steps/evaluateSeeds/utils/operation-hours.js";
+export {
+  assessSemanticFit,
+  type SemanticFitAssessment,
+} from "./steps/evaluateSeeds/utils/semantic-fit.js";

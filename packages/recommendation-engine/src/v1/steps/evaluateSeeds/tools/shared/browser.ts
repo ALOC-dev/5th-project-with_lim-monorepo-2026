@@ -16,7 +16,9 @@ export const loadPlaywright = (): PlaywrightModule => {
     return require("playwright") as PlaywrightModule;
   } catch {
     throw new Error(
-      "playwright dependency is required for Naver Map scraping. Install it in the server package before running this client.",
+      "playwright is required for Naver Map scraping but could not be loaded. " +
+        "It is declared in this package's dependencies, so this usually means the browser " +
+        "binaries are missing. Run `pnpm exec playwright install chromium`.",
     );
   }
 };
@@ -36,8 +38,9 @@ export const scrapeGenericUrl = async (
       timeout: options.timeoutMs,
     });
     await page.waitForTimeout(options.settleMs);
+    // 펼치기를 실제로 눌렀을 때만 내부에서 한 번 더 기다린다. 예전에는 여기서
+    // 무조건 1초를 더 잤는데, 대부분의 페이지에서는 그냥 버리는 시간이었다.
     await expandBusinessHoursIfAvailable(page, options.settleMs);
-    await page.waitForTimeout(Math.min(1_000, options.settleMs));
 
     return {
       schemaVersion: 1,

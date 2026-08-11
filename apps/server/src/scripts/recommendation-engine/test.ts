@@ -41,6 +41,7 @@ type TestRun = {
   trace: TestTraceSummary;
   resultFile: string;
   logFile: string;
+  eventsFile: string;
   error?: string;
 };
 
@@ -51,7 +52,7 @@ const runCli = async (args = process.argv.slice(2)): Promise<void> => {
   const input = UserInputSchema.parse(getTestScenarioInput(scenarioName));
   await mkdir(logDir, { recursive: true });
 
-  const run = await runEngineTest(scenarioName, input);
+  const run = await runEngineTest(scenarioName, input, args.includes("--verbose"));
   await writeRunFiles(run);
   printRun(run);
 
@@ -92,6 +93,7 @@ const parseScenarioName = (args: string[]): TestScenarioName => {
 const runEngineTest = async (
   scenarioName: TestScenarioName,
   input: UserInput,
+  verbose: boolean,
 ): Promise<TestRun> => {
   const runName =
     scenarioName === defaultTestScenarioName ? testName : `${testName}-${scenarioName}`;
@@ -100,12 +102,27 @@ const runEngineTest = async (
   const artifactPrefix = `${formatDatePrefix(new Date())}.${runName}`;
   const resultFile = join(logDir, `${artifactPrefix}.result.json`);
   const logFile = join(logDir, `${artifactPrefix}.log.json`);
+  const eventsFile = join(logDir, `${artifactPrefix}.events.jsonl`);
+
+  // 이벤트를 발생 즉시 파일로 흘려보낸다. 요약 파일(`.log.json`)은 실행이 끝나야
+  // 쓰이므로, 중간에 끊거나 크래시하면 예전에는 터미널 말고 남는 게 없었다.
+  testMonitor.configure({ eventsFile, verbose });
+  console.log(`EVENTS ${eventsFile}`);
 
   try {
     const execution = await executeEngineTest(input, scenarioName);
-    return toRun(execution, runName, scenarioName, start, resultFile, logFile);
+    return toRun(execution, runName, scenarioName, start, resultFile, logFile, eventsFile);
   } catch (error) {
-    return toFailedRun(error, runName, scenarioName, input, start, resultFile, logFile);
+    return toFailedRun(
+      error,
+      runName,
+      scenarioName,
+      input,
+      start,
+      resultFile,
+      logFile,
+      eventsFile,
+    );
   }
 };
 
@@ -153,6 +170,7 @@ const toRun = (
   start: number,
   resultFile: string,
   logFile: string,
+  eventsFile: string,
 ): TestRun => ({
   name,
   scenario,
@@ -163,6 +181,7 @@ const toRun = (
   trace: testMonitor.getSummary(),
   resultFile,
   logFile,
+  eventsFile,
 });
 
 const toFailedRun = (
@@ -173,6 +192,7 @@ const toFailedRun = (
   start: number,
   resultFile: string,
   logFile: string,
+  eventsFile: string,
 ): TestRun => ({
   name,
   scenario,
@@ -183,6 +203,7 @@ const toFailedRun = (
   trace: testMonitor.getSummary(),
   resultFile,
   logFile,
+  eventsFile,
   error: error instanceof Error ? error.message : String(error),
 });
 
@@ -198,10 +219,13 @@ const writeRunFiles = async (run: TestRun): Promise<void> => {
       generatedAt: new Date().toISOString(),
       log: run.log,
       trace: run.trace,
-      events: testMonitor.getEvents(),
+      // 전체 이벤트는 실행 중에 `.events.jsonl`로 스트리밍된다. 여기 또 담으면
+      // 같은 내용이 두 벌이 되고 파일이 수 MB로 불어난다.
+      eventCount: testMonitor.getEvents().length,
       error: run.error,
       resultFile: run.resultFile,
       logFile: run.logFile,
+      eventsFile: run.eventsFile,
     }),
   ]);
 };
@@ -224,6 +248,7 @@ const printRun = (run: TestRun): void => {
   console.log(`${marker} ${run.name} (${run.durationMs}ms) ${formatFlow(run)}`);
   console.log(`RESULT ${run.resultFile}`);
   console.log(`LOG ${run.logFile}`);
+  console.log(`EVENTS ${run.eventsFile}`);
   if (run.error) console.error(run.error);
 };
 

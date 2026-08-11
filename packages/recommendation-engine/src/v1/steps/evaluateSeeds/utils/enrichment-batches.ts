@@ -21,11 +21,6 @@ type ResolveReferenceUrls = (
   evidences: CandidateScoringEvidence[],
 ) => Promise<ReferenceUrlResolution[]>;
 
-type SemanticAssessment = {
-  evidence: CandidateScoringEvidence;
-  semanticFit: ReturnType<typeof assessSemanticFit>;
-};
-
 type EnrichmentBatchLog = {
   batchNo: number;
   offset: number;
@@ -33,7 +28,6 @@ type EnrichmentBatchLog = {
   enrichmentCount: number;
   operationVerifiedCount: number;
   semanticPassedCount: number;
-  semanticRejectedCount: number;
   semanticPenalizedCount: number;
   referenceVerifiedCount: number;
   referenceRejectedCount: number;
@@ -44,7 +38,6 @@ export type EnrichmentBatchCollection = {
   enrichments: CandidateEnrichment[];
   enrichedEvidences: CandidateScoringEvidence[];
   referenceUrlResolutions: ReferenceUrlResolution[];
-  semanticRejected: SemanticAssessment[];
   semanticPenalizedCount: number;
   notSemanticallyEvaluatedDueToOperationUnknown: Array<{
     candidateId: string;
@@ -78,7 +71,6 @@ export const collectEnrichmentBatches = async ({
   const allEnrichments: CandidateEnrichment[] = [];
   const selectedEvidences: CandidateScoringEvidence[] = [];
   const allReferenceUrlResolutions: ReferenceUrlResolution[] = [];
-  const allSemanticRejected: SemanticAssessment[] = [];
   let semanticPenalizedCount = 0;
   const notSemanticallyEvaluatedDueToOperationUnknown: EnrichmentBatchCollection["notSemanticallyEvaluatedDueToOperationUnknown"] =
     [];
@@ -134,8 +126,9 @@ export const collectEnrichmentBatches = async ({
       evidence,
       semanticFit: assessSemanticFit(evidence),
     }));
-    const semanticRejected: SemanticAssessment[] = [];
-    allSemanticRejected.push(...semanticRejected);
+    // 의미 게이트는 후보를 탈락시키지 않고 감점만 한다(rejected는 항상 비어 있다).
+    // 예전에는 빈 배열을 만들어 넘기고 로그에 `rejectedCount: 0`을 찍어, 지표를
+    // 보는 사람이 "탈락이 하나도 없다"고 오해하게 만들었다.
     const semanticPassed = semanticAssessments.map(({ evidence, semanticFit }) => ({
       ...evidence,
       semanticFit,
@@ -149,7 +142,6 @@ export const collectEnrichmentBatches = async ({
       batchNo,
       evaluatedCount: semanticAssessments.length,
       passedCount: semanticPassed.length,
-      rejectedCount: semanticRejected.length,
       penalizedCount: semanticPenalized.length,
       penalized: semanticPenalized.map(({ evidence, semanticFit }) => ({
         candidateId: evidence.candidateId,
@@ -161,13 +153,6 @@ export const collectEnrichmentBatches = async ({
         reason: semanticFit.reason,
         negativeSignals: semanticFit.negativeSignals,
         ...getSemanticScoreAdjustment(semanticFit),
-      })),
-      rejected: semanticRejected.map(({ evidence, semanticFit }) => ({
-        candidateId: evidence.candidateId,
-        name: evidence.name,
-        category: evidence.category,
-        reason: semanticFit.reason,
-        negativeSignals: semanticFit.negativeSignals,
       })),
     });
 
@@ -205,7 +190,6 @@ export const collectEnrichmentBatches = async ({
       enrichmentCount: batchEnrichments.length,
       operationVerifiedCount: operationVerifiedEvidences.length,
       semanticPassedCount: semanticPassed.length,
-      semanticRejectedCount: semanticRejected.length,
       semanticPenalizedCount: semanticPenalized.length,
       referenceVerifiedCount: verified.length,
       referenceRejectedCount: batchReferenceRejectedCount,
@@ -219,7 +203,6 @@ export const collectEnrichmentBatches = async ({
     enrichments: allEnrichments,
     enrichedEvidences: selectedEvidences.slice(0, scoringPoolSize),
     referenceUrlResolutions: allReferenceUrlResolutions,
-    semanticRejected: allSemanticRejected,
     semanticPenalizedCount,
     notSemanticallyEvaluatedDueToOperationUnknown,
     operationVerifiedCount,

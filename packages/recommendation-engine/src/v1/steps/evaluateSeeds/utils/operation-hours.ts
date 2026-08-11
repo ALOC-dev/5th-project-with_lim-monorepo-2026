@@ -453,8 +453,17 @@ export class OperationVerifier {
   }
 }
 
+/**
+ * `dateISO`(달력 날짜)의 요일을 구한다.
+ *
+ * 예전에는 `new Date("...T00:00:00+09:00").getDay()`를 썼는데, `getDay()`는 **실행
+ * 머신의 로컬 타임존** 기준이라 서버 타임존에 따라 요일이 하루 밀렸다.
+ * KST 개발 PC에서는 2026-08-03이 MONDAY로 나오지만 UTC 서버에서는 SUNDAY가 되어,
+ * 월요일 요청에 일요일 영업시간을 검사하고 후보가 통째로 탈락했다.
+ * 달력 날짜에는 시각 개념이 없으므로 UTC 자정으로 고정해 머신 타임존과 무관하게 만든다.
+ */
 const toDayOfWeek = (dateISO: string): DayOfWeek => {
-  const day = new Date(`${dateISO}T00:00:00+09:00`).getDay();
+  const day = new Date(`${dateISO}T00:00:00.000Z`).getUTCDay();
   const dayOfWeek = dayOfWeekValues[(day + 6) % 7];
   if (!dayOfWeek) throw new Error(`Invalid dateISO: ${dateISO}`);
   return dayOfWeek;

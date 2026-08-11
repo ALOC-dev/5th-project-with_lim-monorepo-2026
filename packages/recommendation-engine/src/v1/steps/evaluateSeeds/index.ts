@@ -64,11 +64,43 @@ const LIVE_SCRAPE_TIMEOUT_MS = 20_000;
 const LIVE_SCRAPE_SETTLE_MS = 750;
 const LIVE_REFERENCE_URL_CONCURRENCY = 4;
 
+/**
+ * 실행 1건 동안 Chromium 하나만 쓰도록 공유 공급자를 만든다.
+ *
+ * 예전에는 enrichment 클라이언트와 reference URL 해결이 각자 브라우저를 띄웠고,
+ * 그게 배치마다 반복됐다. 배치 5회 × 재시도 5회면 최대 50번 기동이고 1회당 1~3초다.
+ * 실제로 쓰이기 전까지는 띄우지 않는다(전부 캐시 적중이면 한 번도 안 띄운다).
+ */
+const createSharedBrowserProvider = (): {
+  getBrowser: () => Promise<PlaywrightBrowser>;
+  close: () => Promise<void>;
+} => {
+  let browserPromise: Promise<PlaywrightBrowser> | undefined;
+
+  return {
+    getBrowser: () => {
+      browserPromise ??= Promise.resolve().then(() =>
+        loadPlaywright().chromium.launch({
+          headless: true,
+          args: ["--disable-dev-shm-usage", "--no-sandbox"],
+        }),
+      );
+      return browserPromise;
+    },
+    close: async () => {
+      const browser = await browserPromise?.catch(() => undefined);
+      await browser?.close().catch(() => undefined);
+    },
+  };
+};
+
 const buildLiveEnrichmentClient = (
   logger: Logger,
   options: EvaluateSeedsOptions,
+  getBrowser: () => Promise<PlaywrightBrowser>,
 ): CandidateEnrichmentClient =>
   createAgenticWebEnrichmentClient({
+    getBrowser,
     openAiApiKey: options.secrets?.openAiApiKey,
     kakaoRestApiKey: options.secrets?.kakaoRestApiKey,
     clientId: options.secrets?.naverSearchClientId,
@@ -92,8 +124,9 @@ const enrichCandidates = async (
   request: CandidateEnrichmentRequest,
   logger: Logger,
   options: EvaluateSeedsOptions,
+  getBrowser: () => Promise<PlaywrightBrowser>,
 ): Promise<CandidateEnrichment[]> => {
-  return buildLiveEnrichmentClient(logger, options)(request);
+  return buildLiveEnrichmentClient(logger, options, getBrowser)(request);
 };
 
 const logAgenticToolEvent = (logger: Logger, event: AgenticWebEnrichmentToolEvent): void => {
@@ -186,6 +219,9 @@ export const evaluateSeeds = async (
   let operationVerifiedCount = 0;
   let semanticPenalizedCount = 0;
   let referenceRejectedCount = 0;
+  // 이 실행에서 쓰는 Chromium은 하나뿐이다. enrichment와 reference URL 해결이
+  // 같은 인스턴스를 나눠 쓰고, 배치를 다 돈 뒤 한 번만 닫는다.
+  const sharedBrowser = createSharedBrowserProvider();
   try {
     options.onProgress?.('enriching');
     const finishEnrichment = stepLogger.startTimer("evaluateSeeds.enrichment.success");
@@ -201,8 +237,9 @@ export const evaluateSeeds = async (
       config,
       logger: stepLogger,
       enrichCandidates: (request, enrichmentLogger) =>
-        enrichCandidates(request, enrichmentLogger, options),
-      resolveReferenceUrls: (evidences) => resolveReferenceUrlsForEvidences(evidences, options),
+        enrichCandidates(request, enrichmentLogger, options, sharedBrowser.getBrowser),
+      resolveReferenceUrls: (evidences) =>
+        resolveReferenceUrlsForEvidences(evidences, options, sharedBrowser.getBrowser),
     });
     enrichedEvidences = enrichmentResult.enrichedEvidences;
     operationVerifiedCount = enrichmentResult.operationVerifiedCount;
@@ -261,6 +298,9 @@ export const evaluateSeeds = async (
       errorCode: failure.ok ? "UNKNOWN_EVALUATE_SEEDS_ERROR" : failure.errorCode,
     });
     return failure;
+  } finally {
+    // 브라우저를 쓰는 단계는 여기서 끝난다. 성공/실패와 무관하게 반드시 닫는다.
+    await sharedBrowser.close();
   }
 
   if (enrichedEvidences.length === 0) {
@@ -451,34 +491,20 @@ const hasDrinkIntent = (request: string): boolean =>
 const resolveReferenceUrlsForEvidences = async (
   evidences: CandidateScoringEvidence[],
   options: EvaluateSeedsOptions,
+  getBrowser: () => Promise<PlaywrightBrowser>,
 ): Promise<ReferenceUrlResolution[]> => {
-  let browserPromise: Promise<PlaywrightBrowser> | undefined;
   const scrapeRequests = new Map<string, Promise<UrlScrapeResult>>();
-  const getBrowser = (): Promise<PlaywrightBrowser> => {
-    browserPromise ??= Promise.resolve().then(() =>
-      loadPlaywright().chromium.launch({
-        headless: true,
-        args: ["--disable-dev-shm-usage", "--no-sandbox"],
-      }),
-    );
-    return browserPromise;
-  };
 
-  try {
-    return await mapWithConcurrency(evidences, LIVE_REFERENCE_URL_CONCURRENCY, (evidence) =>
-      resolveCandidateReferenceUrls(evidence, {
-        getBrowser,
-        naverMapScrapeCache,
-        scrapeRequests,
-        kakaoRestApiKey: options.secrets?.kakaoRestApiKey,
-        timeoutMs: LIVE_SCRAPE_TIMEOUT_MS,
-        settleMs: LIVE_SCRAPE_SETTLE_MS,
-      }),
-    );
-  } finally {
-    const browser = await browserPromise;
-    await browser?.close();
-  }
+  return mapWithConcurrency(evidences, LIVE_REFERENCE_URL_CONCURRENCY, (evidence) =>
+    resolveCandidateReferenceUrls(evidence, {
+      getBrowser,
+      naverMapScrapeCache,
+      scrapeRequests,
+      kakaoRestApiKey: options.secrets?.kakaoRestApiKey,
+      timeoutMs: LIVE_SCRAPE_TIMEOUT_MS,
+      settleMs: LIVE_SCRAPE_SETTLE_MS,
+    }),
+  );
 };
 
 const mapWithConcurrency = async <TItem, TResult>(
