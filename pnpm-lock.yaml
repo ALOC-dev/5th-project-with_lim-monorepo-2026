@@ -201,6 +201,31 @@ importers:
         specifier: ^4.4.1
         version: 4.4.1
 
+  packages/course-recommendation-engine:
+    dependencies:
+      '@ai-sdk/openai':
+        specifier: ^3.0.64
+        version: 3.0.64(zod@4.4.1)
+      '@monorepo/recommendation-engine':
+        specifier: workspace:*
+        version: link:../recommendation-engine
+      ai:
+        specifier: ^6.0.183
+        version: 6.0.183(zod@4.4.1)
+      ky:
+        specifier: ^2.0.2
+        version: 2.0.2
+      zod:
+        specifier: ^4.4.1
+        version: 4.4.1
+    devDependencies:
+      '@types/node':
+        specifier: ^22.15.17
+        version: 22.19.17
+      tsx:
+        specifier: ^4.19.3
+        version: 4.21.0
+
   packages/recommendation-engine:
     dependencies:
       '@ai-sdk/openai':

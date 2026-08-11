@@ -1,0 +1,2670 @@
+{
+  "status": "SUCCESS",
+  "userInput": {
+    "dateISO": "2026-08-03",
+    "startTime24h": "11:00",
+    "totalDurationMinutes": 480,
+    "places": [
+      {
+        "id": "pasta",
+        "name": "연남 파스타집",
+        "phoneNumber": null,
+        "tags": [
+          "파스타",
+          "와인페어링",
+          "데이트"
+        ],
+        "contentSummary": "바질 페스토 파스타와 하우스 와인이 유명한 연남동 이탈리안 레스토랑입니다.",
+        "mainCategory": "식당",
+        "subCategory": "이탈리안",
+        "operationInfo": {
+          "timezone": "Asia/Seoul",
+          "schedules": {
+            "MONDAY": {
+              "status": "OPEN",
+              "open": "11:30",
+              "close": "22:00",
+              "breakTimes": [],
+              "lastOrderTime": "21:00"
+            },
+            "TUESDAY": {
+              "status": "OPEN",
+              "open": "11:30",
+              "close": "22:00",
+              "breakTimes": [],
+              "lastOrderTime": "21:00"
+            },
+            "WEDNESDAY": {
+              "status": "OPEN",
+              "open": "11:30",
+              "close": "22:00",
+              "breakTimes": [],
+              "lastOrderTime": "21:00"
+            },
+            "THURSDAY": {
+              "status": "OPEN",
+              "open": "11:30",
+              "close": "22:00",
+              "breakTimes": [],
+              "lastOrderTime": "21:00"
+            },
+            "FRIDAY": {
+              "status": "OPEN",
+              "open": "11:30",
+              "close": "22:00",
+              "breakTimes": [],
+              "lastOrderTime": "21:00"
+            },
+            "SATURDAY": {
+              "status": "OPEN",
+              "open": "11:30",
+              "close": "22:00",
+              "breakTimes": [],
+              "lastOrderTime": "21:00"
+            },
+            "SUNDAY": {
+              "status": "OPEN",
+              "open": "11:30",
+              "close": "22:00",
+              "breakTimes": [],
+              "lastOrderTime": "21:00"
+            }
+          }
+        },
+        "availabilityAtRequestedTime": {
+          "status": "OPEN",
+          "requestedDateISO": "2026-08-03",
+          "requestedTime24h": "12:00",
+          "stayDurationMinutes": 60,
+          "reason": "목 데이터 기준 방문 가능합니다."
+        },
+        "referenceUrls": {
+          "kakaoMap": "https://place.map.kakao.com/1000000"
+        },
+        "accessibility": {
+          "score": 80,
+          "distanceMeters": 500,
+          "perOrigin": [
+            {
+              "originId": "host",
+              "distanceMeters": 500
+            }
+          ]
+        },
+        "location": {
+          "lat": 37.5626,
+          "lng": 126.9256,
+          "placeName": "연남 파스타집",
+          "roadAddressKo": "서울 마포구 연남로 30"
+        },
+        "priceRangePerPerson": [
+          25000,
+          40000
+        ],
+        "score": 88,
+        "scoreBreakdown": {
+          "inputMatch": 88,
+          "trust": 88,
+          "accessibility": 80,
+          "diversity": 80,
+          "total": 88
+        },
+        "reasons": [
+          "식당 카테고리 상위 추천 장소입니다."
+        ]
+      },
+      {
+        "id": "gukbap",
+        "name": "홍대 순대국밥",
+        "phoneNumber": null,
+        "tags": [
+          "국밥",
+          "혼밥",
+          "빠른회전"
+        ],
+        "contentSummary": "24시간 가까이 운영하는 홍대 대표 순대국밥집입니다.",
+        "mainCategory": "식당",
+        "subCategory": "한식",
+        "operationInfo": {
+          "timezone": "Asia/Seoul",
+          "schedules": {
+            "MONDAY": {
+              "status": "OPEN",
+              "open": "09:00",
+              "close": "22:00",
+              "breakTimes": [
+                {
+                  "start": "15:00",
+                  "end": "17:00"
+                }
+              ]
+            },
+            "TUESDAY": {
+              "status": "OPEN",
+              "open": "09:00",
+              "close": "22:00",
+              "breakTimes": [
+                {
+                  "start": "15:00",
+                  "end": "17:00"
+                }
+              ]
+            },
+            "WEDNESDAY": {
+              "status": "OPEN",
+              "open": "09:00",
+              "close": "22:00",
+              "breakTimes": [
+                {
+                  "start": "15:00",
+                  "end": "17:00"
+                }
+              ]
+            },
+            "THURSDAY": {
+              "status": "OPEN",
+              "open": "09:00",
+              "close": "22:00",
+              "breakTimes": [
+                {
+                  "start": "15:00",
+                  "end": "17:00"
+                }
+              ]
+            },
+            "FRIDAY": {
+              "status": "OPEN",
+              "open": "09:00",
+              "close": "22:00",
+              "breakTimes": [
+                {
+                  "start": "15:00",
+                  "end": "17:00"
+                }
+              ]
+            },
+            "SATURDAY": {
+              "status": "OPEN",
+              "open": "09:00",
+              "close": "22:00",
+              "breakTimes": [
+                {
+                  "start": "15:00",
+                  "end": "17:00"
+                }
+              ]
+            },
+            "SUNDAY": {
+              "status": "OPEN",
+              "open": "09:00",
+              "close": "22:00",
+              "breakTimes": [
+                {
+                  "start": "15:00",
+                  "end": "17:00"
+                }
+              ]
+            }
+          }
+        },
+        "availabilityAtRequestedTime": {
+          "status": "OPEN",
+          "requestedDateISO": "2026-08-03",
+          "requestedTime24h": "12:00",
+          "stayDurationMinutes": 60,
+          "reason": "목 데이터 기준 방문 가능합니다."
+        },
+        "referenceUrls": {
+          "kakaoMap": "https://place.map.kakao.com/1000001"
+        },
+        "accessibility": {
+          "score": 80,
+          "distanceMeters": 500,
+          "perOrigin": [
+            {
+              "originId": "host",
+              "distanceMeters": 500
+            }
+          ]
+        },
+        "location": {
+          "lat": 37.5558,
+          "lng": 126.9234,
+          "placeName": "홍대 순대국밥",
+          "roadAddressKo": "서울 마포구 어울마당로 62"
+        },
+        "priceRangePerPerson": [
+          9000,
+          13000
+        ],
+        "score": 79,
+        "scoreBreakdown": {
+          "inputMatch": 79,
+          "trust": 79,
+          "accessibility": 80,
+          "diversity": 80,
+          "total": 79
+        },
+        "reasons": [
+          "식당 카테고리 상위 추천 장소입니다."
+        ]
+      },
+      {
+        "id": "omakase",
+        "name": "연희동 오마카세",
+        "phoneNumber": null,
+        "tags": [
+          "오마카세",
+          "예약제",
+          "코스요리"
+        ],
+        "contentSummary": "제철 재료로 구성한 15코스 오마카세를 내는 연희동 예약제 스시야입니다.",
+        "mainCategory": "식당",
+        "subCategory": "일식",
+        "operationInfo": {
+          "timezone": "Asia/Seoul",
+          "schedules": {
+            "MONDAY": {
+              "status": "OPEN",
+              "open": "12:00",
+              "close": "22:00",
+              "breakTimes": [],
+              "lastOrderTime": "20:00"
+            },
+            "TUESDAY": {
+              "status": "OPEN",
+              "open": "12:00",
+              "close": "22:00",
+              "breakTimes": [],
+              "lastOrderTime": "20:00"
+            },
+            "WEDNESDAY": {
+              "status": "OPEN",
+              "open": "12:00",
+              "close": "22:00",
+              "breakTimes": [],
+              "lastOrderTime": "20:00"
+            },
+            "THURSDAY": {
+              "status": "OPEN",
+              "open": "12:00",
+              "close": "22:00",
+              "breakTimes": [],
+              "lastOrderTime": "20:00"
+            },
+            "FRIDAY": {
+              "status": "OPEN",
+              "open": "12:00",
+              "close": "22:00",
+              "breakTimes": [],
+              "lastOrderTime": "20:00"
+            },
+            "SATURDAY": {
+              "status": "OPEN",
+              "open": "12:00",
+              "close": "22:00",
+              "breakTimes": [],
+              "lastOrderTime": "20:00"
+            },
+            "SUNDAY": {
+              "status": "OPEN",
+              "open": "12:00",
+              "close": "22:00",
+              "breakTimes": [],
+              "lastOrderTime": "20:00"
+            }
+          }
+        },
+        "availabilityAtRequestedTime": {
+          "status": "OPEN",
+          "requestedDateISO": "2026-08-03",
+          "requestedTime24h": "12:00",
+          "stayDurationMinutes": 60,
+          "reason": "목 데이터 기준 방문 가능합니다."
+        },
+        "referenceUrls": {
+          "kakaoMap": "https://place.map.kakao.com/1000002"
+        },
+        "accessibility": {
+          "score": 80,
+          "distanceMeters": 500,
+          "perOrigin": [
+            {
+              "originId": "host",
+              "distanceMeters": 500
+            }
+          ]
+        },
+        "location": {
+          "lat": 37.5688,
+          "lng": 126.9308,
+          "placeName": "연희동 오마카세",
+          "roadAddressKo": "서울 서대문구 연희로 132"
+        },
+        "priceRangePerPerson": [
+          90000,
+          150000
+        ],
+        "score": 94,
+        "scoreBreakdown": {
+          "inputMatch": 94,
+          "trust": 94,
+          "accessibility": 80,
+          "diversity": 80,
+          "total": 94
+        },
+        "reasons": [
+          "식당 카테고리 상위 추천 장소입니다."
+        ]
+      },
+      {
+        "id": "rooftop",
+        "name": "루프탑 디저트 카페",
+        "phoneNumber": null,
+        "tags": [
+          "루프탑",
+          "야경",
+          "케이크"
+        ],
+        "contentSummary": "한강과 홍대 야경이 보이는 루프탑 디저트 카페입니다.",
+        "mainCategory": "카페",
+        "subCategory": "디저트",
+        "operationInfo": {
+          "timezone": "Asia/Seoul",
+          "schedules": {
+            "MONDAY": {
+              "status": "OPEN",
+              "open": "11:00",
+              "close": "23:00",
+              "breakTimes": []
+            },
+            "TUESDAY": {
+              "status": "OPEN",
+              "open": "11:00",
+              "close": "23:00",
+              "breakTimes": []
+            },
+            "WEDNESDAY": {
+              "status": "OPEN",
+              "open": "11:00",
+              "close": "23:00",
+              "breakTimes": []
+            },
+            "THURSDAY": {
+              "status": "OPEN",
+              "open": "11:00",
+              "close": "23:00",
+              "breakTimes": []
+            },
+            "FRIDAY": {
+              "status": "OPEN",
+              "open": "11:00",
+              "close": "23:00",
+              "breakTimes": []
+            },
+            "SATURDAY": {
+              "status": "OPEN",
+              "open": "11:00",
+              "close": "23:00",
+              "breakTimes": []
+            },
+            "SUNDAY": {
+              "status": "OPEN",
+              "open": "11:00",
+              "close": "23:00",
+              "breakTimes": []
+            }
+          }
+        },
+        "availabilityAtRequestedTime": {
+          "status": "OPEN",
+          "requestedDateISO": "2026-08-03",
+          "requestedTime24h": "12:00",
+          "stayDurationMinutes": 60,
+          "reason": "목 데이터 기준 방문 가능합니다."
+        },
+        "referenceUrls": {
+          "kakaoMap": "https://place.map.kakao.com/1000003"
+        },
+        "accessibility": {
+          "score": 80,
+          "distanceMeters": 500,
+          "perOrigin": [
+            {
+              "originId": "host",
+              "distanceMeters": 500
+            }
+          ]
+        },
+        "location": {
+          "lat": 37.5571,
+          "lng": 126.9245,
+          "placeName": "루프탑 디저트 카페",
+          "roadAddressKo": "서울 마포구 홍익로 20"
+        },
+        "priceRangePerPerson": [
+          9000,
+          18000
+        ],
+        "score": 90,
+        "scoreBreakdown": {
+          "inputMatch": 90,
+          "trust": 90,
+          "accessibility": 80,
+          "diversity": 80,
+          "total": 90
+        },
+        "reasons": [
+          "카페 카테고리 상위 추천 장소입니다."
+        ]
+      },
+      {
+        "id": "roastery",
+        "name": "연남 로스터리",
+        "phoneNumber": null,
+        "tags": [
+          "스페셜티",
+          "조용한",
+          "작업하기좋은"
+        ],
+        "contentSummary": "직접 로스팅한 싱글오리진을 내리는 작은 연남동 커피 바입니다.",
+        "mainCategory": "카페",
+        "subCategory": "커피숍",
+        "operationInfo": {
+          "timezone": "Asia/Seoul",
+          "schedules": {
+            "MONDAY": {
+              "status": "OPEN",
+              "open": "09:00",
+              "close": "21:00",
+              "breakTimes": []
+            },
+            "TUESDAY": {
+              "status": "OPEN",
+              "open": "09:00",
+              "close": "21:00",
+              "breakTimes": []
+            },
+            "WEDNESDAY": {
+              "status": "OPEN",
+              "open": "09:00",
+              "close": "21:00",
+              "breakTimes": []
+            },
+            "THURSDAY": {
+              "status": "OPEN",
+              "open": "09:00",
+              "close": "21:00",
+              "breakTimes": []
+            },
+            "FRIDAY": {
+              "status": "OPEN",
+              "open": "09:00",
+              "close": "21:00",
+              "breakTimes": []
+            },
+            "SATURDAY": {
+              "status": "OPEN",
+              "open": "09:00",
+              "close": "21:00",
+              "breakTimes": []
+            },
+            "SUNDAY": {
+              "status": "OPEN",
+              "open": "09:00",
+              "close": "21:00",
+              "breakTimes": []
+            }
+          }
+        },
+        "availabilityAtRequestedTime": {
+          "status": "OPEN",
+          "requestedDateISO": "2026-08-03",
+          "requestedTime24h": "12:00",
+          "stayDurationMinutes": 60,
+          "reason": "목 데이터 기준 방문 가능합니다."
+        },
+        "referenceUrls": {
+          "kakaoMap": "https://place.map.kakao.com/1000004"
+        },
+        "accessibility": {
+          "score": 80,
+          "distanceMeters": 500,
+          "perOrigin": [
+            {
+              "originId": "host",
+              "distanceMeters": 500
+            }
+          ]
+        },
+        "location": {
+          "lat": 37.5612,
+          "lng": 126.9268,
+          "placeName": "연남 로스터리",
+          "roadAddressKo": "서울 마포구 성미산로 161"
+        },
+        "priceRangePerPerson": [
+          5000,
+          9000
+        ],
+        "score": 85,
+        "scoreBreakdown": {
+          "inputMatch": 85,
+          "trust": 85,
+          "accessibility": 80,
+          "diversity": 80,
+          "total": 85
+        },
+        "reasons": [
+          "카페 카테고리 상위 추천 장소입니다."
+        ]
+      },
+      {
+        "id": "gallery",
+        "name": "미디어아트 전시관",
+        "phoneNumber": null,
+        "tags": [
+          "몰입형전시",
+          "사진촬영",
+          "실내"
+        ],
+        "contentSummary": "대형 스크린으로 구성한 몰입형 미디어아트 상설 전시관입니다.",
+        "mainCategory": "전시",
+        "subCategory": "미디어아트",
+        "operationInfo": {
+          "timezone": "Asia/Seoul",
+          "schedules": {
+            "MONDAY": {
+              "status": "OPEN",
+              "open": "12:00",
+              "close": "20:00",
+              "breakTimes": []
+            },
+            "TUESDAY": {
+              "status": "OPEN",
+              "open": "12:00",
+              "close": "20:00",
+              "breakTimes": []
+            },
+            "WEDNESDAY": {
+              "status": "OPEN",
+              "open": "12:00",
+              "close": "20:00",
+              "breakTimes": []
+            },
+            "THURSDAY": {
+              "status": "OPEN",
+              "open": "12:00",
+              "close": "20:00",
+              "breakTimes": []
+            },
+            "FRIDAY": {
+              "status": "OPEN",
+              "open": "12:00",
+              "close": "20:00",
+              "breakTimes": []
+            },
+            "SATURDAY": {
+              "status": "OPEN",
+              "open": "12:00",
+              "close": "20:00",
+              "breakTimes": []
+            },
+            "SUNDAY": {
+              "status": "OPEN",
+              "open": "12:00",
+              "close": "20:00",
+              "breakTimes": []
+            }
+          }
+        },
+        "availabilityAtRequestedTime": {
+          "status": "OPEN",
+          "requestedDateISO": "2026-08-03",
+          "requestedTime24h": "12:00",
+          "stayDurationMinutes": 60,
+          "reason": "목 데이터 기준 방문 가능합니다."
+        },
+        "referenceUrls": {
+          "kakaoMap": "https://place.map.kakao.com/1000005"
+        },
+        "accessibility": {
+          "score": 80,
+          "distanceMeters": 500,
+          "perOrigin": [
+            {
+              "originId": "host",
+              "distanceMeters": 500
+            }
+          ]
+        },
+        "location": {
+          "lat": 37.5545,
+          "lng": 126.9198,
+          "placeName": "미디어아트 전시관",
+          "roadAddressKo": "서울 마포구 와우산로 94"
+        },
+        "priceRangePerPerson": [
+          15000,
+          20000
+        ],
+        "score": 92,
+        "scoreBreakdown": {
+          "inputMatch": 92,
+          "trust": 92,
+          "accessibility": 80,
+          "diversity": 80,
+          "total": 92
+        },
+        "reasons": [
+          "전시 카테고리 상위 추천 장소입니다."
+        ]
+      },
+      {
+        "id": "forest",
+        "name": "경의선숲길",
+        "phoneNumber": null,
+        "tags": [
+          "산책",
+          "야외",
+          "무료"
+        ],
+        "contentSummary": "연남동을 가로지르는 선형 공원으로 산책하기 좋습니다.",
+        "mainCategory": "공원",
+        "subCategory": "산책로",
+        "operationInfo": {
+          "timezone": "Asia/Seoul",
+          "schedules": {
+            "MONDAY": {
+              "status": "UNKNOWN"
+            },
+            "TUESDAY": {
+              "status": "UNKNOWN"
+            },
+            "WEDNESDAY": {
+              "status": "UNKNOWN"
+            },
+            "THURSDAY": {
+              "status": "UNKNOWN"
+            },
+            "FRIDAY": {
+              "status": "UNKNOWN"
+            },
+            "SATURDAY": {
+              "status": "UNKNOWN"
+            },
+            "SUNDAY": {
+              "status": "UNKNOWN"
+            }
+          }
+        },
+        "availabilityAtRequestedTime": {
+          "status": "OPEN",
+          "requestedDateISO": "2026-08-03",
+          "requestedTime24h": "12:00",
+          "stayDurationMinutes": 60,
+          "reason": "목 데이터 기준 방문 가능합니다."
+        },
+        "referenceUrls": {
+          "kakaoMap": "https://place.map.kakao.com/1000006"
+        },
+        "accessibility": {
+          "score": 80,
+          "distanceMeters": 500,
+          "perOrigin": [
+            {
+              "originId": "host",
+              "distanceMeters": 500
+            }
+          ]
+        },
+        "location": {
+          "lat": 37.5595,
+          "lng": 126.9251,
+          "placeName": "경의선숲길",
+          "roadAddressKo": "서울 마포구 연남동 388"
+        },
+        "priceRangePerPerson": [
+          0,
+          0
+        ],
+        "score": 76,
+        "scoreBreakdown": {
+          "inputMatch": 76,
+          "trust": 76,
+          "accessibility": 80,
+          "diversity": 80,
+          "total": 76
+        },
+        "reasons": [
+          "공원 카테고리 상위 추천 장소입니다."
+        ]
+      },
+      {
+        "id": "bookshop",
+        "name": "독립서점 헬로인디북스",
+        "phoneNumber": null,
+        "tags": [
+          "독립출판",
+          "조용한",
+          "구경"
+        ],
+        "contentSummary": "독립출판물을 큐레이션하는 연남동 작은 서점입니다.",
+        "mainCategory": "쇼핑",
+        "subCategory": "서점",
+        "operationInfo": {
+          "timezone": "Asia/Seoul",
+          "schedules": {
+            "MONDAY": {
+              "status": "OPEN",
+              "open": "13:00",
+              "close": "20:00",
+              "breakTimes": []
+            },
+            "TUESDAY": {
+              "status": "OPEN",
+              "open": "13:00",
+              "close": "20:00",
+              "breakTimes": []
+            },
+            "WEDNESDAY": {
+              "status": "OPEN",
+              "open": "13:00",
+              "close": "20:00",
+              "breakTimes": []
+            },
+            "THURSDAY": {
+              "status": "OPEN",
+              "open": "13:00",
+              "close": "20:00",
+              "breakTimes": []
+            },
+            "FRIDAY": {
+              "status": "OPEN",
+              "open": "13:00",
+              "close": "20:00",
+              "breakTimes": []
+            },
+            "SATURDAY": {
+              "status": "OPEN",
+              "open": "13:00",
+              "close": "20:00",
+              "breakTimes": []
+            },
+            "SUNDAY": {
+              "status": "OPEN",
+              "open": "13:00",
+              "close": "20:00",
+              "breakTimes": []
+            }
+          }
+        },
+        "availabilityAtRequestedTime": {
+          "status": "OPEN",
+          "requestedDateISO": "2026-08-03",
+          "requestedTime24h": "12:00",
+          "stayDurationMinutes": 60,
+          "reason": "목 데이터 기준 방문 가능합니다."
+        },
+        "referenceUrls": {
+          "kakaoMap": "https://place.map.kakao.com/1000007"
+        },
+        "accessibility": {
+          "score": 80,
+          "distanceMeters": 500,
+          "perOrigin": [
+            {
+              "originId": "host",
+              "distanceMeters": 500
+            }
+          ]
+        },
+        "location": {
+          "lat": 37.5638,
+          "lng": 126.9241,
+          "placeName": "독립서점 헬로인디북스",
+          "roadAddressKo": "서울 마포구 동교로 46길 33"
+        },
+        "priceRangePerPerson": [
+          0,
+          25000
+        ],
+        "score": 77,
+        "scoreBreakdown": {
+          "inputMatch": 77,
+          "trust": 77,
+          "accessibility": 80,
+          "diversity": 80,
+          "total": 77
+        },
+        "reasons": [
+          "쇼핑 카테고리 상위 추천 장소입니다."
+        ]
+      },
+      {
+        "id": "shop",
+        "name": "홍대 소품샵 거리",
+        "phoneNumber": null,
+        "tags": [
+          "소품",
+          "기념품",
+          "구경"
+        ],
+        "contentSummary": "아기자기한 소품샵이 모여 있는 홍대 골목입니다.",
+        "mainCategory": "쇼핑",
+        "subCategory": "소품",
+        "operationInfo": {
+          "timezone": "Asia/Seoul",
+          "schedules": {
+            "MONDAY": {
+              "status": "OPEN",
+              "open": "11:00",
+              "close": "21:00",
+              "breakTimes": []
+            },
+            "TUESDAY": {
+              "status": "OPEN",
+              "open": "11:00",
+              "close": "21:00",
+              "breakTimes": []
+            },
+            "WEDNESDAY": {
+              "status": "OPEN",
+              "open": "11:00",
+              "close": "21:00",
+              "breakTimes": []
+            },
+            "THURSDAY": {
+              "status": "OPEN",
+              "open": "11:00",
+              "close": "21:00",
+              "breakTimes": []
+            },
+            "FRIDAY": {
+              "status": "OPEN",
+              "open": "11:00",
+              "close": "21:00",
+              "breakTimes": []
+            },
+            "SATURDAY": {
+              "status": "OPEN",
+              "open": "11:00",
+              "close": "21:00",
+              "breakTimes": []
+            },
+            "SUNDAY": {
+              "status": "OPEN",
+              "open": "11:00",
+              "close": "21:00",
+              "breakTimes": []
+            }
+          }
+        },
+        "availabilityAtRequestedTime": {
+          "status": "OPEN",
+          "requestedDateISO": "2026-08-03",
+          "requestedTime24h": "12:00",
+          "stayDurationMinutes": 60,
+          "reason": "목 데이터 기준 방문 가능합니다."
+        },
+        "referenceUrls": {
+          "kakaoMap": "https://place.map.kakao.com/1000008"
+        },
+        "accessibility": {
+          "score": 80,
+          "distanceMeters": 500,
+          "perOrigin": [
+            {
+              "originId": "host",
+              "distanceMeters": 500
+            }
+          ]
+        },
+        "location": {
+          "lat": 37.5533,
+          "lng": 126.9224,
+          "placeName": "홍대 소품샵 거리",
+          "roadAddressKo": "서울 마포구 와우산로 29길"
+        },
+        "priceRangePerPerson": [
+          5000,
+          30000
+        ],
+        "score": 70,
+        "scoreBreakdown": {
+          "inputMatch": 70,
+          "trust": 70,
+          "accessibility": 80,
+          "diversity": 80,
+          "total": 70
+        },
+        "reasons": [
+          "쇼핑 카테고리 상위 추천 장소입니다."
+        ]
+      },
+      {
+        "id": "winebar",
+        "name": "합정 내추럴 와인바",
+        "phoneNumber": null,
+        "tags": [
+          "내추럴와인",
+          "분위기좋은",
+          "심야"
+        ],
+        "contentSummary": "내추럴 와인과 간단한 안주를 내는 합정동 와인바입니다.",
+        "mainCategory": "술집",
+        "subCategory": "와인바",
+        "operationInfo": {
+          "timezone": "Asia/Seoul",
+          "schedules": {
+            "MONDAY": {
+              "status": "OPEN",
+              "open": "18:00",
+              "close": "02:00",
+              "breakTimes": []
+            },
+            "TUESDAY": {
+              "status": "OPEN",
+              "open": "18:00",
+              "close": "02:00",
+              "breakTimes": []
+            },
+            "WEDNESDAY": {
+              "status": "OPEN",
+              "open": "18:00",
+              "close": "02:00",
+              "breakTimes": []
+            },
+            "THURSDAY": {
+              "status": "OPEN",
+              "open": "18:00",
+              "close": "02:00",
+              "breakTimes": []
+            },
+            "FRIDAY": {
+              "status": "OPEN",
+              "open": "18:00",
+              "close": "02:00",
+              "breakTimes": []
+            },
+            "SATURDAY": {
+              "status": "OPEN",
+              "open": "18:00",
+              "close": "02:00",
+              "breakTimes": []
+            },
+            "SUNDAY": {
+              "status": "OPEN",
+              "open": "18:00",
+              "close": "02:00",
+              "breakTimes": []
+            }
+          }
+        },
+        "availabilityAtRequestedTime": {
+          "status": "OPEN",
+          "requestedDateISO": "2026-08-03",
+          "requestedTime24h": "12:00",
+          "stayDurationMinutes": 60,
+          "reason": "목 데이터 기준 방문 가능합니다."
+        },
+        "referenceUrls": {
+          "kakaoMap": "https://place.map.kakao.com/1000009"
+        },
+        "accessibility": {
+          "score": 80,
+          "distanceMeters": 500,
+          "perOrigin": [
+            {
+              "originId": "host",
+              "distanceMeters": 500
+            }
+          ]
+        },
+        "location": {
+          "lat": 37.5495,
+          "lng": 126.9137,
+          "placeName": "합정 내추럴 와인바",
+          "roadAddressKo": "서울 마포구 양화로 6길 12"
+        },
+        "priceRangePerPerson": [
+          40000,
+          70000
+        ],
+        "score": 86,
+        "scoreBreakdown": {
+          "inputMatch": 86,
+          "trust": 86,
+          "accessibility": 80,
+          "diversity": 80,
+          "total": 86
+        },
+        "reasons": [
+          "술집 카테고리 상위 추천 장소입니다."
+        ]
+      },
+      {
+        "id": "izakaya",
+        "name": "연남 이자카야",
+        "phoneNumber": null,
+        "tags": [
+          "사케",
+          "꼬치",
+          "심야"
+        ],
+        "contentSummary": "사케와 꼬치구이를 내는 연남동 심야 이자카야입니다.",
+        "mainCategory": "술집",
+        "subCategory": "이자카야",
+        "operationInfo": {
+          "timezone": "Asia/Seoul",
+          "schedules": {
+            "MONDAY": {
+              "status": "OPEN",
+              "open": "17:00",
+              "close": "01:00",
+              "breakTimes": [],
+              "lastOrderTime": "00:00"
+            },
+            "TUESDAY": {
+              "status": "OPEN",
+              "open": "17:00",
+              "close": "01:00",
+              "breakTimes": [],
+              "lastOrderTime": "00:00"
+            },
+            "WEDNESDAY": {
+              "status": "OPEN",
+              "open": "17:00",
+              "close": "01:00",
+              "breakTimes": [],
+              "lastOrderTime": "00:00"
+            },
+            "THURSDAY": {
+              "status": "OPEN",
+              "open": "17:00",
+              "close": "01:00",
+              "breakTimes": [],
+              "lastOrderTime": "00:00"
+            },
+            "FRIDAY": {
+              "status": "OPEN",
+              "open": "17:00",
+              "close": "01:00",
+              "breakTimes": [],
+              "lastOrderTime": "00:00"
+            },
+            "SATURDAY": {
+              "status": "OPEN",
+              "open": "17:00",
+              "close": "01:00",
+              "breakTimes": [],
+              "lastOrderTime": "00:00"
+            },
+            "SUNDAY": {
+              "status": "OPEN",
+              "open": "17:00",
+              "close": "01:00",
+              "breakTimes": [],
+              "lastOrderTime": "00:00"
+            }
+          }
+        },
+        "availabilityAtRequestedTime": {
+          "status": "OPEN",
+          "requestedDateISO": "2026-08-03",
+          "requestedTime24h": "12:00",
+          "stayDurationMinutes": 60,
+          "reason": "목 데이터 기준 방문 가능합니다."
+        },
+        "referenceUrls": {
+          "kakaoMap": "https://place.map.kakao.com/1000010"
+        },
+        "accessibility": {
+          "score": 80,
+          "distanceMeters": 500,
+          "perOrigin": [
+            {
+              "originId": "host",
+              "distanceMeters": 500
+            }
+          ]
+        },
+        "location": {
+          "lat": 37.5619,
+          "lng": 126.9229,
+          "placeName": "연남 이자카야",
+          "roadAddressKo": "서울 마포구 동교로 38길 9"
+        },
+        "priceRangePerPerson": [
+          25000,
+          45000
+        ],
+        "score": 83,
+        "scoreBreakdown": {
+          "inputMatch": 83,
+          "trust": 83,
+          "accessibility": 80,
+          "diversity": 80,
+          "total": 83
+        },
+        "reasons": [
+          "술집 카테고리 상위 추천 장소입니다."
+        ]
+      },
+      {
+        "id": "escape",
+        "name": "홍대 방탈출 카페",
+        "phoneNumber": null,
+        "tags": [
+          "방탈출",
+          "실내",
+          "액티비티"
+        ],
+        "contentSummary": "난이도별 테마를 갖춘 홍대 방탈출 카페입니다.",
+        "mainCategory": "체험",
+        "subCategory": "방탈출",
+        "operationInfo": {
+          "timezone": "Asia/Seoul",
+          "schedules": {
+            "MONDAY": {
+              "status": "OPEN",
+              "open": "11:00",
+              "close": "23:00",
+              "breakTimes": []
+            },
+            "TUESDAY": {
+              "status": "OPEN",
+              "open": "11:00",
+              "close": "23:00",
+              "breakTimes": []
+            },
+            "WEDNESDAY": {
+              "status": "OPEN",
+              "open": "11:00",
+              "close": "23:00",
+              "breakTimes": []
+            },
+            "THURSDAY": {
+              "status": "OPEN",
+              "open": "11:00",
+              "close": "23:00",
+              "breakTimes": []
+            },
+            "FRIDAY": {
+              "status": "OPEN",
+              "open": "11:00",
+              "close": "23:00",
+              "breakTimes": []
+            },
+            "SATURDAY": {
+              "status": "OPEN",
+              "open": "11:00",
+              "close": "23:00",
+              "breakTimes": []
+            },
+            "SUNDAY": {
+              "status": "OPEN",
+              "open": "11:00",
+              "close": "23:00",
+              "breakTimes": []
+            }
+          }
+        },
+        "availabilityAtRequestedTime": {
+          "status": "OPEN",
+          "requestedDateISO": "2026-08-03",
+          "requestedTime24h": "12:00",
+          "stayDurationMinutes": 60,
+          "reason": "목 데이터 기준 방문 가능합니다."
+        },
+        "referenceUrls": {
+          "kakaoMap": "https://place.map.kakao.com/1000011"
+        },
+        "accessibility": {
+          "score": 80,
+          "distanceMeters": 500,
+          "perOrigin": [
+            {
+              "originId": "host",
+              "distanceMeters": 500
+            }
+          ]
+        },
+        "location": {
+          "lat": 37.5552,
+          "lng": 126.9256,
+          "placeName": "홍대 방탈출 카페",
+          "roadAddressKo": "서울 마포구 홍익로 6길 20"
+        },
+        "priceRangePerPerson": [
+          25000,
+          30000
+        ],
+        "score": 81,
+        "scoreBreakdown": {
+          "inputMatch": 81,
+          "trust": 81,
+          "accessibility": 80,
+          "diversity": 80,
+          "total": 81
+        },
+        "reasons": [
+          "체험 카테고리 상위 추천 장소입니다."
+        ]
+      }
+    ],
+    "numberOfPeople": 2
+  },
+  "userOutput": {
+    "courses": [
+      {
+        "id": "course-4-8be0jr",
+        "title": "장소 구성이 다양한 코스",
+        "courseType": {
+          "key": "BALANCED",
+          "label": "균형형 코스",
+          "description": "mock 큐레이터가 부여한 유형입니다."
+        },
+        "places": [
+          {
+            "id": "gukbap",
+            "name": "홍대 순대국밥",
+            "phoneNumber": null,
+            "tags": [
+              "국밥",
+              "혼밥",
+              "빠른회전"
+            ],
+            "contentSummary": "24시간 가까이 운영하는 홍대 대표 순대국밥집입니다.",
+            "mainCategory": "식당",
+            "subCategory": "한식",
+            "operationInfo": {
+              "timezone": "Asia/Seoul",
+              "schedules": {
+                "MONDAY": {
+                  "status": "OPEN",
+                  "open": "09:00",
+                  "close": "22:00",
+                  "breakTimes": [
+                    {
+                      "start": "15:00",
+                      "end": "17:00"
+                    }
+                  ]
+                },
+                "TUESDAY": {
+                  "status": "OPEN",
+                  "open": "09:00",
+                  "close": "22:00",
+                  "breakTimes": [
+                    {
+                      "start": "15:00",
+                      "end": "17:00"
+                    }
+                  ]
+                },
+                "WEDNESDAY": {
+                  "status": "OPEN",
+                  "open": "09:00",
+                  "close": "22:00",
+                  "breakTimes": [
+                    {
+                      "start": "15:00",
+                      "end": "17:00"
+                    }
+                  ]
+                },
+                "THURSDAY": {
+                  "status": "OPEN",
+                  "open": "09:00",
+                  "close": "22:00",
+                  "breakTimes": [
+                    {
+                      "start": "15:00",
+                      "end": "17:00"
+                    }
+                  ]
+                },
+                "FRIDAY": {
+                  "status": "OPEN",
+                  "open": "09:00",
+                  "close": "22:00",
+                  "breakTimes": [
+                    {
+                      "start": "15:00",
+                      "end": "17:00"
+                    }
+                  ]
+                },
+                "SATURDAY": {
+                  "status": "OPEN",
+                  "open": "09:00",
+                  "close": "22:00",
+                  "breakTimes": [
+                    {
+                      "start": "15:00",
+                      "end": "17:00"
+                    }
+                  ]
+                },
+                "SUNDAY": {
+                  "status": "OPEN",
+                  "open": "09:00",
+                  "close": "22:00",
+                  "breakTimes": [
+                    {
+                      "start": "15:00",
+                      "end": "17:00"
+                    }
+                  ]
+                }
+              }
+            },
+            "availabilityAtRequestedTime": {
+              "status": "OPEN",
+              "requestedDateISO": "2026-08-03",
+              "requestedTime24h": "12:00",
+              "stayDurationMinutes": 60,
+              "reason": "목 데이터 기준 방문 가능합니다."
+            },
+            "referenceUrls": {
+              "kakaoMap": "https://place.map.kakao.com/1000001"
+            },
+            "accessibility": {
+              "score": 80,
+              "distanceMeters": 500,
+              "perOrigin": [
+                {
+                  "originId": "host",
+                  "distanceMeters": 500
+                }
+              ]
+            },
+            "location": {
+              "lat": 37.5558,
+              "lng": 126.9234,
+              "placeName": "홍대 순대국밥",
+              "roadAddressKo": "서울 마포구 어울마당로 62"
+            },
+            "priceRangePerPerson": [
+              9000,
+              13000
+            ],
+            "score": 79,
+            "scoreBreakdown": {
+              "inputMatch": 79,
+              "trust": 79,
+              "accessibility": 80,
+              "diversity": 80,
+              "total": 79
+            },
+            "reasons": [
+              "식당 카테고리 상위 추천 장소입니다."
+            ]
+          },
+          {
+            "id": "rooftop",
+            "name": "루프탑 디저트 카페",
+            "phoneNumber": null,
+            "tags": [
+              "루프탑",
+              "야경",
+              "케이크"
+            ],
+            "contentSummary": "한강과 홍대 야경이 보이는 루프탑 디저트 카페입니다.",
+            "mainCategory": "카페",
+            "subCategory": "디저트",
+            "operationInfo": {
+              "timezone": "Asia/Seoul",
+              "schedules": {
+                "MONDAY": {
+                  "status": "OPEN",
+                  "open": "11:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "TUESDAY": {
+                  "status": "OPEN",
+                  "open": "11:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "WEDNESDAY": {
+                  "status": "OPEN",
+                  "open": "11:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "THURSDAY": {
+                  "status": "OPEN",
+                  "open": "11:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "FRIDAY": {
+                  "status": "OPEN",
+                  "open": "11:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "SATURDAY": {
+                  "status": "OPEN",
+                  "open": "11:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "SUNDAY": {
+                  "status": "OPEN",
+                  "open": "11:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                }
+              }
+            },
+            "availabilityAtRequestedTime": {
+              "status": "OPEN",
+              "requestedDateISO": "2026-08-03",
+              "requestedTime24h": "12:00",
+              "stayDurationMinutes": 60,
+              "reason": "목 데이터 기준 방문 가능합니다."
+            },
+            "referenceUrls": {
+              "kakaoMap": "https://place.map.kakao.com/1000003"
+            },
+            "accessibility": {
+              "score": 80,
+              "distanceMeters": 500,
+              "perOrigin": [
+                {
+                  "originId": "host",
+                  "distanceMeters": 500
+                }
+              ]
+            },
+            "location": {
+              "lat": 37.5571,
+              "lng": 126.9245,
+              "placeName": "루프탑 디저트 카페",
+              "roadAddressKo": "서울 마포구 홍익로 20"
+            },
+            "priceRangePerPerson": [
+              9000,
+              18000
+            ],
+            "score": 90,
+            "scoreBreakdown": {
+              "inputMatch": 90,
+              "trust": 90,
+              "accessibility": 80,
+              "diversity": 80,
+              "total": 90
+            },
+            "reasons": [
+              "카페 카테고리 상위 추천 장소입니다."
+            ]
+          },
+          {
+            "id": "escape",
+            "name": "홍대 방탈출 카페",
+            "phoneNumber": null,
+            "tags": [
+              "방탈출",
+              "실내",
+              "액티비티"
+            ],
+            "contentSummary": "난이도별 테마를 갖춘 홍대 방탈출 카페입니다.",
+            "mainCategory": "체험",
+            "subCategory": "방탈출",
+            "operationInfo": {
+              "timezone": "Asia/Seoul",
+              "schedules": {
+                "MONDAY": {
+                  "status": "OPEN",
+                  "open": "11:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "TUESDAY": {
+                  "status": "OPEN",
+                  "open": "11:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "WEDNESDAY": {
+                  "status": "OPEN",
+                  "open": "11:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "THURSDAY": {
+                  "status": "OPEN",
+                  "open": "11:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "FRIDAY": {
+                  "status": "OPEN",
+                  "open": "11:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "SATURDAY": {
+                  "status": "OPEN",
+                  "open": "11:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "SUNDAY": {
+                  "status": "OPEN",
+                  "open": "11:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                }
+              }
+            },
+            "availabilityAtRequestedTime": {
+              "status": "OPEN",
+              "requestedDateISO": "2026-08-03",
+              "requestedTime24h": "12:00",
+              "stayDurationMinutes": 60,
+              "reason": "목 데이터 기준 방문 가능합니다."
+            },
+            "referenceUrls": {
+              "kakaoMap": "https://place.map.kakao.com/1000011"
+            },
+            "accessibility": {
+              "score": 80,
+              "distanceMeters": 500,
+              "perOrigin": [
+                {
+                  "originId": "host",
+                  "distanceMeters": 500
+                }
+              ]
+            },
+            "location": {
+              "lat": 37.5552,
+              "lng": 126.9256,
+              "placeName": "홍대 방탈출 카페",
+              "roadAddressKo": "서울 마포구 홍익로 6길 20"
+            },
+            "priceRangePerPerson": [
+              25000,
+              30000
+            ],
+            "score": 81,
+            "scoreBreakdown": {
+              "inputMatch": 81,
+              "trust": 81,
+              "accessibility": 80,
+              "diversity": 80,
+              "total": 81
+            },
+            "reasons": [
+              "체험 카테고리 상위 추천 장소입니다."
+            ]
+          },
+          {
+            "id": "gallery",
+            "name": "미디어아트 전시관",
+            "phoneNumber": null,
+            "tags": [
+              "몰입형전시",
+              "사진촬영",
+              "실내"
+            ],
+            "contentSummary": "대형 스크린으로 구성한 몰입형 미디어아트 상설 전시관입니다.",
+            "mainCategory": "전시",
+            "subCategory": "미디어아트",
+            "operationInfo": {
+              "timezone": "Asia/Seoul",
+              "schedules": {
+                "MONDAY": {
+                  "status": "OPEN",
+                  "open": "12:00",
+                  "close": "20:00",
+                  "breakTimes": []
+                },
+                "TUESDAY": {
+                  "status": "OPEN",
+                  "open": "12:00",
+                  "close": "20:00",
+                  "breakTimes": []
+                },
+                "WEDNESDAY": {
+                  "status": "OPEN",
+                  "open": "12:00",
+                  "close": "20:00",
+                  "breakTimes": []
+                },
+                "THURSDAY": {
+                  "status": "OPEN",
+                  "open": "12:00",
+                  "close": "20:00",
+                  "breakTimes": []
+                },
+                "FRIDAY": {
+                  "status": "OPEN",
+                  "open": "12:00",
+                  "close": "20:00",
+                  "breakTimes": []
+                },
+                "SATURDAY": {
+                  "status": "OPEN",
+                  "open": "12:00",
+                  "close": "20:00",
+                  "breakTimes": []
+                },
+                "SUNDAY": {
+                  "status": "OPEN",
+                  "open": "12:00",
+                  "close": "20:00",
+                  "breakTimes": []
+                }
+              }
+            },
+            "availabilityAtRequestedTime": {
+              "status": "OPEN",
+              "requestedDateISO": "2026-08-03",
+              "requestedTime24h": "12:00",
+              "stayDurationMinutes": 60,
+              "reason": "목 데이터 기준 방문 가능합니다."
+            },
+            "referenceUrls": {
+              "kakaoMap": "https://place.map.kakao.com/1000005"
+            },
+            "accessibility": {
+              "score": 80,
+              "distanceMeters": 500,
+              "perOrigin": [
+                {
+                  "originId": "host",
+                  "distanceMeters": 500
+                }
+              ]
+            },
+            "location": {
+              "lat": 37.5545,
+              "lng": 126.9198,
+              "placeName": "미디어아트 전시관",
+              "roadAddressKo": "서울 마포구 와우산로 94"
+            },
+            "priceRangePerPerson": [
+              15000,
+              20000
+            ],
+            "score": 92,
+            "scoreBreakdown": {
+              "inputMatch": 92,
+              "trust": 92,
+              "accessibility": 80,
+              "diversity": 80,
+              "total": 92
+            },
+            "reasons": [
+              "전시 카테고리 상위 추천 장소입니다."
+            ]
+          }
+        ],
+        "summary": {
+          "estimatedCostPerPerson": [
+            58000,
+            81000
+          ],
+          "estimatedTotalMinutes": 476,
+          "estimatedTravelMinutes": 16,
+          "totalStayMinutes": 460,
+          "stopCount": 4,
+          "categoryCount": 4,
+          "mealIncluded": true
+        },
+        "selection": {
+          "reasonCodes": [
+            "BALANCED"
+          ],
+          "reasonTexts": [
+            "16분 이동으로 동선 부담이 낮습니다.",
+            "식사 시간대 장소를 포함합니다."
+          ],
+          "tradeoffs": []
+        },
+        "timeline": [
+          {
+            "placeId": "gukbap",
+            "placeName": "홍대 순대국밥",
+            "categoryLabel": "식당 · 한식",
+            "time24h": "11:00",
+            "stayDurationMinutes": 105,
+            "travelMinutesFromPrevious": 0,
+            "waitMinutesFromPrevious": 0,
+            "label": "11:00 홍대 순대국밥(105분 체류)"
+          },
+          {
+            "placeId": "rooftop",
+            "placeName": "루프탑 디저트 카페",
+            "categoryLabel": "카페 · 디저트",
+            "time24h": "12:48",
+            "stayDurationMinutes": 95,
+            "travelMinutesFromPrevious": 3,
+            "waitMinutesFromPrevious": 0,
+            "label": "12:48 루프탑 디저트 카페(95분 체류)"
+          },
+          {
+            "placeId": "escape",
+            "placeName": "홍대 방탈출 카페",
+            "categoryLabel": "체험 · 방탈출",
+            "time24h": "14:27",
+            "stayDurationMinutes": 130,
+            "travelMinutesFromPrevious": 4,
+            "waitMinutesFromPrevious": 0,
+            "label": "14:27 홍대 방탈출 카페(130분 체류)"
+          },
+          {
+            "placeId": "gallery",
+            "placeName": "미디어아트 전시관",
+            "categoryLabel": "전시 · 미디어아트",
+            "time24h": "16:46",
+            "stayDurationMinutes": 130,
+            "travelMinutesFromPrevious": 9,
+            "waitMinutesFromPrevious": 0,
+            "label": "16:46 미디어아트 전시관(130분 체류)"
+          }
+        ],
+        "startTime24h": "11:00",
+        "endTime24h": "18:56",
+        "totalStayMinutes": 460,
+        "totalTravelMinutes": 16,
+        "mealPlan": {
+          "status": "SATISFIED",
+          "reason": "점심 시간대에 식사 장소를 포함했습니다."
+        },
+        "score": 86,
+        "scoreBreakdown": {
+          "placeScore": 42.75,
+          "mealFit": 25,
+          "travelEfficiency": -5.6,
+          "waitEfficiency": 0,
+          "durationFit": 11.9,
+          "categoryDiversity": 8,
+          "costFit": 0,
+          "unknownHours": 0,
+          "flow": 8,
+          "total": 85.76
+        },
+        "reasons": [
+          "16분 이동으로 동선 부담이 낮습니다.",
+          "식사 시간대 장소를 포함합니다."
+        ]
+      },
+      {
+        "id": "course-3-3rstl7",
+        "title": "이동 부담을 줄인 가까운 코스",
+        "courseType": {
+          "key": "BALANCED",
+          "label": "균형형 코스",
+          "description": "mock 큐레이터가 부여한 유형입니다."
+        },
+        "places": [
+          {
+            "id": "gukbap",
+            "name": "홍대 순대국밥",
+            "phoneNumber": null,
+            "tags": [
+              "국밥",
+              "혼밥",
+              "빠른회전"
+            ],
+            "contentSummary": "24시간 가까이 운영하는 홍대 대표 순대국밥집입니다.",
+            "mainCategory": "식당",
+            "subCategory": "한식",
+            "operationInfo": {
+              "timezone": "Asia/Seoul",
+              "schedules": {
+                "MONDAY": {
+                  "status": "OPEN",
+                  "open": "09:00",
+                  "close": "22:00",
+                  "breakTimes": [
+                    {
+                      "start": "15:00",
+                      "end": "17:00"
+                    }
+                  ]
+                },
+                "TUESDAY": {
+                  "status": "OPEN",
+                  "open": "09:00",
+                  "close": "22:00",
+                  "breakTimes": [
+                    {
+                      "start": "15:00",
+                      "end": "17:00"
+                    }
+                  ]
+                },
+                "WEDNESDAY": {
+                  "status": "OPEN",
+                  "open": "09:00",
+                  "close": "22:00",
+                  "breakTimes": [
+                    {
+                      "start": "15:00",
+                      "end": "17:00"
+                    }
+                  ]
+                },
+                "THURSDAY": {
+                  "status": "OPEN",
+                  "open": "09:00",
+                  "close": "22:00",
+                  "breakTimes": [
+                    {
+                      "start": "15:00",
+                      "end": "17:00"
+                    }
+                  ]
+                },
+                "FRIDAY": {
+                  "status": "OPEN",
+                  "open": "09:00",
+                  "close": "22:00",
+                  "breakTimes": [
+                    {
+                      "start": "15:00",
+                      "end": "17:00"
+                    }
+                  ]
+                },
+                "SATURDAY": {
+                  "status": "OPEN",
+                  "open": "09:00",
+                  "close": "22:00",
+                  "breakTimes": [
+                    {
+                      "start": "15:00",
+                      "end": "17:00"
+                    }
+                  ]
+                },
+                "SUNDAY": {
+                  "status": "OPEN",
+                  "open": "09:00",
+                  "close": "22:00",
+                  "breakTimes": [
+                    {
+                      "start": "15:00",
+                      "end": "17:00"
+                    }
+                  ]
+                }
+              }
+            },
+            "availabilityAtRequestedTime": {
+              "status": "OPEN",
+              "requestedDateISO": "2026-08-03",
+              "requestedTime24h": "12:00",
+              "stayDurationMinutes": 60,
+              "reason": "목 데이터 기준 방문 가능합니다."
+            },
+            "referenceUrls": {
+              "kakaoMap": "https://place.map.kakao.com/1000001"
+            },
+            "accessibility": {
+              "score": 80,
+              "distanceMeters": 500,
+              "perOrigin": [
+                {
+                  "originId": "host",
+                  "distanceMeters": 500
+                }
+              ]
+            },
+            "location": {
+              "lat": 37.5558,
+              "lng": 126.9234,
+              "placeName": "홍대 순대국밥",
+              "roadAddressKo": "서울 마포구 어울마당로 62"
+            },
+            "priceRangePerPerson": [
+              9000,
+              13000
+            ],
+            "score": 79,
+            "scoreBreakdown": {
+              "inputMatch": 79,
+              "trust": 79,
+              "accessibility": 80,
+              "diversity": 80,
+              "total": 79
+            },
+            "reasons": [
+              "식당 카테고리 상위 추천 장소입니다."
+            ]
+          },
+          {
+            "id": "rooftop",
+            "name": "루프탑 디저트 카페",
+            "phoneNumber": null,
+            "tags": [
+              "루프탑",
+              "야경",
+              "케이크"
+            ],
+            "contentSummary": "한강과 홍대 야경이 보이는 루프탑 디저트 카페입니다.",
+            "mainCategory": "카페",
+            "subCategory": "디저트",
+            "operationInfo": {
+              "timezone": "Asia/Seoul",
+              "schedules": {
+                "MONDAY": {
+                  "status": "OPEN",
+                  "open": "11:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "TUESDAY": {
+                  "status": "OPEN",
+                  "open": "11:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "WEDNESDAY": {
+                  "status": "OPEN",
+                  "open": "11:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "THURSDAY": {
+                  "status": "OPEN",
+                  "open": "11:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "FRIDAY": {
+                  "status": "OPEN",
+                  "open": "11:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "SATURDAY": {
+                  "status": "OPEN",
+                  "open": "11:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "SUNDAY": {
+                  "status": "OPEN",
+                  "open": "11:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                }
+              }
+            },
+            "availabilityAtRequestedTime": {
+              "status": "OPEN",
+              "requestedDateISO": "2026-08-03",
+              "requestedTime24h": "12:00",
+              "stayDurationMinutes": 60,
+              "reason": "목 데이터 기준 방문 가능합니다."
+            },
+            "referenceUrls": {
+              "kakaoMap": "https://place.map.kakao.com/1000003"
+            },
+            "accessibility": {
+              "score": 80,
+              "distanceMeters": 500,
+              "perOrigin": [
+                {
+                  "originId": "host",
+                  "distanceMeters": 500
+                }
+              ]
+            },
+            "location": {
+              "lat": 37.5571,
+              "lng": 126.9245,
+              "placeName": "루프탑 디저트 카페",
+              "roadAddressKo": "서울 마포구 홍익로 20"
+            },
+            "priceRangePerPerson": [
+              9000,
+              18000
+            ],
+            "score": 90,
+            "scoreBreakdown": {
+              "inputMatch": 90,
+              "trust": 90,
+              "accessibility": 80,
+              "diversity": 80,
+              "total": 90
+            },
+            "reasons": [
+              "카페 카테고리 상위 추천 장소입니다."
+            ]
+          },
+          {
+            "id": "gallery",
+            "name": "미디어아트 전시관",
+            "phoneNumber": null,
+            "tags": [
+              "몰입형전시",
+              "사진촬영",
+              "실내"
+            ],
+            "contentSummary": "대형 스크린으로 구성한 몰입형 미디어아트 상설 전시관입니다.",
+            "mainCategory": "전시",
+            "subCategory": "미디어아트",
+            "operationInfo": {
+              "timezone": "Asia/Seoul",
+              "schedules": {
+                "MONDAY": {
+                  "status": "OPEN",
+                  "open": "12:00",
+                  "close": "20:00",
+                  "breakTimes": []
+                },
+                "TUESDAY": {
+                  "status": "OPEN",
+                  "open": "12:00",
+                  "close": "20:00",
+                  "breakTimes": []
+                },
+                "WEDNESDAY": {
+                  "status": "OPEN",
+                  "open": "12:00",
+                  "close": "20:00",
+                  "breakTimes": []
+                },
+                "THURSDAY": {
+                  "status": "OPEN",
+                  "open": "12:00",
+                  "close": "20:00",
+                  "breakTimes": []
+                },
+                "FRIDAY": {
+                  "status": "OPEN",
+                  "open": "12:00",
+                  "close": "20:00",
+                  "breakTimes": []
+                },
+                "SATURDAY": {
+                  "status": "OPEN",
+                  "open": "12:00",
+                  "close": "20:00",
+                  "breakTimes": []
+                },
+                "SUNDAY": {
+                  "status": "OPEN",
+                  "open": "12:00",
+                  "close": "20:00",
+                  "breakTimes": []
+                }
+              }
+            },
+            "availabilityAtRequestedTime": {
+              "status": "OPEN",
+              "requestedDateISO": "2026-08-03",
+              "requestedTime24h": "12:00",
+              "stayDurationMinutes": 60,
+              "reason": "목 데이터 기준 방문 가능합니다."
+            },
+            "referenceUrls": {
+              "kakaoMap": "https://place.map.kakao.com/1000005"
+            },
+            "accessibility": {
+              "score": 80,
+              "distanceMeters": 500,
+              "perOrigin": [
+                {
+                  "originId": "host",
+                  "distanceMeters": 500
+                }
+              ]
+            },
+            "location": {
+              "lat": 37.5545,
+              "lng": 126.9198,
+              "placeName": "미디어아트 전시관",
+              "roadAddressKo": "서울 마포구 와우산로 94"
+            },
+            "priceRangePerPerson": [
+              15000,
+              20000
+            ],
+            "score": 92,
+            "scoreBreakdown": {
+              "inputMatch": 92,
+              "trust": 92,
+              "accessibility": 80,
+              "diversity": 80,
+              "total": 92
+            },
+            "reasons": [
+              "전시 카테고리 상위 추천 장소입니다."
+            ]
+          }
+        ],
+        "summary": {
+          "estimatedCostPerPerson": [
+            33000,
+            51000
+          ],
+          "estimatedTotalMinutes": 362,
+          "estimatedTravelMinutes": 12,
+          "totalStayMinutes": 350,
+          "stopCount": 3,
+          "categoryCount": 3,
+          "mealIncluded": true
+        },
+        "selection": {
+          "reasonCodes": [
+            "BALANCED"
+          ],
+          "reasonTexts": [
+            "12분 이동으로 동선 부담이 낮습니다.",
+            "식사 시간대 장소를 포함합니다."
+          ],
+          "tradeoffs": []
+        },
+        "timeline": [
+          {
+            "placeId": "gukbap",
+            "placeName": "홍대 순대국밥",
+            "categoryLabel": "식당 · 한식",
+            "time24h": "11:00",
+            "stayDurationMinutes": 110,
+            "travelMinutesFromPrevious": 0,
+            "waitMinutesFromPrevious": 0,
+            "label": "11:00 홍대 순대국밥(110분 체류)"
+          },
+          {
+            "placeId": "rooftop",
+            "placeName": "루프탑 디저트 카페",
+            "categoryLabel": "카페 · 디저트",
+            "time24h": "12:53",
+            "stayDurationMinutes": 100,
+            "travelMinutesFromPrevious": 3,
+            "waitMinutesFromPrevious": 0,
+            "label": "12:53 루프탑 디저트 카페(100분 체류)"
+          },
+          {
+            "placeId": "gallery",
+            "placeName": "미디어아트 전시관",
+            "categoryLabel": "전시 · 미디어아트",
+            "time24h": "14:42",
+            "stayDurationMinutes": 140,
+            "travelMinutesFromPrevious": 9,
+            "waitMinutesFromPrevious": 0,
+            "label": "14:42 미디어아트 전시관(140분 체류)"
+          }
+        ],
+        "startTime24h": "11:00",
+        "endTime24h": "17:02",
+        "totalStayMinutes": 350,
+        "totalTravelMinutes": 12,
+        "mealPlan": {
+          "status": "SATISFIED",
+          "reason": "점심 시간대에 식사 장소를 포함했습니다."
+        },
+        "score": 85,
+        "scoreBreakdown": {
+          "placeScore": 43.5,
+          "mealFit": 25,
+          "travelEfficiency": -4.2,
+          "waitEfficiency": 0,
+          "durationFit": 9.05,
+          "categoryDiversity": 8,
+          "costFit": 0,
+          "unknownHours": 0,
+          "flow": 8,
+          "total": 85.1
+        },
+        "reasons": [
+          "12분 이동으로 동선 부담이 낮습니다.",
+          "식사 시간대 장소를 포함합니다."
+        ]
+      },
+      {
+        "id": "course-3-1tjb9zg",
+        "title": "이동 부담을 줄인 가까운 코스",
+        "courseType": {
+          "key": "BALANCED",
+          "label": "균형형 코스",
+          "description": "mock 큐레이터가 부여한 유형입니다."
+        },
+        "places": [
+          {
+            "id": "gukbap",
+            "name": "홍대 순대국밥",
+            "phoneNumber": null,
+            "tags": [
+              "국밥",
+              "혼밥",
+              "빠른회전"
+            ],
+            "contentSummary": "24시간 가까이 운영하는 홍대 대표 순대국밥집입니다.",
+            "mainCategory": "식당",
+            "subCategory": "한식",
+            "operationInfo": {
+              "timezone": "Asia/Seoul",
+              "schedules": {
+                "MONDAY": {
+                  "status": "OPEN",
+                  "open": "09:00",
+                  "close": "22:00",
+                  "breakTimes": [
+                    {
+                      "start": "15:00",
+                      "end": "17:00"
+                    }
+                  ]
+                },
+                "TUESDAY": {
+                  "status": "OPEN",
+                  "open": "09:00",
+                  "close": "22:00",
+                  "breakTimes": [
+                    {
+                      "start": "15:00",
+                      "end": "17:00"
+                    }
+                  ]
+                },
+                "WEDNESDAY": {
+                  "status": "OPEN",
+                  "open": "09:00",
+                  "close": "22:00",
+                  "breakTimes": [
+                    {
+                      "start": "15:00",
+                      "end": "17:00"
+                    }
+                  ]
+                },
+                "THURSDAY": {
+                  "status": "OPEN",
+                  "open": "09:00",
+                  "close": "22:00",
+                  "breakTimes": [
+                    {
+                      "start": "15:00",
+                      "end": "17:00"
+                    }
+                  ]
+                },
+                "FRIDAY": {
+                  "status": "OPEN",
+                  "open": "09:00",
+                  "close": "22:00",
+                  "breakTimes": [
+                    {
+                      "start": "15:00",
+                      "end": "17:00"
+                    }
+                  ]
+                },
+                "SATURDAY": {
+                  "status": "OPEN",
+                  "open": "09:00",
+                  "close": "22:00",
+                  "breakTimes": [
+                    {
+                      "start": "15:00",
+                      "end": "17:00"
+                    }
+                  ]
+                },
+                "SUNDAY": {
+                  "status": "OPEN",
+                  "open": "09:00",
+                  "close": "22:00",
+                  "breakTimes": [
+                    {
+                      "start": "15:00",
+                      "end": "17:00"
+                    }
+                  ]
+                }
+              }
+            },
+            "availabilityAtRequestedTime": {
+              "status": "OPEN",
+              "requestedDateISO": "2026-08-03",
+              "requestedTime24h": "12:00",
+              "stayDurationMinutes": 60,
+              "reason": "목 데이터 기준 방문 가능합니다."
+            },
+            "referenceUrls": {
+              "kakaoMap": "https://place.map.kakao.com/1000001"
+            },
+            "accessibility": {
+              "score": 80,
+              "distanceMeters": 500,
+              "perOrigin": [
+                {
+                  "originId": "host",
+                  "distanceMeters": 500
+                }
+              ]
+            },
+            "location": {
+              "lat": 37.5558,
+              "lng": 126.9234,
+              "placeName": "홍대 순대국밥",
+              "roadAddressKo": "서울 마포구 어울마당로 62"
+            },
+            "priceRangePerPerson": [
+              9000,
+              13000
+            ],
+            "score": 79,
+            "scoreBreakdown": {
+              "inputMatch": 79,
+              "trust": 79,
+              "accessibility": 80,
+              "diversity": 80,
+              "total": 79
+            },
+            "reasons": [
+              "식당 카테고리 상위 추천 장소입니다."
+            ]
+          },
+          {
+            "id": "rooftop",
+            "name": "루프탑 디저트 카페",
+            "phoneNumber": null,
+            "tags": [
+              "루프탑",
+              "야경",
+              "케이크"
+            ],
+            "contentSummary": "한강과 홍대 야경이 보이는 루프탑 디저트 카페입니다.",
+            "mainCategory": "카페",
+            "subCategory": "디저트",
+            "operationInfo": {
+              "timezone": "Asia/Seoul",
+              "schedules": {
+                "MONDAY": {
+                  "status": "OPEN",
+                  "open": "11:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "TUESDAY": {
+                  "status": "OPEN",
+                  "open": "11:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "WEDNESDAY": {
+                  "status": "OPEN",
+                  "open": "11:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "THURSDAY": {
+                  "status": "OPEN",
+                  "open": "11:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "FRIDAY": {
+                  "status": "OPEN",
+                  "open": "11:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "SATURDAY": {
+                  "status": "OPEN",
+                  "open": "11:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "SUNDAY": {
+                  "status": "OPEN",
+                  "open": "11:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                }
+              }
+            },
+            "availabilityAtRequestedTime": {
+              "status": "OPEN",
+              "requestedDateISO": "2026-08-03",
+              "requestedTime24h": "12:00",
+              "stayDurationMinutes": 60,
+              "reason": "목 데이터 기준 방문 가능합니다."
+            },
+            "referenceUrls": {
+              "kakaoMap": "https://place.map.kakao.com/1000003"
+            },
+            "accessibility": {
+              "score": 80,
+              "distanceMeters": 500,
+              "perOrigin": [
+                {
+                  "originId": "host",
+                  "distanceMeters": 500
+                }
+              ]
+            },
+            "location": {
+              "lat": 37.5571,
+              "lng": 126.9245,
+              "placeName": "루프탑 디저트 카페",
+              "roadAddressKo": "서울 마포구 홍익로 20"
+            },
+            "priceRangePerPerson": [
+              9000,
+              18000
+            ],
+            "score": 90,
+            "scoreBreakdown": {
+              "inputMatch": 90,
+              "trust": 90,
+              "accessibility": 80,
+              "diversity": 80,
+              "total": 90
+            },
+            "reasons": [
+              "카페 카테고리 상위 추천 장소입니다."
+            ]
+          },
+          {
+            "id": "escape",
+            "name": "홍대 방탈출 카페",
+            "phoneNumber": null,
+            "tags": [
+              "방탈출",
+              "실내",
+              "액티비티"
+            ],
+            "contentSummary": "난이도별 테마를 갖춘 홍대 방탈출 카페입니다.",
+            "mainCategory": "체험",
+            "subCategory": "방탈출",
+            "operationInfo": {
+              "timezone": "Asia/Seoul",
+              "schedules": {
+                "MONDAY": {
+                  "status": "OPEN",
+                  "open": "11:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "TUESDAY": {
+                  "status": "OPEN",
+                  "open": "11:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "WEDNESDAY": {
+                  "status": "OPEN",
+                  "open": "11:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "THURSDAY": {
+                  "status": "OPEN",
+                  "open": "11:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "FRIDAY": {
+                  "status": "OPEN",
+                  "open": "11:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "SATURDAY": {
+                  "status": "OPEN",
+                  "open": "11:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                },
+                "SUNDAY": {
+                  "status": "OPEN",
+                  "open": "11:00",
+                  "close": "23:00",
+                  "breakTimes": []
+                }
+              }
+            },
+            "availabilityAtRequestedTime": {
+              "status": "OPEN",
+              "requestedDateISO": "2026-08-03",
+              "requestedTime24h": "12:00",
+              "stayDurationMinutes": 60,
+              "reason": "목 데이터 기준 방문 가능합니다."
+            },
+            "referenceUrls": {
+              "kakaoMap": "https://place.map.kakao.com/1000011"
+            },
+            "accessibility": {
+              "score": 80,
+              "distanceMeters": 500,
+              "perOrigin": [
+                {
+                  "originId": "host",
+                  "distanceMeters": 500
+                }
+              ]
+            },
+            "location": {
+              "lat": 37.5552,
+              "lng": 126.9256,
+              "placeName": "홍대 방탈출 카페",
+              "roadAddressKo": "서울 마포구 홍익로 6길 20"
+            },
+            "priceRangePerPerson": [
+              25000,
+              30000
+            ],
+            "score": 81,
+            "scoreBreakdown": {
+              "inputMatch": 81,
+              "trust": 81,
+              "accessibility": 80,
+              "diversity": 80,
+              "total": 81
+            },
+            "reasons": [
+              "체험 카테고리 상위 추천 장소입니다."
+            ]
+          }
+        ],
+        "summary": {
+          "estimatedCostPerPerson": [
+            43000,
+            61000
+          ],
+          "estimatedTotalMinutes": 357,
+          "estimatedTravelMinutes": 7,
+          "totalStayMinutes": 350,
+          "stopCount": 3,
+          "categoryCount": 3,
+          "mealIncluded": true
+        },
+        "selection": {
+          "reasonCodes": [
+            "BALANCED"
+          ],
+          "reasonTexts": [
+            "7분 이동으로 동선 부담이 낮습니다.",
+            "식사 시간대 장소를 포함합니다."
+          ],
+          "tradeoffs": []
+        },
+        "timeline": [
+          {
+            "placeId": "gukbap",
+            "placeName": "홍대 순대국밥",
+            "categoryLabel": "식당 · 한식",
+            "time24h": "11:00",
+            "stayDurationMinutes": 110,
+            "travelMinutesFromPrevious": 0,
+            "waitMinutesFromPrevious": 0,
+            "label": "11:00 홍대 순대국밥(110분 체류)"
+          },
+          {
+            "placeId": "rooftop",
+            "placeName": "루프탑 디저트 카페",
+            "categoryLabel": "카페 · 디저트",
+            "time24h": "12:53",
+            "stayDurationMinutes": 100,
+            "travelMinutesFromPrevious": 3,
+            "waitMinutesFromPrevious": 0,
+            "label": "12:53 루프탑 디저트 카페(100분 체류)"
+          },
+          {
+            "placeId": "escape",
+            "placeName": "홍대 방탈출 카페",
+            "categoryLabel": "체험 · 방탈출",
+            "time24h": "14:37",
+            "stayDurationMinutes": 140,
+            "travelMinutesFromPrevious": 4,
+            "waitMinutesFromPrevious": 0,
+            "label": "14:37 홍대 방탈출 카페(140분 체류)"
+          }
+        ],
+        "startTime24h": "11:00",
+        "endTime24h": "16:57",
+        "totalStayMinutes": 350,
+        "totalTravelMinutes": 7,
+        "mealPlan": {
+          "status": "SATISFIED",
+          "reason": "점심 시간대에 식사 장소를 포함했습니다."
+        },
+        "score": 85,
+        "scoreBreakdown": {
+          "placeScore": 41.67,
+          "mealFit": 25,
+          "travelEfficiency": -2.45,
+          "waitEfficiency": 0,
+          "durationFit": 8.93,
+          "categoryDiversity": 8,
+          "costFit": 0,
+          "unknownHours": 0,
+          "flow": 8,
+          "total": 84.9
+        },
+        "reasons": [
+          "7분 이동으로 동선 부담이 낮습니다.",
+          "식사 시간대 장소를 포함합니다."
+        ]
+      }
+    ]
+  },
+  "meta": {
+    "candidateCount": 987,
+    "curationPoolSize": 30,
+    "curatedByLlm": true,
+    "curationFallbackReason": null,
+    "measuredTravelPairCount": 0,
+    "estimatedTravelPairCount": 66,
+    "travelCalibration": null,
+    "travelMatrixFallbackReason": "No travel matrix client configured",
+    "llmRefinedStayPlaceCount": 0,
+    "stayEstimateFallbackReason": null,
+    "generationMillis": 83
+  }
+}
