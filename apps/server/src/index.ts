@@ -14,10 +14,16 @@ import coursesRouter from "./routes/courses.js";
 
 const { config, secrets } = parseServerEnvironment(process.env);
 
+const ALLOWED_ORIGINS = [
+  "http://localhost:5173",
+  "https://sai42.app",
+  "https://www.sai42.app",
+];
+
 const app = express();
 app.use(
   cors({
-    origin: "http://localhost:5173",
+    origin: ALLOWED_ORIGINS,
     credentials: true,
   }),
 );
