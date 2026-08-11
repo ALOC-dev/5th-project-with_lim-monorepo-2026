@@ -11,7 +11,9 @@ export type ReferenceQueryVariant = {
     | "alias_road_address"
     | "alias_address"
     | "name_only"
-    | "alias_only";
+    | "alias_only"
+    // enrichment 단계에서 이미 긁어둔 URL을 그대로 재검증한 경우.
+    | "reused_enrichment_scrape";
 };
 
 export type ReferenceIdentityScore = {

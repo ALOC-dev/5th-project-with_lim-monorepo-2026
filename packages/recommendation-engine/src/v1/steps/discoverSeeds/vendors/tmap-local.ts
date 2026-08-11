@@ -100,7 +100,12 @@ export const searchTmapLocal = async (
     page: searchParams.page,
     count: searchParams.count,
     totalCount: Number(response.searchPoiInfo.totalCount),
-    isEnd: seeds.length < searchParams.count,
+    // 이번 페이지까지 누적한 결과가 전체 건수에 도달했으면 더 넘길 페이지가 없다.
+    // `seeds.length < count`만 보면 마지막 페이지가 정확히 count개일 때 빈 페이지를
+    // 한 번 더 조회한다.
+    isEnd:
+      seeds.length < searchParams.count ||
+      searchParams.page * searchParams.count >= Number(response.searchPoiInfo.totalCount),
     seeds,
   });
 };

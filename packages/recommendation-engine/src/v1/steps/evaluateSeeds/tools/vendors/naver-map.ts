@@ -76,19 +76,81 @@ export const scrapeNaverMapCandidate = async (
   };
 };
 
+/**
+ * 스크랩을 시도할 검색어 변형 수의 상한.
+ *
+ * `buildReferenceQueryVariants`는 이름 별칭 5개 × 쿼리 형태 3종 = 최대 15개를 만든다.
+ * 예전에는 그걸 전부 순차로 돌면서 매번 Playwright 스크랩을 했다. 스크랩 1회가 약
+ * 10초라 이름이 안 맞는 후보 하나에 최대 150초를 태웠고, 실측에서 이 단계 하나가
+ * 전체 실행 시간의 59%(408초 중 240초)를 차지했다.
+ *
+ * 실측된 성공 사례는 전부 앞쪽 변형에서 맞았다(name_road_address / name_address /
+ * name_only / alias_address). 뒤쪽 변형은 비용만 쓰고 거의 성공하지 못한다.
+ */
+const MAX_REFERENCE_QUERY_ATTEMPTS = 6;
+
+/**
+ * 이 횟수만큼 연속으로 "장소 상세 텍스트조차 없는" 결과가 나오면 포기한다.
+ * 네이버 지도에 그 이름으로 아예 없는 장소인 경우 나머지 변형도 다 헛수고다.
+ */
+const MAX_CONSECUTIVE_EMPTY_RESULTS = 2;
+
 export const resolveNaverMapReferenceUrl = async (
   evidence: CandidateScoringEvidence,
   options: ScrapeNaverMapCandidateOptions,
 ): Promise<ReferenceUrlMatch | undefined> => {
-  for (const query of buildReferenceQueryVariants(evidence)) {
+  // 1) 에이전트 루프가 이미 긁어둔 네이버 지도 URL을 먼저 검증한다.
+  //    캐시에 있으므로 사실상 공짜이고, 예전에는 이걸 재사용하지 않아 같은 장소를
+  //    두 번 긁었다(에이전트 10회 101초 + 여기서 다시 240초).
+  const reused = await resolveFromAlreadyScrapedUrls(evidence, options);
+  if (reused) return reused;
+
+  // 2) 그래도 못 찾으면 검색어 변형을 제한된 횟수만 시도한다.
+  let emptyStreak = 0;
+  for (const query of buildReferenceQueryVariants(evidence).slice(
+    0,
+    MAX_REFERENCE_QUERY_ATTEMPTS,
+  )) {
     const searchUrl = `${NAVER_MAP_SEARCH_BASE_URL}/${encodeURIComponent(query.query)}`;
     const { snapshot } = await getOrScrapeNaverMapUrl(searchUrl, evidence, options);
+    const searchableText = chooseCandidateText(snapshot.frameTexts, evidence);
+    const hasDetail = hasUsefulDetailText(searchableText, evidence);
+    const identity = scoreNaverMapTextIdentity(searchableText, evidence);
+
+    if (hasDetail && identity.accepted) {
+      return { url: searchUrl, query, identity };
+    }
+
+    emptyStreak = hasDetail ? 0 : emptyStreak + 1;
+    if (emptyStreak >= MAX_CONSECUTIVE_EMPTY_RESULTS) break;
+  }
+  return undefined;
+};
+
+/**
+ * enrichment 단계에서 이미 얻은 네이버 지도 검색 URL을 참조 URL 후보로 재검증한다.
+ *
+ * 그 단계의 판정은 `UNKNOWN`으로 끝나는 경우가 많은데(영업시간을 못 읽어서), 그건
+ * "이 장소가 존재하지 않는다"가 아니라 "영업시간을 모른다"는 뜻이다. 장소 동일성은
+ * 여기서 같은 스코어러로 다시 확인하므로 재사용해도 안전하다.
+ */
+const resolveFromAlreadyScrapedUrls = async (
+  evidence: CandidateScoringEvidence,
+  options: ScrapeNaverMapCandidateOptions,
+): Promise<ReferenceUrlMatch | undefined> => {
+  const scrapedUrls = (evidence.enrichment?.sourceDetails ?? [])
+    .filter((detail) => detail.source === "naver-map")
+    .flatMap((detail) => detail.sourceUrls)
+    .filter((url) => url.startsWith(NAVER_MAP_SEARCH_BASE_URL));
+
+  for (const url of new Set(scrapedUrls)) {
+    const { snapshot } = await getOrScrapeNaverMapUrl(url, evidence, options);
     const searchableText = chooseCandidateText(snapshot.frameTexts, evidence);
     const identity = scoreNaverMapTextIdentity(searchableText, evidence);
     if (hasUsefulDetailText(searchableText, evidence) && identity.accepted) {
       return {
-        url: searchUrl,
-        query,
+        url,
+        query: { query: url, kind: "reused_enrichment_scrape", nameAlias: evidence.name },
         identity,
       };
     }

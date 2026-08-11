@@ -1,6 +1,7 @@
 import type { UserInput } from "../../../interfaces/input.contracts.js";
 import type { OperationInfo } from "../../../interfaces/output.contracts.js";
 import type { Logger } from "../../../observability/logger.js";
+import type { PlaywrightBrowser } from "../tools/types.js";
 import type { CandidateScoringEvidence } from "./evidence.js";
 import type { UrlScrapeCache } from "./scrape-cache.js";
 
@@ -123,6 +124,11 @@ export type AgenticWebEnrichmentOptions = {
   timeoutMs?: number;
   fetchCache?: UrlScrapeCache;
   headless?: boolean;
+  /**
+   * 공유 브라우저 공급자. 주면 클라이언트가 브라우저를 직접 띄우거나 닫지 않는다.
+   * 배치마다 Chromium을 새로 기동하면 1~3초씩 그냥 버려지므로 실행 1건당 하나만 쓴다.
+   */
+  getBrowser?: () => Promise<PlaywrightBrowser>;
   scrapeTimeoutMs?: number;
   scrapeSettleMs?: number;
   kakaoScrapeCache?: UrlScrapeCache;

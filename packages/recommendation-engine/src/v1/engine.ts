@@ -185,6 +185,39 @@ export class RecommendationEngine {
     this.userInput = input;
   }
 
+  /**
+   * 검색어를 소진했을 때 실패 사유를 근거로 새 검색어를 만든다.
+   * 실패해도 재시도 자체를 막지는 않도록 빈 배열을 돌려준다.
+   */
+  private async regenerateQueries(
+    previousQueries: SearchQuery[],
+    previousFailureReason: string,
+    logger: Logger,
+  ): Promise<SearchQuery[]> {
+    try {
+      const regenerated = await createDiscoveryContextWithLlm(this.userInput, {
+        openAiApiKey: this.secrets.openAiApiKey,
+        targetSeedCount: this.config.targetCount * this.config.candidatePoolMultiplier,
+        retry: {
+          previousQueries: previousQueries.map((query) => query.query),
+          previousFailureReason,
+        },
+      });
+      const hydrated = hydrateQueriesWithLocation(regenerated, this.userInput);
+      logger.info("engine.discovery_context.regenerated", {
+        previousFailureReason,
+        queries: hydrated.map((query) => query.query),
+      });
+      return hydrated;
+    } catch (error) {
+      logger.warn("engine.discovery_context.regenerate_failed", {
+        previousFailureReason,
+        errorName: error instanceof Error ? error.name : "UnknownError",
+      });
+      return [];
+    }
+  }
+
   async process(): Promise<EngineOutput> {
     // 요청 단위 retry 상태만 지역 변수로 유지한다.
     // 엔진 인스턴스에 실행 결과를 저장하지 않아 같은 인스턴스 재호출도 독립적으로 동작한다.
@@ -339,7 +372,16 @@ export class RecommendationEngine {
 
       if ("needsMoreSeeds" in evaluateSeedsResult) {
         const { excludeSeedKeys, reason } = evaluateSeedsResult.needsMoreSeeds;
-        if (discoverSeedsOutput.nextQueries.length === 0) {
+
+        // 페이지를 더 넘길 수 없으면 예전에는 여기서 바로 실패했다. 하지만 "이 검색어의
+        // 결과를 다 봤다"는 건 "다른 검색어도 소용없다"는 뜻이 아니다. 실패 사유를
+        // 알려주고 새 검색어를 만들어 한 번 더 시도한다.
+        const nextQueries =
+          discoverSeedsOutput.nextQueries.length > 0
+            ? discoverSeedsOutput.nextQueries
+            : await this.regenerateQueries(discoveryState.queries, reason, attemptLogger);
+
+        if (nextQueries.length === 0) {
           attemptLogger.warn("engine.attempt.failure", {
             failedStep: "discoverSeeds",
             errorCode: "DISCOVER_SEEDS_EXHAUSTED",
@@ -370,7 +412,7 @@ export class RecommendationEngine {
               ...excludeSeedKeys,
             ]),
           ),
-          queries: discoverSeedsOutput.nextQueries,
+          queries: nextQueries,
           previousFailureReason: reason,
         };
         attemptLogger.warn("engine.attempt.needs_more_seeds", {

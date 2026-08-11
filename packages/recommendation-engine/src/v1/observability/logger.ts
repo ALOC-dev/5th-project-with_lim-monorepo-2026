@@ -1,3 +1,6 @@
+import { promises as fs } from "node:fs";
+import path from "node:path";
+
 // Recommendation engine 전용 로깅 인프라.
 //
 // 설계 원칙:
@@ -103,6 +106,39 @@ export const consoleSink: LogSink = (event) => {
   if (event.level === "error") console.error(line);
   else if (event.level === "warn") console.warn(line);
   else console.log(line);
+};
+
+// 여러 sink로 같은 이벤트를 흘려보낸다. 하나가 실패해도 나머지는 계속 받는다.
+export const combineSinks =
+  (...sinks: LogSink[]): LogSink =>
+  (event) => {
+    for (const sink of sinks) {
+      try {
+        sink(event);
+      } catch {
+        // 관측이 추천 동작을 바꿔서는 안 된다.
+      }
+    }
+  };
+
+/**
+ * 이벤트를 JSONL(한 줄에 JSON 하나)로 파일에 덧붙인다.
+ *
+ * 배열 JSON이 아니라 JSONL인 이유: 서버는 오래 실행되고 추천 한 건에 수백 개
+ * 이벤트가 나온다. 줄 단위로 append하면 메모리에 쌓아두지 않아도 되고 프로세스가
+ * 죽어도 그때까지의 로그가 남는다.
+ *
+ * 쓰기는 순서를 지키되 이벤트 루프를 막지 않도록 프라미스 체인으로 직렬화한다.
+ * 쓰기 실패는 삼킨다. 로깅이 추천을 실패시키면 안 된다.
+ */
+export const createJsonlFileSink = (filePath: string): LogSink => {
+  let queue: Promise<unknown> = fs.mkdir(path.dirname(filePath), { recursive: true });
+
+  return (event) => {
+    queue = queue
+      .then(() => fs.appendFile(filePath, `${JSON.stringify(event)}\n`, "utf8"))
+      .catch(() => undefined);
+  };
 };
 
 export const createLogger = (sink: LogSink = noopSink): Logger => buildLogger(sink);

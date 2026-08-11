@@ -13,6 +13,8 @@ export type { LlmScoringClient, LlmScoringRequest } from "./scoring.types.js";
 
 const SCORING_MODEL_ID = RECOMMENDATION_LLM_MODEL_ID;
 const LIVE_SCORING_MAX_CONCURRENCY = 4;
+/** 한 번의 LLM 호출에 함께 넘길 후보 수. diversity 판단과 호출 수 절감을 함께 노린다. */
+const SCORING_CHUNK_SIZE = 8;
 
 const SCORING_SYSTEM_PROMPT = `너는 지역 추천 엔진의 후보 평가기다.
 주어진 후보 evidence를 보고 각 후보별 점수를 0~100 정수/실수로 평가한다.
@@ -61,44 +63,96 @@ export const createOpenAiLlmScoringClient =
 
 const openAiLlmScoringClient = createOpenAiLlmScoringClient();
 
-export const scoreCandidatesWithLlm: LlmScoringClient = async ({ evidences, openAiApiKey }) => {
-  if (evidences.length <= 1) {
-    return openAiLlmScoringClient({ evidences, openAiApiKey });
-  }
+/**
+ * 후보를 청크로 묶어 평가한다.
+ *
+ * 후보를 1개씩 따로 넘기면 프롬프트가 요구하는 `diversity`("후보 목록 안에서 중복
+ * 카테고리를 피하는 정도")를 LLM이 원리적으로 판단할 수 없다. 다른 후보를 볼 수
+ * 없기 때문이다. 그런데도 diversity는 최종 점수의 1/4을 차지한다. 묶어서 넘기면
+ * 실제로 측정 가능해지고 호출 수도 크게 줄어든다.
+ *
+ * 또 예전에는 후보 하나의 응답이 어긋나면 예외가 그대로 올라가 `evaluateSeeds`
+ * 전체 실패가 됐다. 10개 중 9개가 정상이어도 결과가 0개였다. 이제 청크 실패는
+ * 후보 단위 재시도로 낮추고, 그래도 안 되면 그 후보만 버린다.
+ */
+export const createScoringPipeline =
+  (client: LlmScoringClient, chunkSize = SCORING_CHUNK_SIZE): LlmScoringClient =>
+  async ({ evidences, openAiApiKey }) => {
+    if (evidences.length === 0) return [];
 
-  const evaluations = await mapWithConcurrency(
-    evidences,
-    LIVE_SCORING_MAX_CONCURRENCY,
-    async (evidence) => openAiLlmScoringClient({ evidences: [evidence], openAiApiKey }),
-  );
-  return evaluations.flat();
+    const scoredChunks = await mapWithConcurrency(
+      toChunks(evidences, chunkSize),
+      LIVE_SCORING_MAX_CONCURRENCY,
+      async (chunk) => {
+        try {
+          return await client({ evidences: chunk, openAiApiKey });
+        } catch {
+          // 청크가 통째로 실패하면 후보 단위로 낮춰 재시도한다. 한 후보의 이상한
+          // 응답 때문에 같은 청크의 나머지까지 잃지 않게 한다.
+          const perCandidate = await mapWithConcurrency(
+            chunk,
+            LIVE_SCORING_MAX_CONCURRENCY,
+            async (evidence) => {
+              try {
+                return await client({ evidences: [evidence], openAiApiKey });
+              } catch {
+                return [];
+              }
+            },
+          );
+          return perCandidate.flat();
+        }
+      },
+    );
+
+    const evaluations = scoredChunks.flat();
+    if (evaluations.length === 0) {
+      throw new Error("LLM scoring produced no usable evaluation for any candidate");
+    }
+    return evaluations;
+  };
+
+export const scoreCandidatesWithLlm: LlmScoringClient = createScoringPipeline(
+  openAiLlmScoringClient,
+);
+
+const toChunks = <TItem>(items: TItem[], size: number): TItem[][] => {
+  const chunks: TItem[][] = [];
+  for (let index = 0; index < items.length; index += size) {
+    chunks.push(items.slice(index, index + size));
+  }
+  return chunks;
 };
 
+/**
+ * 응답에서 쓸 수 있는 평가만 남긴다.
+ *
+ * 예상 밖 candidateId와 중복은 조용히 버리고, 누락된 후보는 랭킹 단계에서 자연스럽게
+ * 제외되므로 예외를 던지지 않는다. 하나도 못 건졌을 때만 호출자가 재시도할 수 있게
+ * 예외를 던진다.
+ */
 const validateEvaluationCoverage = (
   response: LlmCandidateEvaluationsResponse,
   evidences: CandidateScoringEvidence[],
 ): LlmCandidateEvaluation[] => {
   const expectedCandidateIds = new Set(evidences.map((evidence) => evidence.candidateId));
   const seenCandidateIds = new Set<string>();
+  const usable: LlmCandidateEvaluation[] = [];
 
   for (const evaluation of response.evaluations) {
-    if (!expectedCandidateIds.has(evaluation.candidateId)) {
-      throw new Error(`unexpected candidateId: ${evaluation.candidateId}`);
-    }
-    if (seenCandidateIds.has(evaluation.candidateId)) {
-      throw new Error(`duplicate candidateId: ${evaluation.candidateId}`);
-    }
+    if (!expectedCandidateIds.has(evaluation.candidateId)) continue;
+    if (seenCandidateIds.has(evaluation.candidateId)) continue;
     seenCandidateIds.add(evaluation.candidateId);
+    usable.push(evaluation);
   }
 
-  const missingCandidateIds = [...expectedCandidateIds].filter(
-    (candidateId) => !seenCandidateIds.has(candidateId),
-  );
-  if (missingCandidateIds.length > 0) {
-    throw new Error(`missing candidate evaluations: ${missingCandidateIds.join(", ")}`);
+  if (usable.length === 0) {
+    throw new Error(
+      `LLM returned no evaluation matching the requested candidates (requested ${evidences.length})`,
+    );
   }
 
-  return response.evaluations;
+  return usable;
 };
 
 const mapWithConcurrency = async <TItem, TResult>(

@@ -121,6 +121,7 @@ export const createAgenticWebEnrichmentClient = ({
   kakaoScrapeCache,
   kakaoScrapePlaceDetails = true,
   naverMapScrapeCache,
+  getBrowser: sharedGetBrowser,
   onToolEvent,
   logger,
 }: AgenticWebEnrichmentOptions = {}): CandidateEnrichmentClient => {
@@ -138,16 +139,20 @@ export const createAgenticWebEnrichmentClient = ({
       );
     }
 
-    let browserPromise: Promise<PlaywrightBrowser> | undefined;
-    const getBrowser = (): Promise<PlaywrightBrowser> => {
-      browserPromise ??= Promise.resolve().then(() =>
-        loadPlaywright().chromium.launch({
-          headless,
-          args: ["--disable-dev-shm-usage", "--no-sandbox"],
-        }),
-      );
-      return browserPromise;
-    };
+    // 공유 브라우저를 받으면 여기서 띄우지도 닫지도 않는다. 예전에는 배치마다
+    // Chromium을 새로 기동해 1~3초씩 그냥 버렸다.
+    let ownedBrowserPromise: Promise<PlaywrightBrowser> | undefined;
+    const getBrowser =
+      sharedGetBrowser ??
+      ((): Promise<PlaywrightBrowser> => {
+        ownedBrowserPromise ??= Promise.resolve().then(() =>
+          loadPlaywright().chromium.launch({
+            headless,
+            args: ["--disable-dev-shm-usage", "--no-sandbox"],
+          }),
+        );
+        return ownedBrowserPromise;
+      });
 
     try {
       return await mapWithConcurrency(
@@ -191,8 +196,9 @@ export const createAgenticWebEnrichmentClient = ({
         },
       );
     } finally {
-      const browser = await browserPromise;
-      await browser?.close();
+      // 직접 띄운 경우에만 닫는다. 공유 브라우저의 생명주기는 호출자가 관리한다.
+      const ownedBrowser = await ownedBrowserPromise;
+      await ownedBrowser?.close();
     }
   };
 };

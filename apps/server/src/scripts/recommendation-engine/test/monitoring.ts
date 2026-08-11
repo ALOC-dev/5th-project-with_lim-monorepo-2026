@@ -1,4 +1,10 @@
-import { createLogger, type LogEvent, type Logger } from "@monorepo/recommendation-engine";
+import {
+  createJsonlFileSink,
+  createLogger,
+  type LogEvent,
+  type Logger,
+  type LogSink,
+} from "@monorepo/recommendation-engine";
 
 type CandidateTrace = {
   attemptNo?: number;
@@ -35,17 +41,42 @@ type TraceEvent = LogEvent & {
   checkName?: string;
 };
 
+/**
+ * 터미널에 항상 보여줄 이벤트.
+ *
+ * 예전에는 모든 이벤트를 stderr로 쏟아내서 실제 진행 상황이 파묻혔다. 전체 이벤트는
+ * 파일로 흘려보내고 터미널에는 단계 경계와 문제만 남긴다. `--verbose`로 되돌릴 수 있다.
+ */
+const isProgressEvent = (event: LogEvent): boolean =>
+  event.level === "warn" ||
+  event.level === "error" ||
+  event.phase.endsWith(".success") ||
+  event.phase.endsWith(".start");
+
 class TestMonitor {
   private checkName: string | undefined;
   private readonly events: TraceEvent[] = [];
+  private fileSink: LogSink | undefined;
+  private verbose = false;
 
   readonly logger: Logger = createLogger((event) => {
     this.events.push({
       ...event,
       ...(this.checkName ? { checkName: this.checkName } : {}),
     });
-    console.error(JSON.stringify(toLiveTraceLine(event)));
+    // 파일에는 항상 전체 이벤트를 남긴다. 발생 즉시 append하므로 중간에 끊기거나
+    // 크래시해도 그때까지의 기록이 보존된다.
+    this.fileSink?.(event);
+    if (this.verbose || isProgressEvent(event)) {
+      console.error(JSON.stringify(toLiveTraceLine(event)));
+    }
   });
+
+  /** 실행마다 이벤트 스트림 파일과 터미널 상세도를 설정한다. */
+  configure({ eventsFile, verbose }: { eventsFile?: string; verbose?: boolean }): void {
+    this.fileSink = eventsFile ? createJsonlFileSink(eventsFile) : undefined;
+    this.verbose = verbose ?? false;
+  }
 
   startCheck(checkName: string): void {
     this.checkName = checkName;
