@@ -52,7 +52,7 @@ export const CourseRecommendationHistoryPage = () => {
   });
 
   return (
-    <CoursePage onBack={() => navigate(-1)} title="코스 추천 기록">
+    <CoursePage onBack={() => navigate("/activity")} title="코스 추천 기록">
       <S.HistoryContent>
         {histories.isPending ? (
           <FeedbackState kind="loading" title="추천 기록을 불러오는 중이에요" />

@@ -98,7 +98,7 @@ export default function PlaceRecommendationHistoryContent() {
   return (
     <>
       <S.Container>
-        <Header title="장소 추천 기록" onBack={() => navigate(-1)} />
+        <Header title="장소 추천 기록" onBack={() => navigate("/activity")} />
 
         <S.Main>
           {isLoading ? (

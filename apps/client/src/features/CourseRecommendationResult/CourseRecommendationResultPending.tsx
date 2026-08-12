@@ -75,7 +75,7 @@ export const CourseRecommendationResultPending = ({
     <RecommendationProgress
       description={COURSE_PROGRESS_LABELS[progressStep]}
       headerTitle="코스 추천 중"
-      onBack={() => void navigate("/course/recommendation/form")}
+      onBack={() => void navigate("/")}
       steps={toCourseProgressSteps(progressStep)}
       title="코스 추천을 만드는 중이에요"
     />
