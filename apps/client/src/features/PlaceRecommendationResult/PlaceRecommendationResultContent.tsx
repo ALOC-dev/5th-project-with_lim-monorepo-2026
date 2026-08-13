@@ -14,6 +14,7 @@ import {
   usePlaceRecommendationResultDataContext,
 } from "./state/PlaceRecommendationResult.data.context";
 import { PlaceRecommendationResultDataProvider } from "./state/PlaceRecommendationResult.data.provider";
+import { PlaceRecommendationResultBookmarksProvider } from "./state/PlaceRecommendationResult.bookmarks.provider";
 import { PlaceRecommendationResultUiProvider } from "./state/PlaceRecommendationResult.ui.provider";
 
 const PlaceRecommendationResultFeedbackShell = ({
@@ -85,10 +86,14 @@ const PlaceRecommendationResultSuccessView = ({
 }: {
   readonly result: PlaceRecommendationResultSuccess;
 }) => {
+  const { recommendationId } = useParams();
+
   return (
-    <PlaceRecommendationResultUiProvider result={result}>
-      <PlaceRecommendationResultResolvedView />
-    </PlaceRecommendationResultUiProvider>
+    <PlaceRecommendationResultBookmarksProvider historyId={recommendationId}>
+      <PlaceRecommendationResultUiProvider result={result}>
+        <PlaceRecommendationResultResolvedView />
+      </PlaceRecommendationResultUiProvider>
+    </PlaceRecommendationResultBookmarksProvider>
   );
 };
 

@@ -84,6 +84,7 @@ const toPlaceRecommendationResultPlaces = (
       phoneNumber: recommendation.phoneNumber,
       priceRangeLabel,
       rank: index + 1,
+      recommendation,
       referenceUrls: recommendation.referenceUrls,
       roadAddressKo: recommendation.location.roadAddressKo,
       score: recommendation.score,

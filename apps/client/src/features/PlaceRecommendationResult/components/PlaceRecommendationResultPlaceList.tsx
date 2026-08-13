@@ -1,11 +1,20 @@
 import type { KeyboardEvent } from "react";
 import { useParams } from "react-router-dom";
 
+import { Icon } from "../../../components/Icon/Icon";
+import { usePlaceRecommendationResultBookmarksContext } from "../state/PlaceRecommendationResult.bookmarks.context";
 import { usePlaceRecommendationResultUiContext } from "../state/PlaceRecommendationResult.ui.context";
 import { S } from "./PlaceRecommendationResultPlaceList.styled";
 
 const PlaceRecommendationResultPlaceList = () => {
   const { recommendationId } = useParams();
+  const {
+    errorMessage,
+    isBookmarkActionDisabled,
+    isSaved,
+    retry,
+    toggleBookmark,
+  } = usePlaceRecommendationResultBookmarksContext();
   const { places, selectPlace, selectedPlace, selectedPlaceId } =
     usePlaceRecommendationResultUiContext();
 
@@ -19,8 +28,17 @@ const PlaceRecommendationResultPlaceList = () => {
             : "장소를 선택하면 지도에서 확인할 수 있어요"}
         </S.SelectionStatus>
       </S.ResultSummary>
+      {errorMessage ? (
+        <S.BookmarkFeedback role="alert">
+          <span>{errorMessage}</span>
+          <S.BookmarkRetry type="button" onClick={retry}>
+            다시 시도
+          </S.BookmarkRetry>
+        </S.BookmarkFeedback>
+      ) : null}
       {places.map((place) => {
         const isSelected = selectedPlaceId === place.id;
+        const isPlaceSaved = isSaved(place.id);
         const detailPath = `/place/recommendation/${recommendationId ?? ""}/place/${place.id}`;
 
         return (
@@ -45,7 +63,24 @@ const PlaceRecommendationResultPlaceList = () => {
                 <S.PlaceName>{place.name}</S.PlaceName>
                 <S.Category>{place.categoryLabel}</S.Category>
               </S.TitleBlock>
-              <S.ScoreBadge>{place.score}점</S.ScoreBadge>
+              <S.Actions>
+                <S.ScoreBadge>{place.score}점</S.ScoreBadge>
+                <S.BookmarkButton
+                  aria-busy={isBookmarkActionDisabled}
+                  aria-label={`${place.name} ${isPlaceSaved ? "찜 해제" : "찜하기"}`}
+                  aria-pressed={isPlaceSaved}
+                  disabled={isBookmarkActionDisabled}
+                  type="button"
+                  $isSaved={isPlaceSaved}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    toggleBookmark(place.recommendation);
+                  }}
+                  onKeyDown={(event) => event.stopPropagation()}
+                >
+                  <Icon name={isPlaceSaved ? "heart-filled" : "heart-outline"} size={24} />
+                </S.BookmarkButton>
+              </S.Actions>
             </S.CardHeader>
             <S.Description>{place.description}</S.Description>
             <S.SubInfo>{place.subInfo}</S.SubInfo>

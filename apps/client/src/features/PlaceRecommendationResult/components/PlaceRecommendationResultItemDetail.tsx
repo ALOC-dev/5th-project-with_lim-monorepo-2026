@@ -2,12 +2,21 @@ import { useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import Header from "../../../components/Header/Header";
+import { Icon } from "../../../components/Icon/Icon";
+import { usePlaceRecommendationResultBookmarksContext } from "../state/PlaceRecommendationResult.bookmarks.context";
 import { usePlaceRecommendationResultUiContext } from "../state/PlaceRecommendationResult.ui.context";
 import { S } from "./PlaceRecommendationResultItemDetail.styled";
 
 const PlaceRecommendationResultItemDetail = () => {
   const { placeId, recommendationId } = useParams();
   const navigate = useNavigate();
+  const {
+    errorMessage,
+    isBookmarkActionDisabled,
+    isSaved,
+    retry,
+    toggleBookmark,
+  } = usePlaceRecommendationResultBookmarksContext();
   const { places, selectedPlaceId, selectPlace } = usePlaceRecommendationResultUiContext();
   const place = places.find((candidate) => candidate.id === placeId) ?? null;
   const backPath = `/place/recommendation/${recommendationId ?? ""}`;
@@ -29,12 +38,27 @@ const PlaceRecommendationResultItemDetail = () => {
     );
   }
 
+  const isPlaceSaved = isSaved(place.id);
+
   return (
     <S.Root>
       <Header title="상세 정보" onBack={() => navigate(backPath)} />
       <S.Body>
         <S.TopCard>
-          <S.PlaceName>{place.name}</S.PlaceName>
+          <S.TopCardHeader>
+            <S.PlaceName>{place.name}</S.PlaceName>
+            <S.BookmarkButton
+              aria-busy={isBookmarkActionDisabled}
+              aria-label={`${place.name} ${isPlaceSaved ? "찜 해제" : "찜하기"}`}
+              aria-pressed={isPlaceSaved}
+              disabled={isBookmarkActionDisabled}
+              type="button"
+              $isSaved={isPlaceSaved}
+              onClick={() => toggleBookmark(place.recommendation)}
+            >
+              <Icon name={isPlaceSaved ? "heart-filled" : "heart-outline"} size={24} />
+            </S.BookmarkButton>
+          </S.TopCardHeader>
           <S.Meta>
             {place.categoryLabel} · {place.score}점
           </S.Meta>
@@ -44,6 +68,14 @@ const PlaceRecommendationResultItemDetail = () => {
             ))}
           </S.TagRow>
         </S.TopCard>
+        {errorMessage ? (
+          <S.BookmarkFeedback role="alert">
+            <span>{errorMessage}</span>
+            <S.BookmarkRetry type="button" onClick={retry}>
+              다시 시도
+            </S.BookmarkRetry>
+          </S.BookmarkFeedback>
+        ) : null}
         <S.InfoCard>
           <S.InfoLabel>방문 조건</S.InfoLabel>
           <S.InfoText>{place.subInfo}</S.InfoText>

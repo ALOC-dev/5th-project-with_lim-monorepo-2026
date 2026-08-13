@@ -10,7 +10,7 @@ export const S = {
   `,
   HeaderLayer: styled.div`
     position: relative;
-    z-index: 1;
+    z-index: 1001;
     width: 100%;
     max-width: 390px;
     margin-inline: auto;

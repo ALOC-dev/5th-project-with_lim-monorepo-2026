@@ -7,6 +7,10 @@ import {
   getSavedPlaces,
   type SavedRecommendationPlace,
 } from "../../apis/server/savedPlaces";
+import {
+  removeSavedPlaceFromCache,
+  savedPlacesQueryKey,
+} from "../../features/SavedPlaces/savedPlaces.data";
 import PageRoot from "../../components/PageRoot/PageRoot";
 import { tokens } from "../../design-system/tokens.generated";
 import {
@@ -15,8 +19,6 @@ import {
   type FavoritePlacesContextType,
 } from "./FavoritePlaces.context";
 import FavoritePlacesContent from "./FavoritePlacesForm";
-
-const favoritePlacesQueryKey = ["favoritePlaces"] as const;
 
 const seoulDateFormatter = new Intl.DateTimeFormat("en-US", {
   timeZone: "Asia/Seoul",
@@ -86,7 +88,7 @@ const FavoritePlacesProvider = ({ children }: { readonly children: ReactNode }) 
     isPending: isLoading,
     refetch,
   } = useQuery({
-    queryKey: favoritePlacesQueryKey,
+    queryKey: savedPlacesQueryKey,
     queryFn: requestSavedPlaces,
     retry: false,
   });
@@ -97,8 +99,8 @@ const FavoritePlacesProvider = ({ children }: { readonly children: ReactNode }) 
     },
     onSuccess: (deletedSavedPlaceId) => {
       queryClient.setQueryData<SavedRecommendationPlace[]>(
-        favoritePlacesQueryKey,
-        (currentSavedPlaces) => currentSavedPlaces?.filter(({ id }) => id !== deletedSavedPlaceId),
+        savedPlacesQueryKey,
+        (currentSavedPlaces) => removeSavedPlaceFromCache(currentSavedPlaces, deletedSavedPlaceId),
       );
     },
     onError: () => {

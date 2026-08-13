@@ -8,7 +8,7 @@ import {
   type SavePlaceResponseData,
 } from "@monorepo/api-contracts";
 import { PlaceRecommendationItemSchema } from "@monorepo/recommendation-engine/v1/contracts";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { Router } from "express";
 import { z } from "zod";
 
@@ -63,14 +63,28 @@ router.post(
       return;
     }
 
+    await db.execute(sql`
+      INSERT INTO saved_places (user_id, history_id, place_data)
+      VALUES (
+        ${req.userId},
+        ${parsed.data.historyId ?? null},
+        ${sql.param(placeData.data, savedPlaces.placeData)}::jsonb
+      )
+      ON CONFLICT (user_id, (place_data->>'id'))
+      DO UPDATE SET
+        history_id = EXCLUDED.history_id,
+        place_data = EXCLUDED.place_data
+    `);
+
     const [saved] = await db
-      .insert(savedPlaces)
-      .values({
-        userId: req.userId,
-        historyId: parsed.data.historyId ?? null,
-        placeData: placeData.data,
-      })
-      .returning();
+      .select()
+      .from(savedPlaces)
+      .where(
+        and(
+          eq(savedPlaces.userId, req.userId),
+          sql`${savedPlaces.placeData}->>'id' = ${placeData.data.id}`,
+        ),
+      );
 
     if (!saved) {
       res.status(500).json(createApiError("failed to save place"));
