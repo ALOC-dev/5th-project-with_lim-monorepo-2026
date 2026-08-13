@@ -31,6 +31,51 @@ export const S = {
     margin: 0;
   `,
 
+  LoadingState: styled.section`
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  `,
+
+  LoadingNotice: styled.div`
+    display: flex;
+    min-height: 20px;
+    align-items: center;
+  `,
+
+  LoadingList: styled.ul`
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  `,
+
+  LoadingCard: styled.li`
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    padding: 16px 12px;
+    border: 1px solid ${tokens.color.neutral[200]};
+    border-radius: 12px;
+    background-color: ${tokens.color.neutral[0]};
+  `,
+
+  LoadingCardInfo: styled.div`
+    display: flex;
+    min-width: 0;
+    flex: 1;
+    flex-direction: column;
+    gap: 3px;
+  `,
+
+  LoadingCardActions: styled.div`
+    display: flex;
+    gap: 8px;
+    margin-left: 12px;
+  `,
+
   List: styled.ul`
     display: flex;
     flex-direction: column;

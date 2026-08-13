@@ -3,8 +3,38 @@ import { useNavigate } from "react-router-dom";
 import FeedbackState from "../../components/FeedbackState/FeedbackState";
 import Header from "../../components/Header/Header";
 import { Icon } from "../../components/Icon/Icon";
+import { Skeleton } from "../../components/Skeleton";
 import { useFavoritePlaces } from "./FavoritePlaces.context";
 import { S } from "./FavoritePlaces.styled";
+
+const skeletonCardKeys = ["first", "second", "third"] as const;
+
+const FavoritePlacesSkeleton = () => (
+  <S.SkeletonList aria-busy="true" aria-label="찜한 장소를 불러오는 중이에요" role="status">
+    {skeletonCardKeys.map((key) => (
+      <S.SkeletonCard key={key}>
+        <S.SkeletonDate>
+          <Skeleton height={12} width={68} />
+        </S.SkeletonDate>
+        <S.SkeletonCardBody>
+          <S.SkeletonPlaceInfo>
+            <Skeleton height={20} width="68%" />
+            <Skeleton height={12} width="44%" />
+          </S.SkeletonPlaceInfo>
+          <S.SkeletonControls>
+            <Skeleton borderRadius="50%" height={44} width={44} />
+            <Skeleton borderRadius={14} height={32} width={56} />
+          </S.SkeletonControls>
+        </S.SkeletonCardBody>
+        <S.SkeletonTags>
+          <Skeleton borderRadius={14} height={26} width={58} />
+          <Skeleton borderRadius={14} height={26} width={66} />
+          <Skeleton borderRadius={14} height={26} width={54} />
+        </S.SkeletonTags>
+      </S.SkeletonCard>
+    ))}
+  </S.SkeletonList>
+);
 
 export default function FavoritePlacesContent() {
   const {
@@ -25,7 +55,7 @@ export default function FavoritePlacesContent() {
 
       <S.Main>
         {isLoading ? (
-          <FeedbackState kind="loading" title="찜한 장소를 불러오는 중이에요" />
+          <FavoritePlacesSkeleton />
         ) : isListError ? (
           <FeedbackState
             action={{ label: "다시 시도", onClick: handleRetry }}

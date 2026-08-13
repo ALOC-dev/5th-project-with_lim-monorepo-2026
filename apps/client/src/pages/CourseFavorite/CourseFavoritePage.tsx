@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 
 import FeedbackState from "../../components/FeedbackState/FeedbackState";
 import { Icon } from "../../components/Icon";
+import { Skeleton } from "../../components/Skeleton";
 import { CourseIconButton } from "../../features/CourseRecommendation/components/CourseIconButton";
 import { CoursePage } from "../../features/CourseRecommendation/components/CoursePage";
 import {
@@ -11,6 +12,25 @@ import {
 } from "../../features/CourseRecommendation/courseRecommendation.utils";
 import { courseRepository } from "../../features/CourseRecommendation/courseRepository";
 import { S } from "./CourseFavoritePage.styled";
+
+const skeletonCardKeys = ["first", "second", "third"] as const;
+
+const CourseFavoriteSkeleton = () => (
+  <S.SkeletonList aria-busy="true" aria-label="찜한 코스를 불러오는 중이에요" role="status">
+    {skeletonCardKeys.map((key) => (
+      <S.SkeletonCard key={key}>
+        <S.SkeletonDate>
+          <Skeleton height={12} width={68} />
+        </S.SkeletonDate>
+        <S.SkeletonInfo>
+          <Skeleton height={20} width="66%" />
+          <Skeleton height={12} width="84%" />
+        </S.SkeletonInfo>
+        <Skeleton borderRadius="50%" height={44} width={44} />
+      </S.SkeletonCard>
+    ))}
+  </S.SkeletonList>
+);
 
 export const CourseFavoritePage = () => {
   const navigate = useNavigate();
@@ -36,7 +56,7 @@ export const CourseFavoritePage = () => {
   return (
     <CoursePage onBack={() => navigate(-1)} title="찜한 코스 보기">
       {favorites.isPending ? (
-        <FeedbackState kind="loading" title="찜한 코스를 불러오는 중이에요" />
+        <CourseFavoriteSkeleton />
       ) : favorites.isError ? (
         <FeedbackState
           action={{ label: "다시 시도", onClick: () => void favorites.refetch() }}

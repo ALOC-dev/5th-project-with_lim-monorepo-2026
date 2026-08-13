@@ -5,11 +5,37 @@ import FeedbackState from "../../components/FeedbackState/FeedbackState";
 import Header from "../../components/Header/Header";
 import { Icon } from "../../components/Icon/Icon";
 import Modal from "../../components/Modal/Modal";
+import { Skeleton } from "../../components/Skeleton";
 import {
   type PlaceRecommendationHistoryItem,
   usePlaceRecommendationHistory,
 } from "./PlaceRecommendationHistory.context";
 import { S } from "./PlaceRecommendationHistory.styled";
+
+const skeletonCardKeys = ["first", "second", "third"] as const;
+
+const PlaceRecommendationHistorySkeleton = () => (
+  <S.LoadingState aria-busy="true" aria-label="추천 기록을 불러오는 중이에요" role="status">
+    <S.LoadingNotice>
+      <Skeleton height={13} width="74%" />
+    </S.LoadingNotice>
+    <S.LoadingList>
+      {skeletonCardKeys.map((key) => (
+        <S.LoadingCard key={key}>
+          <S.LoadingCardInfo>
+            <Skeleton height={18} width={112} />
+            <Skeleton height={24} width="72%" />
+            <Skeleton height={18} width={92} />
+          </S.LoadingCardInfo>
+          <S.LoadingCardActions>
+            <Skeleton borderRadius="50%" height={44} width={44} />
+            <Skeleton borderRadius="50%" height={44} width={44} />
+          </S.LoadingCardActions>
+        </S.LoadingCard>
+      ))}
+    </S.LoadingList>
+  </S.LoadingState>
+);
 
 export default function PlaceRecommendationHistoryContent() {
   const {
@@ -102,7 +128,7 @@ export default function PlaceRecommendationHistoryContent() {
 
         <S.Main>
           {isLoading ? (
-            <FeedbackState kind="loading" title="추천 기록을 불러오는 중이에요" />
+            <PlaceRecommendationHistorySkeleton />
           ) : isHistoryListError ? (
             <FeedbackState
               action={{ label: "다시 시도", onClick: retry }}

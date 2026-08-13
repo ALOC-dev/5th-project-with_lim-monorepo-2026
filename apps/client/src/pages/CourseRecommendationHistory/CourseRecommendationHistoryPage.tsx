@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import FeedbackState from "../../components/FeedbackState/FeedbackState";
 import { Icon } from "../../components/Icon";
 import Modal from "../../components/Modal/Modal";
+import { Skeleton } from "../../components/Skeleton";
 import { CourseIconButton } from "../../features/CourseRecommendation/components/CourseIconButton";
 import { CoursePage } from "../../features/CourseRecommendation/components/CoursePage";
 import type { CourseHistoryItem } from "../../features/CourseRecommendation/course.types";
@@ -17,6 +18,31 @@ import {
 } from "../../features/CourseRecommendation/courseRecommendation.utils";
 import { courseRepository } from "../../features/CourseRecommendation/courseRepository";
 import { S } from "./CourseRecommendationHistoryPage.styled";
+
+const skeletonCardKeys = ["first", "second", "third"] as const;
+
+const CourseRecommendationHistorySkeleton = () => (
+  <S.HistoryLoading aria-busy="true" aria-label="추천 기록을 불러오는 중이에요" role="status">
+    <S.HistoryLoadingNotice>
+      <Skeleton height={13} width="74%" />
+    </S.HistoryLoadingNotice>
+    <S.HistoryLoadingList>
+      {skeletonCardKeys.map((key) => (
+        <S.HistoryLoadingCard key={key}>
+          <S.HistoryLoadingInfo>
+            <Skeleton height={12} width={68} />
+            <Skeleton height={20} width="68%" />
+            <Skeleton height={12} width="86%" />
+          </S.HistoryLoadingInfo>
+          <S.HistoryLoadingActions>
+            <Skeleton borderRadius="50%" height={44} width={44} />
+            <Skeleton borderRadius="50%" height={44} width={44} />
+          </S.HistoryLoadingActions>
+        </S.HistoryLoadingCard>
+      ))}
+    </S.HistoryLoadingList>
+  </S.HistoryLoading>
+);
 
 export const CourseRecommendationHistoryPage = () => {
   const navigate = useNavigate();
@@ -55,7 +81,7 @@ export const CourseRecommendationHistoryPage = () => {
     <CoursePage onBack={() => navigate("/activity")} title="코스 추천 기록">
       <S.HistoryContent>
         {histories.isPending ? (
-          <FeedbackState kind="loading" title="추천 기록을 불러오는 중이에요" />
+          <CourseRecommendationHistorySkeleton />
         ) : histories.isError ? (
           <FeedbackState
             action={{ label: "다시 시도", onClick: () => void histories.refetch() }}

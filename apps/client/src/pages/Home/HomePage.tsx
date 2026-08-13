@@ -2,9 +2,8 @@ import styled from "@emotion/styled";
 import { useNavigate } from "react-router-dom";
 
 import courseRecommendationIcon from "../../assets/home/course-recommendation.svg";
-import homeIcon from "../../assets/home/home.svg";
-import myIcon from "../../assets/home/my.svg";
 import placeRecommendationIcon from "../../assets/home/place-recommendation.svg";
+import BottomBar from "../../components/BottomBar/BottomBar";
 import PageRoot from "../../components/PageRoot/PageRoot";
 import { tokens } from "../../design-system/tokens.generated";
 
@@ -14,7 +13,6 @@ const HomePage = () => {
   return (
     <PageRoot backgroundColor={tokens.color.neutral[50]} layout="contained">
       <S.Header>
-        <S.StatusRow aria-hidden="true">9:41</S.StatusRow>
         <S.HeaderRow>
           <S.PageTitle>홈</S.PageTitle>
         </S.HeaderRow>
@@ -56,24 +54,7 @@ const HomePage = () => {
         </S.RecommendationStack>
       </S.Content>
 
-      <S.BottomNavigation aria-label="주요 메뉴">
-        <S.NavigationButton $active aria-current="page" aria-label="홈" type="button">
-          <S.IconFrame aria-hidden="true">
-            <S.Icon alt="" src={homeIcon} />
-          </S.IconFrame>
-          <span>홈</span>
-        </S.NavigationButton>
-        <S.NavigationButton
-          aria-label="마이"
-          onClick={() => void navigate("/activity")}
-          type="button"
-        >
-          <S.IconFrame aria-hidden="true">
-            <S.Icon alt="" src={myIcon} />
-          </S.IconFrame>
-          <span>마이</span>
-        </S.NavigationButton>
-      </S.BottomNavigation>
+      <BottomBar />
     </PageRoot>
   );
 };
@@ -104,7 +85,7 @@ const S = {
   PageTitle: styled.h1`
     margin: 0;
     color: ${tokens.color.neutral[900]};
-    ${tokens.typography.utility.screenTitle};
+    ${tokens.typography.title.sm};
   `,
   Content: styled.div`
     display: flex;
@@ -177,37 +158,5 @@ const S = {
     color: ${tokens.color.secondary[500]};
     ${tokens.typography.body.xs};
     white-space: nowrap;
-  `,
-  BottomNavigation: styled.nav`
-    display: grid;
-    height: 76px;
-    flex: 0 0 76px;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
-    padding: 8px 24px;
-    border-top: 1px solid ${tokens.color.neutral[200]};
-    background: ${tokens.color.neutral[0]};
-  `,
-  NavigationButton: styled.button<{ $active?: boolean }>`
-    display: flex;
-    height: 52px;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 3px;
-    border-radius: 16px;
-    background: ${({ $active = false }) =>
-      $active ? tokens.color.primary[50] : "transparent"};
-    color: ${({ $active = false }) =>
-      $active ? tokens.color.primary[500] : tokens.color.secondary[500]};
-
-    span {
-      ${tokens.typography.label.xs};
-    }
-
-    &:focus-visible {
-      outline: 2px solid ${tokens.color.primary[500]};
-      outline-offset: 2px;
-    }
   `,
 };

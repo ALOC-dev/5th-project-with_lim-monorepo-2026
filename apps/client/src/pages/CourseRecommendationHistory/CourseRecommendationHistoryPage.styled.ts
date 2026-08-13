@@ -16,6 +16,47 @@ export const S = {
     color: ${tokens.color.neutral[700]};
     ${tokens.typography.body.xs};
   `,
+  HistoryLoading: styled.section`
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  `,
+  HistoryLoadingNotice: styled.div`
+    display: flex;
+    min-height: 20px;
+    align-items: center;
+  `,
+  HistoryLoadingList: styled.ul`
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  `,
+  HistoryLoadingCard: styled.li`
+    display: flex;
+    min-height: 100px;
+    align-items: flex-start;
+    justify-content: space-between;
+    padding: 16px 12px;
+    border: 1px solid ${tokens.color.neutral[200]};
+    border-radius: 12px;
+    background-color: ${tokens.color.neutral[0]};
+  `,
+  HistoryLoadingInfo: styled.div`
+    display: flex;
+    min-width: 0;
+    flex: 1;
+    flex-direction: column;
+    gap: 6px;
+    padding-top: 3px;
+  `,
+  HistoryLoadingActions: styled.div`
+    display: flex;
+    gap: 8px;
+    margin-left: 12px;
+  `,
   HistoryList: styled.ul`
     display: flex;
     flex-direction: column;
