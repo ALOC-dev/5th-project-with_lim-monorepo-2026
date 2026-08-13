@@ -14,12 +14,12 @@ import Header from "../../components/Header/Header";
 import { Input } from "../../components/Input";
 import Modal from "../../components/Modal/Modal";
 import { RangeSlider } from "../../components/Rangeslider";
-import { S } from "./PlaceRecommendationFormContent.styled";
 import { dispatchPlaceRecommendationRequest } from "./input";
 import {
   usePlaceRecommendationFormInput,
   usePlaceRecommendationFormUi,
 } from "./PlaceRecommendationForm.context";
+import { S } from "./PlaceRecommendationFormContent.styled";
 
 const ACTIVITY_OPTIONS: DropdownOption[] = [
   { label: "식사", value: "MEAL" },
@@ -34,6 +34,16 @@ const PARTY_OPTIONS: DropdownOption[] = [
   { label: "연인", value: "LOVERS" },
   { label: "동료", value: "COLLEAGUES" },
 ];
+
+const HOUR_OPTIONS: DropdownOption[] = Array.from({ length: 25 }, (_, hour) => {
+  const value = String(hour).padStart(2, "0");
+  return { label: `${value}시`, value };
+});
+
+const MINUTE_OPTIONS: DropdownOption[] = ["00", "15", "30", "45"].map((value) => ({
+  label: `${value}분`,
+  value,
+}));
 
 const ALPHABETS = ["A", "B", "C", "D", "E", "F", "G", "H"];
 
@@ -99,6 +109,8 @@ const PlaceRecommendationFormContent = () => {
   const formattedDate = date
     ? `${date.year}-${String(date.month).padStart(2, "0")}-${String(date.day).padStart(2, "0")} (${getDayOfWeek(date.year, date.month, date.day)})`
     : "";
+  const [timeHour = "", timeMinute = ""] = (time24h ?? "").split(":");
+  const minuteOptions = timeHour === "24" ? MINUTE_OPTIONS.slice(0, 1) : MINUTE_OPTIONS;
 
   const formUserInput = buildUserInput();
   const canSubmit = formUserInput !== null && !recommendationMutation.isPending;
@@ -131,28 +143,41 @@ const PlaceRecommendationFormContent = () => {
       <S.ScrollContent>
         <S.RequiredNotice>*필수 입력</S.RequiredNotice>
 
-        <S.FlexRow>
-          <S.FlexColumn>
-            <S.FormLabel htmlFor="form-date" $required>
-              날짜
-            </S.FormLabel>
-            <S.DateInputWrapper onClick={() => openSheet("date")}>
-              <Input id="form-date" value={formattedDate} placeholder="" readOnly />
-            </S.DateInputWrapper>
-          </S.FlexColumn>
-
-          <S.FlexColumn>
-            <S.FormLabel htmlFor="form-time" $required>
-              시각
-            </S.FormLabel>
+        <S.FormRow>
+          <S.FormLabel htmlFor="form-date" $required>
+            날짜
+          </S.FormLabel>
+          <S.DateInputWrapper onClick={() => openSheet("date")}>
             <Input
-              id="form-time"
-              value={time24h || ""}
-              onChange={(e) => setTime24h(e.target.value)}
-              placeholder="예: 18:30"
+              id="form-date"
+              value={formattedDate}
+              placeholder="날짜를 선택해주세요"
+              readOnly
             />
-          </S.FlexColumn>
-        </S.FlexRow>
+          </S.DateInputWrapper>
+        </S.FormRow>
+
+        <S.FormRow>
+          <S.FormLabel $required>시각</S.FormLabel>
+          <S.TimeSelection aria-label="시각 선택">
+            <Dropdown
+              onChange={(hour) => {
+                setTime24h(`${hour}:${hour === "24" ? "00" : timeMinute || "00"}`);
+              }}
+              options={HOUR_OPTIONS}
+              placeholder="시"
+              value={timeHour || undefined}
+            />
+            <S.TimeSeparator aria-hidden>:</S.TimeSeparator>
+            <Dropdown
+              disabled={!timeHour}
+              onChange={(minute) => setTime24h(`${timeHour}:${minute}`)}
+              options={minuteOptions}
+              placeholder="분"
+              value={timeMinute || undefined}
+            />
+          </S.TimeSelection>
+        </S.FormRow>
 
         <S.LocationSection>
           <S.LocationHeader>

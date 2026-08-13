@@ -3,11 +3,16 @@ import { S } from "../DateSelectionBottomSheet.styled";
 import { useDateSelection } from "../useDateSelection";
 
 const MonthSelector = () => {
-  const { calendar, goToNextMonth, goToPreviousMonth } = useDateSelection();
+  const { calendar, canGoToPreviousMonth, goToNextMonth, goToPreviousMonth } = useDateSelection();
 
   return (
     <S.MonthSelector>
-      <S.MonthButton type="button" aria-label="이전 달" onClick={goToPreviousMonth}>
+      <S.MonthButton
+        aria-label="이전 달"
+        disabled={!canGoToPreviousMonth}
+        onClick={goToPreviousMonth}
+        type="button"
+      >
         <Icon name="chevron-left" size={28} />
       </S.MonthButton>
       <S.MonthLabel>{`${calendar.year}년 ${calendar.month}월`}</S.MonthLabel>

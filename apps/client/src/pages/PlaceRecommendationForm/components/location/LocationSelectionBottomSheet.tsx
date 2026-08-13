@@ -1,5 +1,9 @@
 import BottomSheet from "../../../../components/BottomSheet/BottomSheet";
-import { usePlaceRecommendationFormUi } from "../../PlaceRecommendationForm.context";
+import { Button } from "../../../../components/Button";
+import {
+  usePlaceRecommendationFormInput,
+  usePlaceRecommendationFormUi,
+} from "../../PlaceRecommendationForm.context";
 import { LocationSelectionProvider, useLocationSelection } from "./LocationSelection.context";
 import { S } from "./LocationSelectionBottomSheet.styled";
 import MapModeContent from "./map-mode/MapModeContent";
@@ -25,13 +29,24 @@ const LocationSelectionBottomSheet = () => {
 
 const LocationSelectionBottomSheetContent = () => {
   const { mode } = useLocationSelection();
+  const { locations } = usePlaceRecommendationFormInput();
+  const { closeSheet } = usePlaceRecommendationFormUi();
 
   return (
     <S.Wrapper>
+      <S.SelectedLocationStatus aria-live="polite">
+        <S.SelectionMark aria-hidden>✓</S.SelectionMark>
+        현재 출발지 {locations.length}곳 선택됨
+      </S.SelectedLocationStatus>
       <S.SearchInputSlot>
         <LocationSelectionSearchInput />
       </S.SearchInputSlot>
       {mode === "map" ? <MapModeContent /> : <SearchModeContent />}
+      <S.Footer>
+        <Button onClick={closeSheet} tone="secondary" type="button" width="100%">
+          취소
+        </Button>
+      </S.Footer>
     </S.Wrapper>
   );
 };

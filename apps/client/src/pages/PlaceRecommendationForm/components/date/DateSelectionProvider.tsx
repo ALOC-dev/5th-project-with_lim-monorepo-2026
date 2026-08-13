@@ -34,37 +34,49 @@ const moveCalendarMonth = (calendar: Calendar, offset: -1 | 1): Calendar => {
   };
 };
 
-const getFirstDateOfMonth = (calendar: Calendar): CalendarDate => {
-  return {
-    year: calendar.year,
-    month: calendar.month,
-    day: 1,
-  };
-};
+const isBeforeCalendarMonth = (left: Calendar, right: Calendar): boolean =>
+  left.year < right.year || (left.year === right.year && left.month < right.month);
 
 export const DateSelectionProvider = ({ children }: { readonly children: ReactNode }) => {
   const { date, setDate } = usePlaceRecommendationFormInput();
   const [calendar, setCalendar] = useState<Calendar>(() => getCalendarFromDate(date));
+  const [selectedDate, setSelectedDate] = useState<CalendarDate | null>(date);
+  const today = getTodayCalendarDate();
+  const canGoToPreviousMonth = !isBeforeCalendarMonth(calendar, today);
 
-  const moveToCalendarMonth = useCallback(
-    (offset: -1 | 1) => {
-      const nextCalendar = moveCalendarMonth(calendar, offset);
-      setCalendar(nextCalendar);
-      setDate(getFirstDateOfMonth(nextCalendar));
-    },
-    [calendar, setDate],
-  );
+  const moveToCalendarMonth = useCallback((offset: -1 | 1) => {
+    setCalendar((current) => moveCalendarMonth(current, offset));
+  }, []);
 
   const goToPreviousMonth = useCallback(() => {
+    if (!canGoToPreviousMonth) return;
     moveToCalendarMonth(-1);
-  }, [moveToCalendarMonth]);
+  }, [canGoToPreviousMonth, moveToCalendarMonth]);
 
   const goToNextMonth = useCallback(() => {
     moveToCalendarMonth(1);
   }, [moveToCalendarMonth]);
 
+  const selectDate = useCallback((nextDate: CalendarDate) => {
+    setSelectedDate(nextDate);
+  }, []);
+
+  const confirmDate = useCallback(() => {
+    setDate(selectedDate);
+  }, [selectedDate, setDate]);
+
   return (
-    <DateSelectionContext.Provider value={{ calendar, goToNextMonth, goToPreviousMonth }}>
+    <DateSelectionContext.Provider
+      value={{
+        calendar,
+        selectedDate,
+        canGoToPreviousMonth,
+        goToNextMonth,
+        goToPreviousMonth,
+        selectDate,
+        confirmDate,
+      }}
+    >
       {children}
     </DateSelectionContext.Provider>
   );

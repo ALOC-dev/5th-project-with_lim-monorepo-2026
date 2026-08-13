@@ -1,42 +1,46 @@
 import BottomSheet from "../../../../components/BottomSheet/BottomSheet";
-import { theme } from "../../../../design-system/theme.generated";
-import {
-  type PlaceRecommendationFormDate,
-  usePlaceRecommendationFormInput,
-  usePlaceRecommendationFormUi,
-} from "../../PlaceRecommendationForm.context";
+import { usePlaceRecommendationFormUi } from "../../PlaceRecommendationForm.context";
 import CalendarTable from "./CalendarTable/CalendarTable";
 import { S } from "./DateSelectionBottomSheet.styled";
 import { DateSelectionProvider } from "./DateSelectionProvider";
 import MonthSelector from "./MonthSelector/MonthSelector";
-
-const getConfirmButtonText = (date: PlaceRecommendationFormDate | null) => {
-  if (date === null) {
-    return "닫기";
-  }
-
-  return `${date.month}월 ${date.day}일로 선택 완료`;
-};
+import { useDateSelection } from "./useDateSelection";
 
 const DateSelectionBottomSheet = () => {
   const { isSheetOpen, closeSheet } = usePlaceRecommendationFormUi();
-  const { date } = usePlaceRecommendationFormInput();
 
   return (
     <BottomSheet isOpen={isSheetOpen("date")} close={closeSheet} id="date-selection">
       <DateSelectionProvider>
-        <S.Wrapper>
-          <S.Title>날짜 선택</S.Title>
-          <MonthSelector />
-          <CalendarTable />
-          <S.Footer>
-            <S.ConfirmButton type="button" onClick={closeSheet}>
-              {getConfirmButtonText(date)}
-            </S.ConfirmButton>
-          </S.Footer>
-        </S.Wrapper>
+        <DateSelectionBottomSheetContent />
       </DateSelectionProvider>
     </BottomSheet>
+  );
+};
+
+const DateSelectionBottomSheetContent = () => {
+  const { closeSheet } = usePlaceRecommendationFormUi();
+  const { confirmDate, selectedDate } = useDateSelection();
+
+  const handleConfirm = () => {
+    confirmDate();
+    closeSheet();
+  };
+
+  return (
+    <S.Wrapper>
+      <S.Title>날짜 선택</S.Title>
+      <MonthSelector />
+      <CalendarTable />
+      <S.Footer>
+        <S.CancelButton type="button" onClick={closeSheet}>
+          취소
+        </S.CancelButton>
+        <S.ConfirmButton disabled={selectedDate === null} type="button" onClick={handleConfirm}>
+          선택 완료
+        </S.ConfirmButton>
+      </S.Footer>
+    </S.Wrapper>
   );
 };
 

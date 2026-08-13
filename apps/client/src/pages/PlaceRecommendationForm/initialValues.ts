@@ -47,8 +47,8 @@ export const getPlaceRecommendationFormInitialValues = (
 
   return {
     locations: [...locations],
-    date: { year: 2026, month: 8, day: 4 },
-    time24h: "",
+    date: null,
+    time24h: null,
     stayDurationMinutes: null,
     numberOfPeople: null,
     partyType: null,

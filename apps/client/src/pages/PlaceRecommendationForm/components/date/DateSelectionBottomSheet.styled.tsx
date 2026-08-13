@@ -44,6 +44,11 @@ export const S = {
     &:active {
       background-color: ${theme.tokens.color.secondary[50]};
     }
+
+    &:disabled {
+      cursor: not-allowed;
+      opacity: 0.35;
+    }
   `,
   MonthLabel: styled.h3`
     margin: 0;
@@ -90,6 +95,7 @@ export const S = {
     justify-self: center;
   `,
   DayButton: styled.button<DayButtonProps>`
+    position: relative;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -126,9 +132,41 @@ export const S = {
       opacity: 0.35;
     }
   `,
+  SelectedMark: styled.span`
+    position: absolute;
+    right: -2px;
+    bottom: -2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background-color: ${theme.tokens.color.primary[500]};
+    color: ${theme.tokens.color.neutral[0]};
+    font-size: 10px;
+    font-weight: 700;
+  `,
   Footer: styled.div`
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 8px;
     flex: 0 0 auto;
     margin-top: auto;
+  `,
+  CancelButton: styled.button`
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 68px;
+    padding: 14px 20px;
+    border: 1px solid ${theme.tokens.color.neutral[200]};
+    border-radius: 14px;
+    background-color: ${theme.tokens.color.neutral[0]};
+    color: ${theme.tokens.color.secondary[700]};
+    cursor: pointer;
+
+    ${theme.tokens.typography.title.sm}
   `,
   ConfirmButton: styled.button`
     display: flex;
@@ -147,6 +185,11 @@ export const S = {
 
     &:active {
       transform: scale(0.99);
+    }
+
+    &:disabled {
+      cursor: not-allowed;
+      background-color: ${theme.tokens.color.neutral[200]};
     }
   `,
 };

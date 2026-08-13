@@ -1,18 +1,23 @@
 import { useMemo } from "react";
 
-import { usePlaceRecommendationFormInput } from "../../../PlaceRecommendationForm.context";
-import { buildCalendarDayViewModels } from "../../../utils/calendarDayViewModel";
+import {
+  buildCalendarDayViewModels,
+  getTodayCalendarDate,
+} from "../../../utils/calendarDayViewModel";
 import { S } from "../DateSelectionBottomSheet.styled";
 import { useDateSelection } from "../useDateSelection";
 
 const WEEKDAY_LABELS = ["일", "월", "화", "수", "목", "금", "토"] as const;
 
 const CalendarTable = () => {
-  const { calendar } = useDateSelection();
-  const { date, setDate } = usePlaceRecommendationFormInput();
+  const { calendar, selectedDate, selectDate } = useDateSelection();
   const dayViewModels = useMemo(
-    () => buildCalendarDayViewModels(calendar, { selectedDate: date }),
-    [calendar, date],
+    () =>
+      buildCalendarDayViewModels(calendar, {
+        minDate: getTodayCalendarDate(),
+        selectedDate,
+      }),
+    [calendar, selectedDate],
   );
 
   return (
@@ -37,11 +42,12 @@ const CalendarTable = () => {
               disabled={dayViewModel.isDisabled}
               $isSelected={dayViewModel.isSelected}
               $isToday={dayViewModel.isToday}
-              onClick={() => setDate(dayViewModel.date)}
+              onClick={() => selectDate(dayViewModel.date)}
             >
               <span style={{ lineHeight: 1, transform: "translateY(1px)" }}>
                 {dayViewModel.day}
               </span>
+              {dayViewModel.isSelected ? <S.SelectedMark aria-hidden>✓</S.SelectedMark> : null}
             </S.DayButton>
           );
         })}

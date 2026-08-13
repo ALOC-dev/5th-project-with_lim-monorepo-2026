@@ -58,6 +58,18 @@ export const S = {
     gap: 4px;
   `,
 
+  TimeSelection: styled.div`
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: center;
+    gap: 8px;
+  `,
+
+  TimeSeparator: styled.span`
+    color: ${tokens.color.neutral[700]};
+    ${tokens.typography.body.lg}
+  `,
+
   LocationSection: styled.div`
     display: flex;
     flex-direction: column;
