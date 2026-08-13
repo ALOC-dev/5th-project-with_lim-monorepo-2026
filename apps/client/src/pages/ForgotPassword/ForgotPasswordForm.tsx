@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import Header from "../../components/Header/Header";
+import { Input } from "../../components/Input";
 import { useForgotPasswordInput } from "./ForgotPassword.context";
 import { S } from "./ForgotPassword.styled";
 
@@ -85,7 +86,7 @@ export default function ForgotPasswordForm() {
         <S.InputGroup>
           <S.Label htmlFor="email">이메일</S.Label>
           <S.InputRow>
-            <S.Input
+            <Input
               type="email"
               id="email"
               placeholder="name@example.com"
@@ -113,7 +114,7 @@ export default function ForgotPasswordForm() {
           <S.InputGroup>
             <S.Label htmlFor="authCode">인증번호</S.Label>
             <S.InputRow>
-              <S.Input
+              <Input
                 type="text"
                 id="authCode"
                 placeholder="6자리 숫자"

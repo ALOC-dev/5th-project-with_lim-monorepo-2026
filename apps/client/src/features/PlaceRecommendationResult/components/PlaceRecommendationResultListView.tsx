@@ -23,6 +23,9 @@ const PlaceRecommendationResultListView = () => {
         close={clearSelectedPlace}
         backdropTone="none"
         handleType="resizable"
+        initialHeight="30dvh"
+        minHeight="30dvh"
+        minimumTop={52}
       >
         <PlaceRecommendationResultPlaceList />
       </BottomSheet>

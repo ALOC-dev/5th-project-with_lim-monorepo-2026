@@ -27,7 +27,7 @@ const bottomSheetExit = keyframes`
 
 export const S = {
   Wrapper: styled.div<{
-    readonly $height: string;
+    readonly $minHeight: string;
   }>`
     display: flex;
     flex-direction: column;
@@ -37,7 +37,7 @@ export const S = {
     left: 0;
     right: 0;
     width: 100%;
-    height: ${({ $height }) => $height};
+    min-height: ${({ $minHeight }) => $minHeight};
     max-height: calc(100dvh - 24px);
     overflow: hidden;
     background-color: ${tokens.color.neutral[50]};
@@ -80,6 +80,7 @@ export const S = {
     padding: 16px 24px 20px;
     overflow-x: hidden;
     overflow-y: auto;
+    overscroll-behavior-y: auto;
   `,
   HandleWrapper: styled.div`
     display: flex;

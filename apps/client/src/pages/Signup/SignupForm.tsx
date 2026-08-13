@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { requestSignup } from "../../apis/auth";
 import { toApiClientErrorMessage } from "../../apis/errors";
 import Header from "../../components/Header/Header";
+import { Input } from "../../components/Input";
 import Modal from "../../components/Modal/Modal";
 import { useSignupFormInput } from "./Signup.context";
 import { S } from "./Signup.styled";
@@ -127,7 +128,7 @@ export default function SignupFormContent() {
         <S.InputGroup>
           <S.Label htmlFor="email">이메일</S.Label>
           <S.InputRow>
-            <S.Input
+            <Input
               type="email"
               id="email"
               placeholder="name@example.com"
@@ -155,7 +156,7 @@ export default function SignupFormContent() {
         <S.InputGroup>
           <S.Label htmlFor="authCode">인증번호</S.Label>
           <S.InputRow>
-            <S.Input
+            <Input
               type="text"
               id="authCode"
               placeholder="6자리 숫자"
@@ -189,7 +190,7 @@ export default function SignupFormContent() {
 
         <S.InputGroup>
           <S.Label htmlFor="password">비밀번호</S.Label>
-          <S.Input
+          <Input
             type="password"
             id="password"
             placeholder="8~20자"
@@ -207,7 +208,7 @@ export default function SignupFormContent() {
 
         <S.InputGroup>
           <S.Label htmlFor="passwordConfirm">비밀번호 확인</S.Label>
-          <S.Input
+          <Input
             type="password"
             id="passwordConfirm"
             placeholder="비밀번호 재입력"
@@ -226,7 +227,7 @@ export default function SignupFormContent() {
         <S.InputGroup>
           <S.Label htmlFor="nickname">닉네임</S.Label>
           <S.InputRow>
-            <S.Input
+            <Input
               type="text"
               id="nickname"
               placeholder="예: limeojin"

@@ -1,5 +1,4 @@
 import styled from "@emotion/styled";
-import { useEffect, useRef, useState } from "react";
 
 import { theme } from "../design-system/theme.generated";
 
@@ -9,124 +8,69 @@ export interface DropdownOption {
 }
 
 interface DropdownProps {
-  options: DropdownOption[];
-  value?: string;
-  onChange: (value: string) => void;
-  placeholder?: string;
-  width?: string;
-  disabled?: boolean;
+  readonly options: readonly DropdownOption[];
+  readonly value?: string;
+  readonly onChange: (value: string) => void;
+  readonly placeholder?: string;
+  readonly width?: string;
+  readonly disabled?: boolean;
 }
 
 const S = {
-  // width props를 받아 동적으로 스타일 적용
-  Container: styled.div<{ width?: string }>`
-    position: relative;
-    width: ${({ width }) => width || "100%"};
-  `,
-
-  Trigger: styled.button<{ isOpen: boolean }>`
-    width: 100%;
+  Select: styled.select<{ readonly $isPlaceholder: boolean; readonly $width?: string }>`
+    width: ${({ $width }) => $width ?? "100%"};
     height: 48px;
-    padding: 0 16px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
+    padding: 0 14px;
 
-    background: ${theme.tokens.color.neutral[0]};
-    border: 1px solid
-      ${({ isOpen }) =>
-        isOpen ? theme.tokens.color.primary[500] : theme.tokens.color.neutral[200]};
+    color: ${({ $isPlaceholder }) =>
+      $isPlaceholder ? theme.tokens.color.neutral[700] : theme.tokens.color.neutral[900]};
+    background-color: ${theme.tokens.color.neutral[0]};
+    border: 1px solid ${theme.tokens.color.neutral[200]};
     border-radius: 8px;
     cursor: pointer;
-    transition: all 0.2s ease;
 
     ${theme.tokens.typography.body.sm}
 
     &:focus {
       outline: none;
       border-color: ${theme.tokens.color.primary[500]};
+      box-shadow: 0 0 0 2px ${theme.tokens.color.primary[50]};
     }
-  `,
 
-  Menu: styled.ul`
-    position: absolute;
-    top: calc(100% + 8px);
-    left: 0;
-    width: 100%;
-    margin: 0;
-    padding: 8px;
-
-    background: ${theme.tokens.color.neutral[0]};
-    border: 1px solid ${theme.tokens.color.neutral[200]};
-    border-radius: 12px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-
-    list-style: none;
-    z-index: 100;
-  `,
-
-  Item: styled.li<{ selected: boolean }>`
-    padding: 12px;
-    border-radius: 8px;
-    cursor: pointer;
-
-    ${theme.tokens.typography.body.sm}
-
-    background: ${({ selected }) => (selected ? theme.tokens.color.neutral[50] : "transparent")};
-    color: ${({ selected }) =>
-      selected ? theme.tokens.color.primary[700] : theme.tokens.color.neutral[900]};
-
-    &:hover {
-      background: ${theme.tokens.color.neutral[50]};
+    &:disabled {
+      cursor: not-allowed;
+      background-color: ${theme.tokens.color.neutral[50]};
     }
   `,
 };
 
+/** Uses the platform's native select menu for familiar mobile and keyboard interactions. */
 export const Dropdown = ({
   options,
   value,
   onChange,
   placeholder = "선택하세요",
   width,
+  disabled = false,
 }: DropdownProps) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleClick = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setIsOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, []);
-
-  const selected = options.find((opt) => opt.value === value);
+  const selected = options.some((option) => option.value === value);
 
   return (
-    <S.Container ref={containerRef} width={width}>
-      <S.Trigger isOpen={isOpen} onClick={() => setIsOpen(!isOpen)} type="button">
-        {selected ? selected.label : placeholder}
-        <span>{isOpen ? "▲" : "▼"}</span>
-      </S.Trigger>
-
-      {isOpen && (
-        <S.Menu>
-          {options.map((opt) => (
-            <S.Item
-              key={opt.value}
-              selected={opt.value === value}
-              onClick={() => {
-                onChange(opt.value);
-                setIsOpen(false);
-              }}
-            >
-              {opt.label}
-            </S.Item>
-          ))}
-        </S.Menu>
-      )}
-    </S.Container>
+    <S.Select
+      $isPlaceholder={!selected}
+      $width={width}
+      disabled={disabled}
+      onChange={(event) => onChange(event.target.value)}
+      value={selected ? value : ""}
+    >
+      <option disabled value="">
+        {placeholder}
+      </option>
+      {options.map((option) => (
+        <option key={option.value} value={option.value}>
+          {option.label}
+        </option>
+      ))}
+    </S.Select>
   );
 };

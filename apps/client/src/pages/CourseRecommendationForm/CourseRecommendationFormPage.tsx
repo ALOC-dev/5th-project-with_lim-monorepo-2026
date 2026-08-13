@@ -126,7 +126,7 @@ export const CourseRecommendationFormPage = () => {
       </S.Bottom>
       <BottomSheet
         close={() => setPickerOpen(false)}
-        height="min(78dvh, 680px)"
+        initialHeight="min(78dvh, 680px)"
         id="course-place-picker"
         isOpen={isPickerOpen}
         isModal

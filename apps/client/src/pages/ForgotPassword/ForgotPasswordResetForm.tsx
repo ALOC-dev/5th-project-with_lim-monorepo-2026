@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 
 import Header from "../../components/Header/Header";
+import { Input } from "../../components/Input";
 import { useForgotPasswordInput } from "./ForgotPassword.context";
 import { S } from "./ForgotPassword.styled";
 
@@ -56,7 +57,7 @@ export default function ResetPasswordForm() {
 
         <S.InputGroup>
           <S.Label htmlFor="password">새 비밀번호</S.Label>
-          <S.Input
+          <Input
             type="password"
             id="password"
             placeholder="8~20자"
@@ -74,7 +75,7 @@ export default function ResetPasswordForm() {
 
         <S.InputGroup>
           <S.Label htmlFor="passwordConfirm">새 비밀번호 확인</S.Label>
-          <S.Input
+          <Input
             type="password"
             id="passwordConfirm"
             placeholder="비밀번호 재입력"

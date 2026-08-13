@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { requestLogin } from "../../apis/auth";
 import { toApiClientErrorMessage } from "../../apis/errors";
 import Header from "../../components/Header/Header";
+import { Input } from "../../components/Input";
 import { useAuth } from "../../contexts/Auth.context";
 import { useLoginFormInput } from "./Login.context";
 import { S } from "./Login.styled";
@@ -38,7 +39,7 @@ export default function LoginFormContent() {
       <S.Form onSubmit={handleSubmit}>
         <S.InputGroup>
           <S.Label htmlFor="email">이메일</S.Label>
-          <S.Input
+          <Input
             type="email"
             id="email"
             placeholder="name@example.com"
@@ -50,7 +51,7 @@ export default function LoginFormContent() {
 
         <S.InputGroup>
           <S.Label htmlFor="password">비밀번호</S.Label>
-          <S.Input
+          <Input
             type="password"
             id="password"
             placeholder="비밀번호"

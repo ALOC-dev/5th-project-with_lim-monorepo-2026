@@ -6,7 +6,8 @@ import { typography } from "../../../design-system/typography.generated";
 export const S = {
   MapLayer: styled.div`
     position: absolute;
-    inset: 0;
+    inset: 52px 0 0;
+    z-index: 0;
     background-color: ${tokens.color.secondary[50]};
   `,
   MarkerButton: styled.button<{ readonly $isSelected: boolean }>`
