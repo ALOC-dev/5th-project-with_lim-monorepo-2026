@@ -1,5 +1,12 @@
 import type { KeyboardEvent, PointerEvent, ReactNode } from "react";
-import { useEffect, useLayoutEffect, useRef } from "react";
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useLayoutEffect,
+  useRef,
+} from "react";
 
 import OverlayShell from "../OverlayShell/OverlayShell";
 import { useOverlayPresence } from "../OverlayShell/useOverlayPresence";
@@ -24,6 +31,11 @@ export type BottomSheetProps = {
   readonly ariaLabel?: string;
 };
 
+export type BottomSheetHandle = {
+  /** Restores a resizable sheet to the height supplied by initialHeight. */
+  readonly resetToInitialHeight: () => void;
+};
+
 const BOTTOM_SHEET_ANIMATION_DURATION_MS = 200;
 
 let activeModalSheetCount = 0;
@@ -37,20 +49,23 @@ const getFocusableElements = (container: HTMLElement): HTMLElement[] =>
     ),
   ).filter((element) => !element.hidden && element.getClientRects().length > 0);
 
-const BottomSheet = ({
-  id,
-  isOpen,
-  children,
-  close,
-  backdropTone = "dimmed",
-  closeOnBackdropClick = false,
-  handleType = "resizable",
-  initialHeight = "auto",
-  minHeight = "0",
-  minimumTop,
-  isModal = false,
-  ariaLabel,
-}: BottomSheetProps) => {
+const BottomSheet = forwardRef<BottomSheetHandle, BottomSheetProps>(function BottomSheet(
+  {
+    id,
+    isOpen,
+    children,
+    close,
+    backdropTone = "dimmed",
+    closeOnBackdropClick = false,
+    handleType = "resizable",
+    initialHeight = "auto",
+    minHeight = "0",
+    minimumTop,
+    isModal = false,
+    ariaLabel,
+  },
+  ref,
+) {
   const presence = useOverlayPresence({
     isOpen,
     animationDurationMs: BOTTOM_SHEET_ANIMATION_DURATION_MS,
@@ -65,6 +80,26 @@ const BottomSheet = ({
     // 초기 높이는 styled prop 대신 실제 시트 요소에만 적용한다.
     elementRef.current?.style.setProperty("height", initialHeight);
   }, [initialHeight]);
+
+  const resetToInitialHeight = useCallback(() => {
+    const element = elementRef.current;
+
+    baseYRef.current = null;
+    dragStartYRef.current = null;
+    if (element === null) return;
+
+    // Dragging writes top/height directly on the element. Removing top restores bottom anchoring.
+    element.style.removeProperty("top");
+    element.style.setProperty("height", initialHeight);
+  }, [initialHeight]);
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      resetToInitialHeight,
+    }),
+    [resetToInitialHeight],
+  );
 
   useEffect(() => {
     // 모달이 열릴 때만 이전 포커스를 기억하고, 앱 본문을 보조기술/키보드 탐색에서 제외한다.
@@ -233,7 +268,7 @@ const BottomSheet = ({
       </S.Wrapper>
     </OverlayShell>
   );
-};
+});
 
 const getNextTop = ({
   currentTop,

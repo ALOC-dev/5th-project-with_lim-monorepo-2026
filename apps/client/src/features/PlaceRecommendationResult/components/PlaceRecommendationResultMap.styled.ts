@@ -6,7 +6,7 @@ import { typography } from "../../../design-system/typography.generated";
 export const S = {
   MapLayer: styled.div`
     position: absolute;
-    inset: 52px 0 0;
+    inset: calc(52px + env(safe-area-inset-top)) 0 0;
     z-index: 0;
     background-color: ${tokens.color.secondary[50]};
   `,

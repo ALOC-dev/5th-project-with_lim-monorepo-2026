@@ -1,4 +1,5 @@
 import type { KeyboardEvent } from "react";
+import { useLayoutEffect, useRef } from "react";
 import { useParams } from "react-router-dom";
 
 import { Icon } from "../../../components/Icon/Icon";
@@ -6,7 +7,20 @@ import { usePlaceRecommendationResultBookmarksContext } from "../state/PlaceReco
 import { usePlaceRecommendationResultUiContext } from "../state/PlaceRecommendationResult.ui.context";
 import { S } from "./PlaceRecommendationResultPlaceList.styled";
 
-const PlaceRecommendationResultPlaceList = () => {
+export type PlaceRecommendationResultPlaceSelectionRequest = {
+  readonly placeId: string;
+  readonly sequence: number;
+};
+
+type PlaceRecommendationResultPlaceListProps = {
+  readonly onPlaceSelect: (placeId: string) => void;
+  readonly selectionRequest: PlaceRecommendationResultPlaceSelectionRequest | null;
+};
+
+const PlaceRecommendationResultPlaceList = ({
+  onPlaceSelect,
+  selectionRequest,
+}: PlaceRecommendationResultPlaceListProps) => {
   const { recommendationId } = useParams();
   const {
     errorMessage,
@@ -15,8 +29,17 @@ const PlaceRecommendationResultPlaceList = () => {
     retry,
     toggleBookmark,
   } = usePlaceRecommendationResultBookmarksContext();
-  const { places, selectPlace, selectedPlace, selectedPlaceId } =
-    usePlaceRecommendationResultUiContext();
+  const { places, selectedPlace, selectedPlaceId } = usePlaceRecommendationResultUiContext();
+  const cardElementsRef = useRef(new Map<string, HTMLElement>());
+
+  useLayoutEffect(() => {
+    if (selectionRequest === null) return;
+
+    cardElementsRef.current.get(selectionRequest.placeId)?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  }, [selectionRequest]);
 
   return (
     <S.List aria-label="추천 장소 목록">
@@ -44,16 +67,23 @@ const PlaceRecommendationResultPlaceList = () => {
         return (
           <S.Card
             key={place.id}
+            ref={(element) => {
+              if (element === null) {
+                cardElementsRef.current.delete(place.id);
+                return;
+              }
+              cardElementsRef.current.set(place.id, element);
+            }}
             $isSelected={isSelected}
             aria-label={`${place.rank}번 ${place.name} ${isSelected ? "선택됨" : "선택"}`}
             aria-pressed={isSelected}
             role="button"
             tabIndex={0}
-            onClick={() => selectPlace(place.id)}
+            onClick={() => onPlaceSelect(place.id)}
             onKeyDown={(event) => {
               if (isSelectionKey(event)) {
                 event.preventDefault();
-                selectPlace(place.id);
+                onPlaceSelect(place.id);
               }
             }}
           >
@@ -93,6 +123,7 @@ const PlaceRecommendationResultPlaceList = () => {
               <S.DetailLink
                 aria-label={`${place.name} 상세 보기`}
                 to={detailPath}
+                viewTransition
                 onClick={(event) => event.stopPropagation()}
               >
                 상세 보기
