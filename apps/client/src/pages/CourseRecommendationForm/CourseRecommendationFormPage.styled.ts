@@ -78,6 +78,7 @@ export const S = {
     border: 1px solid ${tokens.color.neutral[200]};
     border-radius: 8px;
     background: ${tokens.color.neutral[0]};
+    ${tokens.typography.body.sm};
   `,
   Bottom: styled.div`
     padding: 16px 24px 24px;

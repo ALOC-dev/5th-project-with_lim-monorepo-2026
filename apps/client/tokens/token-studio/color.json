@@ -79,6 +79,12 @@
         "$type": "color",
         "$value": "#141413"
       }
+    },
+    "warning": {
+      "500": {
+        "$type": "color",
+        "$value": "#D94B3D"
+      }
     }
   }
 }

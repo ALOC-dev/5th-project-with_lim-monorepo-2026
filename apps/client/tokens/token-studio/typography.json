@@ -78,8 +78,8 @@
         "$value": {
           "fontFamily": "Noto Sans KR",
           "fontWeight": "Regular",
-          "fontSize": "14px",
-          "lineHeight": "22px",
+          "fontSize": "16px",
+          "lineHeight": "24px",
           "letterSpacing": "0%"
         }
       },

@@ -175,6 +175,7 @@ export const S = {
     border: 1px solid
       ${({ $invalid }) => ($invalid ? tokens.color.warning[500] : tokens.color.neutral[200])};
     border-radius: 8px;
+    ${tokens.typography.body.sm};
   `,
   ModalError: styled.p`
     margin: 0;

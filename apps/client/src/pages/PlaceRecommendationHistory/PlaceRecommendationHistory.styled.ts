@@ -230,7 +230,6 @@ export const S = {
     background-color: ${tokens.color.neutral["0"]};
     color: ${tokens.color.neutral["900"]};
     ${tokens.typography.body.md};
-    font-size: 15px;
     outline: none;
 
     border: 1px solid

@@ -169,7 +169,7 @@ export const S = {
     border-radius: 8px;
     outline: none;
     resize: none;
-    font-size: 14px;
+    ${tokens.typography.body.sm};
     color: ${tokens.color.neutral["900"]};
 
     &::placeholder {

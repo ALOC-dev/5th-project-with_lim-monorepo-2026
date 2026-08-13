@@ -11,7 +11,7 @@ export const typography = {
   body: {
     lg: 'font-family: "Noto Sans KR", system-ui, sans-serif;\nfont-size: 18px;\nline-height: 28px;\nfont-weight: 400;\nletter-spacing: 0%;',
     md: 'font-family: "Noto Sans KR", system-ui, sans-serif;\nfont-size: 16px;\nline-height: 24px;\nfont-weight: 400;\nletter-spacing: 0%;',
-    sm: 'font-family: "Noto Sans KR", system-ui, sans-serif;\nfont-size: 14px;\nline-height: 22px;\nfont-weight: 400;\nletter-spacing: 0%;',
+    sm: 'font-family: "Noto Sans KR", system-ui, sans-serif;\nfont-size: 16px;\nline-height: 24px;\nfont-weight: 400;\nletter-spacing: 0%;',
     xs: 'font-family: "Noto Sans KR", system-ui, sans-serif;\nfont-size: 13px;\nline-height: 20px;\nfont-weight: 400;\nletter-spacing: 0%;',
   },
   label: {
