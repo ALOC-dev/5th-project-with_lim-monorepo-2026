@@ -22,7 +22,9 @@ const globalResetStyle = css`
   }
 
   html {
+    color-scheme: light;
     -webkit-text-size-adjust: 100%;
+    overscroll-behavior-y: none;
   }
 
   body {
@@ -30,6 +32,7 @@ const globalResetStyle = css`
     min-height: 100dvh;
     margin: 0;
     overflow-x: hidden;
+    overscroll-behavior-y: none;
     text-rendering: optimizeSpeed;
     /* Global reset baseline only. Component text must use design-system typography tokens. */
     line-height: 1.5;
@@ -82,6 +85,52 @@ const globalResetStyle = css`
     font: inherit;
   }
 
+  button,
+  a {
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  [data-route-transition] {
+    display: flex;
+    min-width: 0;
+    flex: 1;
+    flex-direction: column;
+  }
+
+  html[data-route-transition="fallback"] [data-route-transition] {
+    animation: app-route-enter 160ms ease-out both;
+  }
+
+  @keyframes app-route-enter {
+    from {
+      opacity: 0;
+      transform: translateX(8px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  @supports (view-transition-name: none) {
+    ::view-transition-old(root) {
+      animation: 140ms ease-out both app-route-exit;
+    }
+
+    ::view-transition-new(root) {
+      animation: 180ms ease-out both app-route-enter;
+    }
+  }
+
+  @keyframes app-route-exit {
+    to {
+      opacity: 0;
+      transform: translateX(-4px);
+    }
+  }
+
   button {
     appearance: none;
     margin: 0;
@@ -102,6 +151,10 @@ const globalResetStyle = css`
       animation-duration: 0.01ms !important;
       animation-iteration-count: 1 !important;
       transition-duration: 0.01ms !important;
+    }
+
+    html[data-route-transition="fallback"] [data-route-transition] {
+      animation: none;
     }
   }
 `;

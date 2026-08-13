@@ -1,15 +1,16 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 
 import { getPlaceRecommendationHistory } from "../../apis/server/placeRecommendationHistories";
 import FeedbackState from "../../components/FeedbackState/FeedbackState";
 import Header from "../../components/Header/Header";
 import PageRoot from "../../components/PageRoot/PageRoot";
 import { tokens } from "../../design-system/tokens.generated";
-import { toCompletedPlaceRecommendationEngineOutput } from "../PlaceRecommendationHistory/PlaceRecommendationHistory.data";
 import PlaceRecommendationResultPending from "../../features/PlaceRecommendationResult/components/PlaceRecommendationResultPending";
 import PlaceRecommendationResultContent from "../../features/PlaceRecommendationResult/PlaceRecommendationResultContent";
+import { useAppNavigate } from "../../routes/useAppNavigate";
+import { toCompletedPlaceRecommendationEngineOutput } from "../PlaceRecommendationHistory/PlaceRecommendationHistory.data";
 
 const getPlaceRecommendationResultQueryKey = (recommendationId: string) =>
   ["placeRecommendationHistory", recommendationId] as const;
@@ -23,7 +24,7 @@ const PlaceRecommendationResultStatusFeedback = ({
   readonly title: string;
   readonly description?: string;
 }) => {
-  const navigate = useNavigate();
+  const navigate = useAppNavigate();
 
   return (
     <PageRoot backgroundColor={tokens.color.neutral[50]} layout="contained">

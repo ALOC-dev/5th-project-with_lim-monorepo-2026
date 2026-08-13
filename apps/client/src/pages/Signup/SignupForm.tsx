@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 
 import { requestSignup } from "../../apis/auth";
 import { toApiClientErrorMessage } from "../../apis/errors";
 import Header from "../../components/Header/Header";
 import { Input } from "../../components/Input";
 import Modal from "../../components/Modal/Modal";
+import { useAppNavigate } from "../../routes/useAppNavigate";
 import { useSignupFormInput } from "./Signup.context";
 import { S } from "./Signup.styled";
 
@@ -35,7 +35,7 @@ export default function SignupFormContent() {
     handleResetNickname,
   } = useSignupFormInput();
 
-  const navigate = useNavigate();
+  const navigate = useAppNavigate();
 
   const isPasswordValid =
     /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d!@#$%^&*()_+~`\-={}[\]:;"'<>,.?/]{8,20}$/.test(password);

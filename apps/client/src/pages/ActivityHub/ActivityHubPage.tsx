@@ -1,12 +1,12 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
-import { useNavigate } from "react-router-dom";
 
 import BottomBar from "../../components/BottomBar/BottomBar";
 import { Icon } from "../../components/Icon";
 import PageRoot from "../../components/PageRoot/PageRoot";
 import { useAuth } from "../../contexts/Auth.context";
 import { tokens } from "../../design-system/tokens.generated";
+import { useAppNavigate } from "../../routes/useAppNavigate";
 
 type ActivityLink = {
   readonly icon:
@@ -42,7 +42,7 @@ const activityLinks: readonly ActivityLink[] = [
 ];
 
 export const ActivityHubPage = () => {
-  const navigate = useNavigate();
+  const navigate = useAppNavigate();
   const { logout } = useAuth();
 
   return (

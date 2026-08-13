@@ -1,5 +1,6 @@
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 
+import { useAppNavigate } from "../../routes/useAppNavigate";
 import { Icon } from "../Icon";
 import { S } from "./BottomBar.styled";
 
@@ -10,7 +11,7 @@ const navigationItems = [
 
 const BottomBar = () => {
   const { pathname } = useLocation();
-  const navigate = useNavigate();
+  const navigate = useAppNavigate();
 
   return (
     <S.Navigation aria-label="주요 메뉴">

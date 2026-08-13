@@ -5,7 +5,6 @@ import {
 } from "@monorepo/recommendation-engine/v1/contracts";
 import { useMutation } from "@tanstack/react-query";
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 
 import { createPlaceRecommendationJob } from "../../apis/server/placeRecommendation";
 import { Button } from "../../components/Button";
@@ -14,6 +13,7 @@ import Header from "../../components/Header/Header";
 import { Input } from "../../components/Input";
 import Modal from "../../components/Modal/Modal";
 import { RangeSlider } from "../../components/Rangeslider";
+import { useAppNavigate } from "../../routes/useAppNavigate";
 import { dispatchPlaceRecommendationRequest } from "./input";
 import {
   usePlaceRecommendationFormInput,
@@ -92,7 +92,7 @@ const PlaceRecommendationFormContent = () => {
   } = usePlaceRecommendationFormInput();
 
   const { openSheet } = usePlaceRecommendationFormUi();
-  const navigate = useNavigate();
+  const navigate = useAppNavigate();
 
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
 

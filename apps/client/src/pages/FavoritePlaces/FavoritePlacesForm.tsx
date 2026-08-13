@@ -1,9 +1,8 @@
-import { useNavigate } from "react-router-dom";
-
 import FeedbackState from "../../components/FeedbackState/FeedbackState";
 import Header from "../../components/Header/Header";
 import { Icon } from "../../components/Icon/Icon";
 import { Skeleton } from "../../components/Skeleton";
+import { useAppNavigate } from "../../routes/useAppNavigate";
 import { useFavoritePlaces } from "./FavoritePlaces.context";
 import { S } from "./FavoritePlaces.styled";
 
@@ -47,7 +46,7 @@ export default function FavoritePlacesContent() {
     handleRetry,
     handleGoToPlaceRecommendationHistory,
   } = useFavoritePlaces();
-  const navigate = useNavigate();
+  const navigate = useAppNavigate();
 
   return (
     <S.Container>

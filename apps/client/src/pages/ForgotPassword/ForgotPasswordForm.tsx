@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 
 import Header from "../../components/Header/Header";
 import { Input } from "../../components/Input";
+import { useAppNavigate } from "../../routes/useAppNavigate";
 import { useForgotPasswordInput } from "./ForgotPassword.context";
 import { S } from "./ForgotPassword.styled";
 
@@ -18,7 +18,7 @@ export default function ForgotPasswordForm() {
     handleVerifyAuthCode,
   } = useForgotPasswordInput();
 
-  const navigate = useNavigate();
+  const navigate = useAppNavigate();
 
   // ⏱️ 타이머 상태 관리 추가
   const [timeLeft, setTimeLeft] = useState(300);
@@ -142,7 +142,9 @@ export default function ForgotPasswordForm() {
         )}
 
         <S.Footer isBottomFixed>
-          <S.LoginLink to="/login">로그인 화면으로 돌아가기</S.LoginLink>
+          <S.LoginLink to="/login" viewTransition>
+            로그인 화면으로 돌아가기
+          </S.LoginLink>
         </S.Footer>
       </S.Form>
     </S.Container>

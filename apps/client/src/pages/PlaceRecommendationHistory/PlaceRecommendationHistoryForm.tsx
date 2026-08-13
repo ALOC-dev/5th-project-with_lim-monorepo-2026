@@ -1,11 +1,11 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 
 import FeedbackState from "../../components/FeedbackState/FeedbackState";
 import Header from "../../components/Header/Header";
 import { Icon } from "../../components/Icon/Icon";
 import Modal from "../../components/Modal/Modal";
 import { Skeleton } from "../../components/Skeleton";
+import { useAppNavigate } from "../../routes/useAppNavigate";
 import {
   type PlaceRecommendationHistoryItem,
   usePlaceRecommendationHistory,
@@ -47,7 +47,7 @@ export default function PlaceRecommendationHistoryContent() {
     handleUpdateTitle,
     retry,
   } = usePlaceRecommendationHistory();
-  const navigate = useNavigate();
+  const navigate = useAppNavigate();
 
   const [editingItem, setEditingItem] = useState<PlaceRecommendationHistoryItem | null>(null);
   const [editTitle, setEditTitle] = useState("");

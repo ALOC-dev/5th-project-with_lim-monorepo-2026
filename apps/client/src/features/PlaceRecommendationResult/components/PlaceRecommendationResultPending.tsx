@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 
 import {
   getPlaceRecommendationStreamUrl,
@@ -7,6 +6,7 @@ import {
   PlaceRecommendationProgressSseEventSchema,
 } from "../../../apis/server/placeRecommendation";
 import { RecommendationProgress } from "../../../components/RecommendationProgress";
+import { useAppNavigate } from "../../../routes/useAppNavigate";
 import {
   formatElapsedSeconds,
   getPlaceRecommendationProgressTimeline,
@@ -35,7 +35,7 @@ const PlaceRecommendationResultPending = ({
   jobId,
   onTerminal,
 }: PlaceRecommendationResultPendingProps) => {
-  const navigate = useNavigate();
+  const navigate = useAppNavigate();
   const [progressEvents, setProgressEvents] = useState<
     readonly PlaceRecommendationProgressSseEvent[]
   >([]);

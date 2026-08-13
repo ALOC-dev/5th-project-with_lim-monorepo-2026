@@ -1,18 +1,18 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { type ReactNode, useCallback, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
 
 import {
   deleteSavedPlace,
   getSavedPlaces,
   type SavedRecommendationPlace,
 } from "../../apis/server/savedPlaces";
+import PageRoot from "../../components/PageRoot/PageRoot";
+import { tokens } from "../../design-system/tokens.generated";
 import {
   removeSavedPlaceFromCache,
   savedPlacesQueryKey,
 } from "../../features/SavedPlaces/savedPlaces.data";
-import PageRoot from "../../components/PageRoot/PageRoot";
-import { tokens } from "../../design-system/tokens.generated";
+import { useAppNavigate } from "../../routes/useAppNavigate";
 import {
   type FavoritePlaceItem,
   FavoritePlacesContext,
@@ -79,7 +79,7 @@ const requestSavedPlaceDeletion = async (savedPlaceId: string): Promise<string> 
 };
 
 const FavoritePlacesProvider = ({ children }: { readonly children: ReactNode }) => {
-  const navigate = useNavigate();
+  const navigate = useAppNavigate();
   const queryClient = useQueryClient();
   const [deleteErrorMessage, setDeleteErrorMessage] = useState<string | null>(null);
   const {

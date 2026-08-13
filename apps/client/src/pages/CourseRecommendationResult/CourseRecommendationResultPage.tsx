@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 
 import FeedbackState from "../../components/FeedbackState/FeedbackState";
 import { CourseMap } from "../../features/CourseRecommendation/components/CourseMap";
@@ -8,10 +8,11 @@ import { CoursePage } from "../../features/CourseRecommendation/components/Cours
 import { formatMinutes } from "../../features/CourseRecommendation/courseRecommendation.utils";
 import { courseRepository } from "../../features/CourseRecommendation/courseRepository";
 import { CourseRecommendationResultPending } from "../../features/CourseRecommendationResult/CourseRecommendationResultPending";
+import { useAppNavigate } from "../../routes/useAppNavigate";
 import { S } from "./CourseRecommendationResultPage.styled";
 
 export const CourseRecommendationResultPage = () => {
-  const navigate = useNavigate();
+  const navigate = useAppNavigate();
   const { courseId } = useParams();
   const queryClient = useQueryClient();
   const cancelledHandled = useRef(false);

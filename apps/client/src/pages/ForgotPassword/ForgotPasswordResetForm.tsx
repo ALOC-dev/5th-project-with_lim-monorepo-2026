@@ -1,7 +1,6 @@
-import { useNavigate } from "react-router-dom";
-
 import Header from "../../components/Header/Header";
 import { Input } from "../../components/Input";
+import { useAppNavigate } from "../../routes/useAppNavigate";
 import { useForgotPasswordInput } from "./ForgotPassword.context";
 import { S } from "./ForgotPassword.styled";
 
@@ -9,7 +8,7 @@ export default function ResetPasswordForm() {
   const { password, setPassword, passwordConfirm, setPasswordConfirm, handleResetPassword } =
     useForgotPasswordInput();
 
-  const navigate = useNavigate();
+  const navigate = useAppNavigate();
 
   const isPasswordValid =
     /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d!@#$%^&*()_+~`\-={}[\]:;"'<>,.?/]{8,20}$/.test(password);

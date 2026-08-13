@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useNavigate, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 
 import FeedbackState from "../../components/FeedbackState/FeedbackState";
 import { Icon } from "../../components/Icon";
@@ -11,10 +11,11 @@ import {
   formatMinutes,
 } from "../../features/CourseRecommendation/courseRecommendation.utils";
 import { courseRepository } from "../../features/CourseRecommendation/courseRepository";
+import { useAppNavigate } from "../../routes/useAppNavigate";
 import { S } from "./CourseRecommendationResultItemDetailPage.styled";
 
 export const CourseRecommendationResultItemDetailPage = () => {
-  const navigate = useNavigate();
+  const navigate = useAppNavigate();
   const { courseId, optionId } = useParams();
   const queryClient = useQueryClient();
   const optionQuery = useQuery({

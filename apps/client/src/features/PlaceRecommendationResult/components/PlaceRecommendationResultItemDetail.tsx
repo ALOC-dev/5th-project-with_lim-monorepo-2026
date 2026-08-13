@@ -1,15 +1,16 @@
 import { useEffect } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 
 import Header from "../../../components/Header/Header";
 import { Icon } from "../../../components/Icon/Icon";
+import { useAppNavigate } from "../../../routes/useAppNavigate";
 import { usePlaceRecommendationResultBookmarksContext } from "../state/PlaceRecommendationResult.bookmarks.context";
 import { usePlaceRecommendationResultUiContext } from "../state/PlaceRecommendationResult.ui.context";
 import { S } from "./PlaceRecommendationResultItemDetail.styled";
 
 const PlaceRecommendationResultItemDetail = () => {
   const { placeId, recommendationId } = useParams();
-  const navigate = useNavigate();
+  const navigate = useAppNavigate();
   const {
     errorMessage,
     isBookmarkActionDisabled,
@@ -94,12 +95,20 @@ const PlaceRecommendationResultItemDetail = () => {
           <S.InfoLabel>참고 링크</S.InfoLabel>
           <S.ReferenceLinks>
             {place.referenceUrls.naverMap !== undefined && (
-              <S.ReferenceLink href={place.referenceUrls.naverMap} target="_blank" rel="noreferrer">
+              <S.ReferenceLink
+                href={place.referenceUrls.naverMap}
+                rel="noopener noreferrer"
+                target="_blank"
+              >
                 네이버지도
               </S.ReferenceLink>
             )}
             {place.referenceUrls.kakaoMap !== undefined && (
-              <S.ReferenceLink href={place.referenceUrls.kakaoMap} target="_blank" rel="noreferrer">
+              <S.ReferenceLink
+                href={place.referenceUrls.kakaoMap}
+                rel="noopener noreferrer"
+                target="_blank"
+              >
                 카카오맵
               </S.ReferenceLink>
             )}
@@ -107,7 +116,7 @@ const PlaceRecommendationResultItemDetail = () => {
               <S.ReferenceLink
                 href={place.referenceUrls.instagram}
                 target="_blank"
-                rel="noreferrer"
+                rel="noopener noreferrer"
               >
                 인스타그램
               </S.ReferenceLink>

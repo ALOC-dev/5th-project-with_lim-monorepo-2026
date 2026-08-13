@@ -1,20 +1,21 @@
 import styled from "@emotion/styled";
 import type { EngineOutput } from "@monorepo/recommendation-engine/v1/contracts";
-import { useNavigate, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 
 import FeedbackState from "../../components/FeedbackState/FeedbackState";
 import Header from "../../components/Header/Header";
 import PageRoot from "../../components/PageRoot/PageRoot";
 import { tokens } from "../../design-system/tokens.generated";
-import PlaceRecommendationResultListView from "./components/PlaceRecommendationResultListView";
+import { useAppNavigate } from "../../routes/useAppNavigate";
 import PlaceRecommendationResultItemDetail from "./components/PlaceRecommendationResultItemDetail";
+import PlaceRecommendationResultListView from "./components/PlaceRecommendationResultListView";
+import { PlaceRecommendationResultBookmarksProvider } from "./state/PlaceRecommendationResult.bookmarks.provider";
 import { PlaceRecommendationResultBoundary } from "./state/PlaceRecommendationResult.boundary";
 import {
   type PlaceRecommendationResultSuccess,
   usePlaceRecommendationResultDataContext,
 } from "./state/PlaceRecommendationResult.data.context";
 import { PlaceRecommendationResultDataProvider } from "./state/PlaceRecommendationResult.data.provider";
-import { PlaceRecommendationResultBookmarksProvider } from "./state/PlaceRecommendationResult.bookmarks.provider";
 import { PlaceRecommendationResultUiProvider } from "./state/PlaceRecommendationResult.ui.provider";
 
 const PlaceRecommendationResultFeedbackShell = ({
@@ -22,7 +23,7 @@ const PlaceRecommendationResultFeedbackShell = ({
 }: {
   readonly children: React.ReactNode;
 }) => {
-  const navigate = useNavigate();
+  const navigate = useAppNavigate();
 
   return (
     <PageRoot backgroundColor={tokens.color.neutral[50]} layout="contained">
@@ -41,7 +42,7 @@ const PlaceRecommendationResultLoading = () => {
 };
 
 const PlaceRecommendationResultEmpty = () => {
-  const navigate = useNavigate();
+  const navigate = useAppNavigate();
 
   return (
     <PlaceRecommendationResultFeedbackShell>
@@ -60,7 +61,7 @@ const PlaceRecommendationResultEmpty = () => {
 
 const PlaceRecommendationResultError = () => {
   const dataContext = usePlaceRecommendationResultDataContext();
-  const navigate = useNavigate();
+  const navigate = useAppNavigate();
   const description =
     dataContext.status === "error"
       ? (dataContext.message ?? "추천 기록에서 다시 열거나 새 추천을 요청해 주세요.")

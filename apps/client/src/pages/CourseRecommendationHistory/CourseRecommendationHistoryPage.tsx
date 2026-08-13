@@ -1,6 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 
 import FeedbackState from "../../components/FeedbackState/FeedbackState";
 import { Icon } from "../../components/Icon";
@@ -17,6 +16,7 @@ import {
   historySummary,
 } from "../../features/CourseRecommendation/courseRecommendation.utils";
 import { courseRepository } from "../../features/CourseRecommendation/courseRepository";
+import { useAppNavigate } from "../../routes/useAppNavigate";
 import { S } from "./CourseRecommendationHistoryPage.styled";
 
 const skeletonCardKeys = ["first", "second", "third"] as const;
@@ -45,7 +45,7 @@ const CourseRecommendationHistorySkeleton = () => (
 );
 
 export const CourseRecommendationHistoryPage = () => {
-  const navigate = useNavigate();
+  const navigate = useAppNavigate();
   const queryClient = useQueryClient();
   const histories = useQuery({
     queryKey: ["course-history"],

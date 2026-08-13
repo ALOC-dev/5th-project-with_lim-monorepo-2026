@@ -1,6 +1,5 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 
 import BottomSheet from "../../components/BottomSheet/BottomSheet";
 import { Button } from "../../components/Button";
@@ -13,10 +12,11 @@ import { CoursePage } from "../../features/CourseRecommendation/components/Cours
 import type { CoursePlace } from "../../features/CourseRecommendation/course.types";
 import { MAX_SELECTED_PLACES } from "../../features/CourseRecommendation/courseRecommendation.constants";
 import { courseRepository } from "../../features/CourseRecommendation/courseRepository";
+import { useAppNavigate } from "../../routes/useAppNavigate";
 import { S } from "./CourseRecommendationFormPage.styled";
 
 export const CourseRecommendationFormPage = () => {
-  const navigate = useNavigate();
+  const navigate = useAppNavigate();
   const [places, setPlaces] = useState<CoursePlace[]>([]);
   const [date, setDate] = useState("2026-07-18");
   const [startTime, setStartTime] = useState("18:30");

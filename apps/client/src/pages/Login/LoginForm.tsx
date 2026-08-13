@@ -1,17 +1,16 @@
-import { useNavigate } from "react-router-dom";
-
 import { requestLogin } from "../../apis/auth";
 import { toApiClientErrorMessage } from "../../apis/errors";
 import Header from "../../components/Header/Header";
 import { Input } from "../../components/Input";
 import { useAuth } from "../../contexts/Auth.context";
+import { useAppNavigate } from "../../routes/useAppNavigate";
 import { useLoginFormInput } from "./Login.context";
 import { S } from "./Login.styled";
 
 export default function LoginFormContent() {
   const { email, password, isLoginReady, setEmail, setPassword } = useLoginFormInput();
 
-  const navigate = useNavigate();
+  const navigate = useAppNavigate();
 
   const { login } = useAuth();
 
@@ -66,13 +65,17 @@ export default function LoginFormContent() {
         </S.SubmitButton>
 
         <S.AssistSection>
-          <S.StyledLink to="/login/forgotpassword">비밀번호를 잊으셨나요?</S.StyledLink>
+          <S.StyledLink to="/login/forgotpassword" viewTransition>
+            비밀번호를 잊으셨나요?
+          </S.StyledLink>
         </S.AssistSection>
       </S.Form>
 
       <S.Footer>
         <S.FooterText>아직 계정이 없나요?</S.FooterText>
-        <S.SignupLink to="/signup">회원가입</S.SignupLink>
+        <S.SignupLink to="/signup" viewTransition>
+          회원가입
+        </S.SignupLink>
       </S.Footer>
     </S.Container>
   );

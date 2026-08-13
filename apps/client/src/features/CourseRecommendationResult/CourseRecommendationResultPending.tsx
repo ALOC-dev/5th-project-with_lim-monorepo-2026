@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 
 import { getCourseStreamUrl } from "../../apis/server/courses";
 import { RecommendationProgress } from "../../components/RecommendationProgress";
+import { useAppNavigate } from "../../routes/useAppNavigate";
 import {
   COURSE_PROGRESS_LABELS,
   type CourseProgressStep,
@@ -20,7 +20,7 @@ export const CourseRecommendationResultPending = ({
   onCancelled,
   onTerminal,
 }: CourseRecommendationResultPendingProps) => {
-  const navigate = useNavigate();
+  const navigate = useAppNavigate();
   const [progressStep, setProgressStep] = useState<CourseProgressStep>("input_validated");
 
   useEffect(() => {
