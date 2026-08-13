@@ -1,3 +1,5 @@
 packages:
   - "apps/*"
   - "packages/*"
+patchedDependencies:
+  react-scan@0.5.7: patches/react-scan@0.5.7.patch

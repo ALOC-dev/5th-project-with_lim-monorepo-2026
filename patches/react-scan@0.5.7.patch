@@ -1,0 +1,48 @@
+diff --git a/dist/index.js b/dist/index.js
+index 7514416b798e173501c586fb8dbc8ad19234f3a5..acecd9b9dc6fa00ada7a518a16ad8f8197a88a07 100644
+--- a/dist/index.js
++++ b/dist/index.js
+@@ -10692,6 +10692,9 @@ svg {
+       background-color: #5f3f9a;
+       &::before {
+         --tw-translate-x: 100%;
+         translate: var(--tw-translate-x) var(--tw-translate-y);
++        translate: none;
++        transform: translateY(-50%);
+         left: auto;
++        right: 0;
+         border-color: #5f3f9a;
+@@ -10715,6 +10718,9 @@ svg {
+       position: absolute;
+       top: calc(1 / 2 * 100%);
+       left: calc(var(--spacing) * 0);
++      --tw-translate-x: 0px;
+       --tw-translate-y: calc(calc(1 / 2 * 100%) * -1);
+       translate: var(--tw-translate-x) var(--tw-translate-y);
++      translate: none;
++      transform: translateY(-50%);
+       height: calc(var(--spacing) * 4);
+diff --git a/dist/index.mjs b/dist/index.mjs
+index 0c8d6cb1b06d1e9d034c8e59691638088fbee2b6..70871af6ed1771aba16c38cb6311038c9d59dc79 100644
+--- a/dist/index.mjs
++++ b/dist/index.mjs
+@@ -10724,6 +10724,9 @@ svg {
+       background-color: #5f3f9a;
+       &::before {
+         --tw-translate-x: 100%;
+         translate: var(--tw-translate-x) var(--tw-translate-y);
++        translate: none;
++        transform: translateY(-50%);
+         left: auto;
++        right: 0;
+         border-color: #5f3f9a;
+@@ -10747,6 +10750,9 @@ svg {
+       position: absolute;
+       top: calc(1 / 2 * 100%);
+       left: calc(var(--spacing) * 0);
++      --tw-translate-x: 0px;
+       --tw-translate-y: calc(calc(1 / 2 * 100%) * -1);
+       translate: var(--tw-translate-x) var(--tw-translate-y);
++      translate: none;
++      transform: translateY(-50%);
+       height: calc(var(--spacing) * 4);
