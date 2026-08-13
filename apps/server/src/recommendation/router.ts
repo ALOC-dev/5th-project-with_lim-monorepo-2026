@@ -222,7 +222,8 @@ export const createRecommendationRouter = (secrets: RecommendationEngineSecrets)
           try {
             result = await new RecommendationEngine(jobState.userInput, DEFAULT_ENGINE_CONFIG, {
               logger: runLog.logger,
-              onProgress: (step) => emitEvent({ type: "progress", step }),
+              onProgress: (step) =>
+                emitEvent({ type: "progress", step, startedAt: new Date().toISOString() }),
               secrets,
             }).process();
           } catch (error: unknown) {
