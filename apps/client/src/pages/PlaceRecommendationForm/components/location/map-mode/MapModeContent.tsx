@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { Map, MapMarker } from "react-kakao-maps-sdk";
+import { toast } from "sonner";
 
 import { resolveSelectedLocation, type ReverseGeocodeCoordinates } from "../../../../../apis/kakao";
 import { Button } from "../../../../../components/Button";
@@ -7,47 +8,58 @@ import {
   usePlaceRecommendationFormInput,
   usePlaceRecommendationFormUi,
 } from "../../../PlaceRecommendationForm.context";
+import { useLocationSelection } from "../LocationSelection.context";
 import { S } from "./MapModeContent.styled";
 
 type AddressRequestStatus = "loading" | "resolved" | "failed";
 
 const CENTER_CHANGE_THRESHOLD = 0.000001;
+const DEFAULT_MAP_CENTER = { lat: 37.5665, lng: 126.978 };
 
 const MapModeContent = () => {
   const { locations, setLocations } = usePlaceRecommendationFormInput();
   const { closeSheet } = usePlaceRecommendationFormUi();
-  const [addressRequestStatus, setAddressRequestStatus] =
-    useState<AddressRequestStatus>("resolved");
+  const { clearSelectedLocation, currentLocation, selectedLocation } = useLocationSelection();
 
   // 초기 지도의 중심 좌표 계산
   const lastLocation = locations[locations.length - 1];
-  const initialLat = lastLocation?.lat ?? 37.5665; // 값이 없으면 서울시청 위도
-  const initialLng = lastLocation?.lng ?? 126.978; // 값이 없으면 서울시청 경도
+  const initialLocation =
+    selectedLocation ??
+    lastLocation ??
+    (currentLocation
+      ? {
+          ...currentLocation,
+          placeName: "",
+          roadNameAddress: "",
+        }
+      : {
+          ...DEFAULT_MAP_CENTER,
+          placeName: "",
+          roadNameAddress: "",
+        });
 
-  const [currentSelectedLocation, setCurrentSelectedLocation] = useState({
-    lat: initialLat,
-    lng: initialLng,
-    placeName: "",
-    roadNameAddress: "",
-  });
+  const [currentSelectedLocation, setCurrentSelectedLocation] = useState(initialLocation);
+  const [addressRequestStatus, setAddressRequestStatus] = useState<AddressRequestStatus>(() =>
+    selectedLocation ? "resolved" : "loading",
+  );
 
   const latestReverseGeocodeRequestIdRef = useRef(0);
-  const latestReverseGeocodeCoordinatesRef = useRef<ReverseGeocodeCoordinates>({
-    lat: initialLat,
-    lng: initialLng,
-  });
-
-  useEffect(() => {
-    latestReverseGeocodeCoordinatesRef.current = {
-      lat: initialLat,
-      lng: initialLng,
-    };
-  }, [initialLat, initialLng]);
+  const latestReverseGeocodeCoordinatesRef = useRef<ReverseGeocodeCoordinates | null>(
+    selectedLocation
+      ? {
+          lat: selectedLocation.lat,
+          lng: selectedLocation.lng,
+        }
+      : null,
+  );
 
   const updateAddressFromMapCenter = async (map: kakao.maps.Map) => {
     const coordinates = getMapCenterCoordinates(map);
 
-    if (isSameCoordinates(coordinates, latestReverseGeocodeCoordinatesRef.current)) {
+    if (
+      latestReverseGeocodeCoordinatesRef.current &&
+      isSameCoordinates(coordinates, latestReverseGeocodeCoordinatesRef.current)
+    ) {
       return;
     }
 
@@ -139,9 +151,10 @@ const MapModeContent = () => {
 
   const handleCompleteSelection = () => {
     if (canCompleteSelection) {
+      clearSelectedLocation();
       setLocations((prev) => {
         if (prev.length >= 8) {
-          alert("출발지는 최대 8개까지만 선택할 수 있습니다.");
+          toast.warning("출발지는 최대 8개까지만 선택할 수 있습니다.");
           return prev;
         }
         return [...prev, currentSelectedLocation];
@@ -173,9 +186,14 @@ const MapModeContent = () => {
           <div>{locationLabel.message}</div>
         )}
       </div>
-      <Button width="full" disabled={!canCompleteSelection} onClick={handleCompleteSelection}>
-        선택 완료
-      </Button>
+      <S.ActionRow>
+        <Button onClick={closeSheet} tone="secondary" type="button" width="100%">
+          취소
+        </Button>
+        <Button width="100%" disabled={!canCompleteSelection} onClick={handleCompleteSelection}>
+          선택 완료
+        </Button>
+      </S.ActionRow>
     </S.Wrapper>
   );
 };

@@ -13,6 +13,10 @@ export const S = {
     min-height: 0;
     flex: 1;
   `,
+  ActionRow: styled.div`
+    display: flex;
+    gap: 8px;
+  `,
   CenterMarker: styled.div`
     position: absolute;
     left: 50%;

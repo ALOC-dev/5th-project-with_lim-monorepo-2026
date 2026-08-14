@@ -18,13 +18,7 @@ type PlaceRecommendationFormInitialValues = Pick<
   | "userNaturalLanguageRequest"
 >;
 
-const getInitialLocations = (): PlaceRecommendationFormLocation[] => [
-  {
-    lat: 37.5665,
-    lng: 126.978,
-    roadNameAddress: "서울특별시 중구 세종대로 110",
-  },
-];
+const getInitialLocations = (): PlaceRecommendationFormLocation[] => [];
 
 export const getPlaceRecommendationFormInitialValues = (
   usePredefined: boolean = USE_PREDEFINED,

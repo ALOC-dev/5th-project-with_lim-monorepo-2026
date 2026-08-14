@@ -12,12 +12,13 @@ import SearchModeContent from "./search-mode/SearchModeContent";
 
 const LocationSelectionBottomSheet = () => {
   const { closeSheet, isSheetOpen } = usePlaceRecommendationFormUi();
+  const isLocationSheetOpen = isSheetOpen("location");
 
   return (
-    <LocationSelectionProvider>
+    <LocationSelectionProvider isLocationSheetOpen={isLocationSheetOpen}>
       <BottomSheet
         id={"location-selector-bottomsheet"}
-        isOpen={isSheetOpen("location")}
+        isOpen={isLocationSheetOpen}
         close={closeSheet}
         handleType="none"
       >
@@ -28,7 +29,7 @@ const LocationSelectionBottomSheet = () => {
 };
 
 const LocationSelectionBottomSheetContent = () => {
-  const { mode } = useLocationSelection();
+  const { currentLocation, mode } = useLocationSelection();
   const { locations } = usePlaceRecommendationFormInput();
   const { closeSheet } = usePlaceRecommendationFormUi();
 
@@ -41,12 +42,20 @@ const LocationSelectionBottomSheetContent = () => {
       <S.SearchInputSlot>
         <LocationSelectionSearchInput />
       </S.SearchInputSlot>
-      {mode === "map" ? <MapModeContent /> : <SearchModeContent />}
-      <S.Footer>
-        <Button onClick={closeSheet} tone="secondary" type="button" width="100%">
-          취소
-        </Button>
-      </S.Footer>
+      {mode === "map" ? (
+        <MapModeContent
+          key={`map:${currentLocation?.lat ?? "fallback"}:${currentLocation?.lng ?? "fallback"}`}
+        />
+      ) : (
+        <SearchModeContent />
+      )}
+      {mode === "search" ? (
+        <S.Footer>
+          <Button onClick={closeSheet} tone="secondary" type="button" width="100%">
+            취소
+          </Button>
+        </S.Footer>
+      ) : null}
     </S.Wrapper>
   );
 };
