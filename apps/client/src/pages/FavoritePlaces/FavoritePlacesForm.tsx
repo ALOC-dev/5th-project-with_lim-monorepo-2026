@@ -2,7 +2,7 @@ import FeedbackState from "../../components/FeedbackState/FeedbackState";
 import Header from "../../components/Header/Header";
 import { Icon } from "../../components/Icon/Icon";
 import { Skeleton } from "../../components/Skeleton";
-import { useAppNavigate } from "../../routes/useAppNavigate";
+import { useAppBackNavigate, useAppNavigate } from "../../routes/useAppNavigate";
 import { useFavoritePlaces } from "./FavoritePlaces.context";
 import { S } from "./FavoritePlaces.styled";
 
@@ -47,10 +47,17 @@ export default function FavoritePlacesContent() {
     handleGoToPlaceRecommendationHistory,
   } = useFavoritePlaces();
   const navigate = useAppNavigate();
+  const navigateBack = useAppBackNavigate("/my");
+  const handleOpenPlace = (historyId: string | null, placeId: string) => {
+    if (historyId === null) return;
+
+    const resultPath = `/place/recommendation/${encodeURIComponent(historyId)}`;
+    void navigate(`${resultPath}/place/${encodeURIComponent(placeId)}`);
+  };
 
   return (
     <S.Container>
-      <Header title="찜한 장소 보기" onBack={() => navigate(-1)} />
+      <Header title="찜한 장소 보기" onBack={navigateBack} />
 
       <S.Main>
         {isLoading ? (
@@ -74,8 +81,31 @@ export default function FavoritePlacesContent() {
               <S.DeleteError role="alert">{deleteErrorMessage}</S.DeleteError>
             ) : null}
             <S.List>
-              {favoriteList.map((item) => (
-                <S.Card key={item.id}>
+              {favoriteList.map((item) => {
+                const canOpenPlace = item.historyId !== null;
+
+                return (
+                  <S.Card
+                    aria-label={canOpenPlace ? `${item.title} 상세 보기` : undefined}
+                    key={item.id}
+                    role={canOpenPlace ? "button" : undefined}
+                    tabIndex={canOpenPlace ? 0 : undefined}
+                    onClick={
+                      canOpenPlace
+                        ? () => handleOpenPlace(item.historyId, item.placeId)
+                        : undefined
+                    }
+                    onKeyDown={
+                      canOpenPlace
+                        ? (event) => {
+                            if (event.key === "Enter" || event.key === " ") {
+                              event.preventDefault();
+                              handleOpenPlace(item.historyId, item.placeId);
+                            }
+                          }
+                        : undefined
+                    }
+                  >
                   <S.DateLabel>{item.date}</S.DateLabel>
 
                   <S.CardBody>
@@ -91,7 +121,11 @@ export default function FavoritePlacesContent() {
                         disabled={isDeleting}
                         type="button"
                         $isFavorited
-                        onClick={() => handleToggleFavorite(item.id)}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          handleToggleFavorite(item.id);
+                        }}
+                        onKeyDown={(event) => event.stopPropagation()}
                       >
                         <Icon name="heart-filled" size={20} />
                       </S.IconButton>
@@ -104,8 +138,9 @@ export default function FavoritePlacesContent() {
                       <S.Tag key={tag}>{tag}</S.Tag>
                     ))}
                   </S.TagsRow>
-                </S.Card>
-              ))}
+                  </S.Card>
+                );
+              })}
             </S.List>
           </S.Content>
         )}

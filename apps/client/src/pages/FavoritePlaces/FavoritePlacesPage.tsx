@@ -49,10 +49,13 @@ const formatSeoulDate = (createdAt: string): string => {
 
 const toFavoritePlaceItem = ({
   id,
+  historyId,
   createdAt,
   placeData,
 }: SavedRecommendationPlace): FavoritePlaceItem => ({
   id,
+  historyId,
+  placeId: placeData.id,
   date: formatSeoulDate(createdAt),
   title: placeData.name,
   category: `${placeData.mainCategory} · ${placeData.subCategory}`,
