@@ -91,44 +91,11 @@ const globalResetStyle = css`
     touch-action: manipulation;
   }
 
-  [data-route-transition] {
+  [data-route-frame] {
     display: flex;
     min-width: 0;
     flex: 1;
     flex-direction: column;
-  }
-
-  html[data-route-transition="fallback"] [data-route-transition] {
-    animation: app-route-enter 160ms ease-out both;
-  }
-
-  @keyframes app-route-enter {
-    from {
-      opacity: 0;
-      transform: translateX(8px);
-    }
-
-    to {
-      opacity: 1;
-      transform: translateX(0);
-    }
-  }
-
-  @supports (view-transition-name: none) {
-    ::view-transition-old(root) {
-      animation: 140ms ease-out both app-route-exit;
-    }
-
-    ::view-transition-new(root) {
-      animation: 180ms ease-out both app-route-enter;
-    }
-  }
-
-  @keyframes app-route-exit {
-    to {
-      opacity: 0;
-      transform: translateX(-4px);
-    }
   }
 
   button {
@@ -151,10 +118,6 @@ const globalResetStyle = css`
       animation-duration: 0.01ms !important;
       animation-iteration-count: 1 !important;
       transition-duration: 0.01ms !important;
-    }
-
-    html[data-route-transition="fallback"] [data-route-transition] {
-      animation: none;
     }
   }
 `;

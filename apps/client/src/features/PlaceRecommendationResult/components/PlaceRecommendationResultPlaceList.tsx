@@ -123,7 +123,6 @@ const PlaceRecommendationResultPlaceList = ({
               <S.DetailLink
                 aria-label={`${place.name} 상세 보기`}
                 to={detailPath}
-                viewTransition
                 onClick={(event) => event.stopPropagation()}
               >
                 상세 보기

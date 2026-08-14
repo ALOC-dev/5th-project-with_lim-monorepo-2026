@@ -10,7 +10,7 @@ import {
   formatMinutes,
 } from "../../features/CourseRecommendation/courseRecommendation.utils";
 import { courseRepository } from "../../features/CourseRecommendation/courseRepository";
-import { useAppNavigate } from "../../routes/useAppNavigate";
+import { useAppBackNavigate, useAppNavigate } from "../../routes/useAppNavigate";
 import { S } from "./CourseFavoritePage.styled";
 
 const skeletonCardKeys = ["first", "second", "third"] as const;
@@ -34,6 +34,7 @@ const CourseFavoriteSkeleton = () => (
 
 export const CourseFavoritePage = () => {
   const navigate = useAppNavigate();
+  const navigateBack = useAppBackNavigate("/my");
   const queryClient = useQueryClient();
   const favorites = useQuery({
     queryKey: ["course-favorites"],
@@ -54,7 +55,7 @@ export const CourseFavoritePage = () => {
   });
 
   return (
-    <CoursePage onBack={() => navigate(-1)} title="찜한 코스 보기">
+    <CoursePage onBack={navigateBack} title="찜한 코스 보기">
       {favorites.isPending ? (
         <CourseFavoriteSkeleton />
       ) : favorites.isError ? (

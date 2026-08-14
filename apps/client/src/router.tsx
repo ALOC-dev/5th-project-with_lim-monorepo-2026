@@ -1,11 +1,9 @@
-import {
-  createBrowserRouter,
-  Navigate,
-  Outlet,
-  ScrollRestoration,
-  useLocation,
-} from "react-router-dom";
+import { createBrowserRouter, Navigate, Outlet, ScrollRestoration } from "react-router-dom";
 
+import FeedbackState from "./components/FeedbackState/FeedbackState";
+import PageRoot from "./components/PageRoot/PageRoot";
+import { useAuth } from "./contexts/Auth.context";
+import { tokens } from "./design-system/tokens.generated";
 import { ActivityHubPage } from "./pages/ActivityHub/ActivityHubPage";
 import { CourseFavoritePage } from "./pages/CourseFavorite/CourseFavoritePage";
 import { CourseRecommendationFormPage } from "./pages/CourseRecommendationForm/CourseRecommendationFormPage";
@@ -25,16 +23,34 @@ import PlaceRecommendationResultPage from "./pages/PlaceRecommendationResult/Pla
 import PlaceRecommendationResultItemDetailPage from "./pages/PlaceRecommendationResultItemDetail/PlaceRecommendationResultItemDetailPage";
 import SignupPage from "./pages/Signup/SignupPage";
 import { ProtectedRoute, PublicRoute } from "./routes/AuthRouteGuards";
+import { MainNavigationLayout } from "./routes/MainNavigationLayout";
+import { useAppNavigate } from "./routes/useAppNavigate";
 
-const NotFoundPage = () => <div>NotFoundPage</div>;
+const NotFoundPage = () => {
+  const navigate = useAppNavigate();
+  const { isAuthenticated } = useAuth();
+  const recoveryPath = isAuthenticated ? "/" : "/login";
+
+  return (
+    <PageRoot backgroundColor={tokens.color.neutral[50]} layout="contained">
+      <FeedbackState
+        action={{
+          label: isAuthenticated ? "홈으로 이동" : "로그인 화면으로 이동",
+          onClick: () => void navigate(recoveryPath, { replace: true }),
+        }}
+        description="주소가 잘못되었거나 페이지가 이동되었을 수 있어요."
+        kind="empty"
+        title="요청한 페이지를 찾을 수 없어요"
+      />
+    </PageRoot>
+  );
+};
 
 const AppRouteFrame = () => {
-  const location = useLocation();
-
   return (
     <>
       <ScrollRestoration getKey={(scrollLocation) => scrollLocation.key} />
-      <div data-route-transition key={location.key}>
+      <div data-route-frame>
         <Outlet />
       </div>
     </>
@@ -49,12 +65,21 @@ export const router = createBrowserRouter([
         element: <ProtectedRoute />,
         children: [
           {
-            index: true,
-            element: <HomePage />,
+            element: <MainNavigationLayout />,
+            children: [
+              {
+                index: true,
+                element: <HomePage />,
+              },
+              {
+                path: "/my",
+                element: <ActivityHubPage />,
+              },
+            ],
           },
           {
             path: "/activity",
-            element: <ActivityHubPage />,
+            element: <Navigate to="/my" replace />,
           },
           {
             path: "/place/recommendation/form",
@@ -70,7 +95,7 @@ export const router = createBrowserRouter([
           },
           {
             path: "/place/recommendation/member",
-            element: <Navigate to="/activity" replace />,
+            element: <Navigate to="/my" replace />,
           },
           {
             path: "/place/recommendation/history",

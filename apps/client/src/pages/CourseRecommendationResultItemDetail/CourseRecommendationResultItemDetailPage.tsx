@@ -11,11 +11,12 @@ import {
   formatMinutes,
 } from "../../features/CourseRecommendation/courseRecommendation.utils";
 import { courseRepository } from "../../features/CourseRecommendation/courseRepository";
-import { useAppNavigate } from "../../routes/useAppNavigate";
+import { useAppBackNavigate, useAppNavigate } from "../../routes/useAppNavigate";
 import { S } from "./CourseRecommendationResultItemDetailPage.styled";
 
 export const CourseRecommendationResultItemDetailPage = () => {
   const navigate = useAppNavigate();
+  const navigateBack = useAppBackNavigate("/course/recommendation/history");
   const { courseId, optionId } = useParams();
   const queryClient = useQueryClient();
   const optionQuery = useQuery({
@@ -37,7 +38,7 @@ export const CourseRecommendationResultItemDetailPage = () => {
 
   if (optionQuery.isPending)
     return (
-      <CoursePage onBack={() => navigate(-1)} title="코스 상세">
+      <CoursePage onBack={navigateBack} title="코스 상세">
         <FeedbackState kind="loading" title="코스 상세를 불러오는 중이에요" />
       </CoursePage>
     );

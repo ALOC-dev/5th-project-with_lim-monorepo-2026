@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
+import { toast } from "sonner";
 
 import FeedbackState from "../../components/FeedbackState/FeedbackState";
 import { CourseMap } from "../../features/CourseRecommendation/components/CourseMap";
@@ -8,11 +9,12 @@ import { CoursePage } from "../../features/CourseRecommendation/components/Cours
 import { formatMinutes } from "../../features/CourseRecommendation/courseRecommendation.utils";
 import { courseRepository } from "../../features/CourseRecommendation/courseRepository";
 import { CourseRecommendationResultPending } from "../../features/CourseRecommendationResult/CourseRecommendationResultPending";
-import { useAppNavigate } from "../../routes/useAppNavigate";
+import { useAppBackNavigate, useAppNavigate } from "../../routes/useAppNavigate";
 import { S } from "./CourseRecommendationResultPage.styled";
 
 export const CourseRecommendationResultPage = () => {
   const navigate = useAppNavigate();
+  const navigateBack = useAppBackNavigate("/my");
   const { courseId } = useParams();
   const queryClient = useQueryClient();
   const cancelledHandled = useRef(false);
@@ -32,7 +34,7 @@ export const CourseRecommendationResultPage = () => {
   const handleCancelled = useCallback(() => {
     if (cancelledHandled.current) return;
     cancelledHandled.current = true;
-    window.alert("취소된 기록입니다.");
+    toast.warning("취소된 기록입니다.");
     void navigate("/course/recommendation/history", { replace: true });
   }, [navigate]);
 
@@ -42,7 +44,7 @@ export const CourseRecommendationResultPage = () => {
 
   if (result.isPending)
     return (
-      <CoursePage onBack={() => navigate(-1)} title="코스 결과">
+      <CoursePage onBack={navigateBack} title="코스 결과">
         <FeedbackState kind="loading" title="추천 결과를 불러오는 중이에요" />
       </CoursePage>
     );

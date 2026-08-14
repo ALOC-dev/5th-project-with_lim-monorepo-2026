@@ -1,3 +1,5 @@
+import { toast } from "sonner";
+
 import { requestLogin } from "../../apis/auth";
 import { toApiClientErrorMessage } from "../../apis/errors";
 import Header from "../../components/Header/Header";
@@ -22,12 +24,12 @@ export default function LoginFormContent() {
       const response = await requestLogin({ email, password });
 
       if (response.success) {
-        alert("로그인에 성공했습니다!");
+        toast.success("로그인에 성공했습니다!");
         login();
         void navigate("/", { replace: true });
       }
     } catch (error) {
-      alert(toApiClientErrorMessage(error));
+      toast.error(toApiClientErrorMessage(error));
     }
   };
 
@@ -65,7 +67,7 @@ export default function LoginFormContent() {
         </S.SubmitButton>
 
         <S.AssistSection>
-          <S.StyledLink to="/login/forgotpassword" viewTransition>
+          <S.StyledLink to="/login/forgotpassword">
             비밀번호를 잊으셨나요?
           </S.StyledLink>
         </S.AssistSection>
@@ -73,7 +75,7 @@ export default function LoginFormContent() {
 
       <S.Footer>
         <S.FooterText>아직 계정이 없나요?</S.FooterText>
-        <S.SignupLink to="/signup" viewTransition>
+        <S.SignupLink to="/signup">
           회원가입
         </S.SignupLink>
       </S.Footer>

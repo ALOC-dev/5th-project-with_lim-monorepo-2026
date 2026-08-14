@@ -2,8 +2,6 @@ import styled from "@emotion/styled";
 
 import courseRecommendationIcon from "../../assets/home/course-recommendation.svg";
 import placeRecommendationIcon from "../../assets/home/place-recommendation.svg";
-import BottomBar from "../../components/BottomBar/BottomBar";
-import PageRoot from "../../components/PageRoot/PageRoot";
 import { tokens } from "../../design-system/tokens.generated";
 import { useAppNavigate } from "../../routes/useAppNavigate";
 
@@ -11,7 +9,7 @@ const HomePage = () => {
   const navigate = useAppNavigate();
 
   return (
-    <PageRoot backgroundColor={tokens.color.neutral[50]} layout="contained">
+    <>
       <S.Header>
         <S.HeaderRow>
           <S.PageTitle>홈</S.PageTitle>
@@ -53,9 +51,7 @@ const HomePage = () => {
           </S.RecommendationButton>
         </S.RecommendationStack>
       </S.Content>
-
-      <BottomBar />
-    </PageRoot>
+    </>
   );
 };
 

@@ -15,9 +15,6 @@ const reactDevToolsDisabled =
   reactDevToolsSetting === "1" || reactDevToolsSetting === "true";
 const shouldLoadReactDevTools = import.meta.env.DEV && !reactDevToolsDisabled;
 
-document.documentElement.dataset.routeTransition =
-  "startViewTransition" in document ? "native" : "fallback";
-
 const renderApp = () => {
   ReactDOM.createRoot(document.getElementById("root")!).render(
     <React.StrictMode>

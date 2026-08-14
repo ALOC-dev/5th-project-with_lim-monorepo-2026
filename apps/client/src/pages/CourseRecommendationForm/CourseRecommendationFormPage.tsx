@@ -12,11 +12,12 @@ import { CoursePage } from "../../features/CourseRecommendation/components/Cours
 import type { CoursePlace } from "../../features/CourseRecommendation/course.types";
 import { MAX_SELECTED_PLACES } from "../../features/CourseRecommendation/courseRecommendation.constants";
 import { courseRepository } from "../../features/CourseRecommendation/courseRepository";
-import { useAppNavigate } from "../../routes/useAppNavigate";
+import { useAppBackNavigate, useAppNavigate } from "../../routes/useAppNavigate";
 import { S } from "./CourseRecommendationFormPage.styled";
 
 export const CourseRecommendationFormPage = () => {
   const navigate = useAppNavigate();
+  const navigateBack = useAppBackNavigate("/");
   const [places, setPlaces] = useState<CoursePlace[]>([]);
   const [date, setDate] = useState("2026-07-18");
   const [startTime, setStartTime] = useState("18:30");
@@ -45,7 +46,7 @@ export const CourseRecommendationFormPage = () => {
     );
 
   return (
-    <CoursePage onBack={() => navigate(-1)} title="코스 추천">
+    <CoursePage onBack={navigateBack} title="코스 추천">
       <S.Scroll>
         <S.Section>
           <S.Heading>

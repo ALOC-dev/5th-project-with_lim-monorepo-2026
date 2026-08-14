@@ -1,3 +1,5 @@
+import { toast } from "sonner";
+
 import Header from "../../components/Header/Header";
 import { Input } from "../../components/Input";
 import { useAppNavigate } from "../../routes/useAppNavigate";
@@ -22,7 +24,7 @@ export default function ResetPasswordForm() {
     e.preventDefault();
 
     if (!isPasswordValid) {
-      alert("비밀번호 형식을 확인해 주세요.");
+      toast.warning("비밀번호 형식을 확인해 주세요.");
       return;
     }
 
@@ -38,7 +40,7 @@ export default function ResetPasswordForm() {
 
   return (
     <S.Container>
-      <Header onBack={() => navigate(-1)} title="새 비밀번호 설정" />
+      <Header onBack={() => navigate("/login")} title="새 비밀번호 설정" />
 
       <S.Form onSubmit={handleSubmit}>
         <S.IntroSection>

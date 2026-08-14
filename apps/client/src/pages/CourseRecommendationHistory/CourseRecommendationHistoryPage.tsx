@@ -78,7 +78,7 @@ export const CourseRecommendationHistoryPage = () => {
   });
 
   return (
-    <CoursePage onBack={() => navigate("/activity")} title="코스 추천 기록">
+    <CoursePage onBack={() => navigate("/my")} title="코스 추천 기록">
       <S.HistoryContent>
         {histories.isPending ? (
           <CourseRecommendationHistorySkeleton />

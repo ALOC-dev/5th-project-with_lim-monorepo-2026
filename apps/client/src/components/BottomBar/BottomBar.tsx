@@ -6,7 +6,7 @@ import { S } from "./BottomBar.styled";
 
 const navigationItems = [
   { icon: "home", label: "홈", to: "/" },
-  { icon: "person", label: "마이", to: "/activity" },
+  { icon: "person", label: "마이", to: "/my" },
 ] as const;
 
 const BottomBar = () => {
@@ -24,7 +24,7 @@ const BottomBar = () => {
             aria-current={isActive ? "page" : undefined}
             aria-label={item.label}
             key={item.to}
-            onClick={() => void navigate(item.to)}
+            onClick={() => void navigate(item.to, { replace: true })}
             type="button"
           >
             <Icon name={item.icon} size={22} />

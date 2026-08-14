@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 
 import { requestSignup } from "../../apis/auth";
 import { toApiClientErrorMessage } from "../../apis/errors";
@@ -75,7 +76,7 @@ export default function SignupFormContent() {
     e.preventDefault();
 
     if (!isPasswordValid) {
-      alert("비밀번호 형식을 확인해 주세요.");
+      toast.warning("비밀번호 형식을 확인해 주세요.");
       return;
     }
 
@@ -89,12 +90,12 @@ export default function SignupFormContent() {
       });
 
       if (data.success) {
-        alert("회원가입에 성공했습니다!");
+        toast.success("회원가입에 성공했습니다!");
         void navigate("/login");
       }
     } catch (error) {
       const errorMessage = toApiClientErrorMessage(error);
-      alert(`회원가입 중 오류가 발생해습니다: ${errorMessage}`);
+      toast.error(`회원가입 중 오류가 발생해습니다: ${errorMessage}`);
     }
   };
 
@@ -122,7 +123,7 @@ export default function SignupFormContent() {
 
   return (
     <S.Container>
-      <Header onBack={() => navigate(-1)} title="회원가입" />
+      <Header onBack={() => navigate("/login")} title="회원가입" />
 
       <S.Form onSubmit={handleSubmit}>
         <S.InputGroup>

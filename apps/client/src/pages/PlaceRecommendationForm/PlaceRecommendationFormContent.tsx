@@ -13,7 +13,7 @@ import Header from "../../components/Header/Header";
 import { Input } from "../../components/Input";
 import Modal from "../../components/Modal/Modal";
 import { RangeSlider } from "../../components/Rangeslider";
-import { useAppNavigate } from "../../routes/useAppNavigate";
+import { useAppBackNavigate, useAppNavigate } from "../../routes/useAppNavigate";
 import { dispatchPlaceRecommendationRequest } from "./input";
 import {
   usePlaceRecommendationFormInput,
@@ -93,6 +93,7 @@ const PlaceRecommendationFormContent = () => {
 
   const { openSheet } = usePlaceRecommendationFormUi();
   const navigate = useAppNavigate();
+  const navigateBack = useAppBackNavigate("/");
 
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
 
@@ -139,7 +140,7 @@ const PlaceRecommendationFormContent = () => {
 
   return (
     <S.RootContainer>
-      <Header title="장소 추천" onBack={() => navigate(-1)} />
+      <Header title="장소 추천" onBack={navigateBack} />
       <S.ScrollContent>
         <S.RequiredNotice>*필수 입력</S.RequiredNotice>
 

@@ -4,10 +4,8 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { toApiClientErrorMessage } from "../../apis/errors";
-import BottomBar from "../../components/BottomBar/BottomBar";
 import { Icon } from "../../components/Icon";
 import Modal from "../../components/Modal/Modal";
-import PageRoot from "../../components/PageRoot/PageRoot";
 import { useAuth } from "../../contexts/Auth.context";
 import { tokens } from "../../design-system/tokens.generated";
 import { useAppNavigate } from "../../routes/useAppNavigate";
@@ -72,7 +70,7 @@ export const ActivityHubPage = () => {
   };
 
   return (
-    <PageRoot backgroundColor={tokens.color.neutral[50]} layout="contained">
+    <>
       <S.Content>
         <S.PageTitle>마이</S.PageTitle>
 
@@ -100,7 +98,7 @@ export const ActivityHubPage = () => {
             <S.StaticMenuItem>
               <Icon name="account-settings" size={20} />
               <span>계정 관리</span>
-              <Icon name="chevron-right" size={16} />
+              <small>준비 중</small>
             </S.StaticMenuItem>
             <S.MenuButton
               aria-label="로그아웃"
@@ -115,7 +113,6 @@ export const ActivityHubPage = () => {
         </S.Section>
       </S.Content>
 
-      <BottomBar />
       <Modal
         id="logout-confirm-modal"
         isOpen={isLogoutModalOpen}
@@ -135,7 +132,7 @@ export const ActivityHubPage = () => {
           disabled: isLoggingOut,
         }}
       />
-    </PageRoot>
+    </>
   );
 };
 
@@ -201,5 +198,12 @@ const S = {
   `,
   StaticMenuItem: styled.div`
     ${menuItemStyle}
+    color: ${tokens.color.neutral[700]};
+    cursor: default;
+
+    small {
+      color: ${tokens.color.neutral[700]};
+      ${tokens.typography.utility.caption};
+    }
   `,
 };

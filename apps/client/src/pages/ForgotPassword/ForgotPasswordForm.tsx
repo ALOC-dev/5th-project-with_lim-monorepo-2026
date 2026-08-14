@@ -60,7 +60,7 @@ export default function ForgotPasswordForm() {
 
   return (
     <S.Container>
-      <Header onBack={() => navigate(-1)} title="비밀번호 재설정" />
+      <Header onBack={() => navigate("/login")} title="비밀번호 재설정" />
 
       <S.Form onSubmit={handleSubmit}>
         <S.IntroSection>
@@ -142,9 +142,7 @@ export default function ForgotPasswordForm() {
         )}
 
         <S.Footer isBottomFixed>
-          <S.LoginLink to="/login" viewTransition>
-            로그인 화면으로 돌아가기
-          </S.LoginLink>
+          <S.LoginLink to="/login">로그인 화면으로 돌아가기</S.LoginLink>
         </S.Footer>
       </S.Form>
     </S.Container>
