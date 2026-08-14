@@ -353,18 +353,24 @@ export class OperationVerifier {
     const schedule = operationInfo.schedules[this.requestedDay];
 
     if (schedule.status === "UNKNOWN") {
-      return this.unknown({
-        reason: `No operation schedule for ${this.requestedDay}`,
-        sourceUrls,
-      });
+      return (
+        this.verifyOvernightFromPreviousDay(operationInfo, sourceUrls) ??
+        this.unknown({
+          reason: `No operation schedule for ${this.requestedDay}`,
+          sourceUrls,
+        })
+      );
     }
 
     if (schedule.status === "CLOSED") {
-      return this.closed({
-        reason: `Closed on ${this.requestedDay}`,
-        sourceUrls,
-        confidence: 0.95,
-      });
+      return (
+        this.verifyOvernightFromPreviousDay(operationInfo, sourceUrls) ??
+        this.closed({
+          reason: `Closed on ${this.requestedDay}`,
+          sourceUrls,
+          confidence: 0.95,
+        })
+      );
     }
 
     const open = toMinutes(schedule.open);
@@ -379,6 +385,12 @@ export class OperationVerifier {
       : undefined;
 
     if (this.requestedStart < open || this.requestedEnd > close) {
+      // 오늘 영업 시작 전(예: 새벽 1시)이라면, 전날 영업이 자정을 넘겨 지금까지
+      // 이어지고 있을 수 있다 (예: "월 22:00-02:00"). 이 경우를 확인한 뒤에만 CLOSED로 판정한다.
+      if (this.requestedStart < open) {
+        const overnightResult = this.verifyOvernightFromPreviousDay(operationInfo, sourceUrls);
+        if (overnightResult) return overnightResult;
+      }
       return this.closed({
         reason: `Requested stay ${this.schedule.time24h}+${this.requestedStayDurationMinutes}m is outside ${schedule.open}-${schedule.close}`,
         sourceUrls,
@@ -419,6 +431,60 @@ export class OperationVerifier {
     confidence?: number;
   }): OperationVerification {
     return this.build("UNKNOWN", { reason, sourceUrls, confidence });
+  }
+
+  /**
+   * 요청 요일 자체의 schedule만으로는 CLOSED/UNKNOWN처럼 보여도, 전날 영업이 자정을
+   * 넘겨(예: "월 22:00-02:00") 요청 시각까지 이어질 수 있다. 전날 schedule이 실제로
+   * 자정을 넘기고, 요청한 도착~퇴장 window가 그 안에 완전히 들어갈 때만 결과를 낸다.
+   * 판단 근거가 없으면(전날이 OPEN이 아니거나 자정을 안 넘기면) undefined를 반환해
+   * 호출부가 기존 CLOSED/UNKNOWN 처리로 폴백하게 한다.
+   */
+  private verifyOvernightFromPreviousDay(
+    operationInfo: OperationInfo,
+    sourceUrls: string[],
+  ): OperationVerification | undefined {
+    const previousDay = getPreviousDay(this.requestedDay);
+    const previousSchedule = operationInfo.schedules[previousDay];
+    if (previousSchedule.status !== "OPEN") return undefined;
+
+    const previousOpen = toMinutes(previousSchedule.open);
+    const previousClose = normalizeCloseMinutes(previousOpen, toMinutes(previousSchedule.close));
+    if (previousClose <= 24 * 60) return undefined;
+
+    const shiftedStart = this.requestedStart + 24 * 60;
+    const shiftedEnd = this.requestedEnd + 24 * 60;
+    if (shiftedStart < previousOpen || shiftedEnd > previousClose) return undefined;
+
+    const overlapsBreak = previousSchedule.breakTimes.some((breakTime) => {
+      const breakStart = normalizeTimeForWindow(previousOpen, toMinutes(breakTime.start));
+      const breakEnd = normalizeTimeForWindow(breakStart, toMinutes(breakTime.end));
+      return shiftedStart < breakEnd && shiftedEnd > breakStart;
+    });
+    if (overlapsBreak) {
+      return this.closed({
+        reason: `Requested stay overlaps break time carried over from ${previousDay}`,
+        sourceUrls,
+        confidence: 0.9,
+      });
+    }
+
+    const lastOrder = previousSchedule.lastOrderTime
+      ? normalizeTimeForWindow(previousOpen, toMinutes(previousSchedule.lastOrderTime))
+      : undefined;
+    if (lastOrder !== undefined && shiftedStart > lastOrder) {
+      return this.closed({
+        reason: `Requested arrival is after last order carried over from ${previousDay}`,
+        sourceUrls,
+        confidence: 0.9,
+      });
+    }
+
+    return this.build("OPEN", {
+      reason: `Verified open via ${previousDay} overnight hours through ${this.requestedDay} ${this.schedule.time24h}`,
+      sourceUrls,
+      confidence: 0.85,
+    });
   }
 
   private closed({
@@ -467,6 +533,13 @@ const toDayOfWeek = (dateISO: string): DayOfWeek => {
   const dayOfWeek = dayOfWeekValues[(day + 6) % 7];
   if (!dayOfWeek) throw new Error(`Invalid dateISO: ${dateISO}`);
   return dayOfWeek;
+};
+
+const getPreviousDay = (day: DayOfWeek): DayOfWeek => {
+  const index = dayOfWeekValues.indexOf(day);
+  const previous = dayOfWeekValues[(index + dayOfWeekValues.length - 1) % dayOfWeekValues.length];
+  if (!previous) throw new Error(`Invalid DayOfWeek: ${day}`);
+  return previous;
 };
 
 const toMinutes = (time24h: string): number => {

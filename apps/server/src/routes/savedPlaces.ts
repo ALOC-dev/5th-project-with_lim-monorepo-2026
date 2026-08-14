@@ -8,12 +8,12 @@ import {
   type SavePlaceResponseData,
 } from "@monorepo/api-contracts";
 import { PlaceRecommendationItemSchema } from "@monorepo/recommendation-engine/v1/contracts";
-import { and, desc, eq, isNull, sql } from "drizzle-orm";
+import { and, arrayContains, desc, eq, isNull, sql } from "drizzle-orm";
 import { Router } from "express";
 import { z } from "zod";
 
 import { db } from "../db/client.js";
-import { favoritePlaces, savedPlaces } from "../db/schema.js";
+import { favoritePlaces, placeRecommendationHistories, savedPlaces } from "../db/schema.js";
 import { asyncHandler } from "../lib/asyncHandler.js";
 import { requireAuth } from "../middleware/auth.js";
 import {
@@ -22,6 +22,9 @@ import {
 } from "../savedPlaces/legacyCompatibility.js";
 
 const router = Router();
+
+const historyOwnedBy = (userId: string) =>
+  arrayContains(placeRecommendationHistories.userIds, [userId]);
 
 const toSavedPlace = (row: typeof savedPlaces.$inferSelect): SavedPlace => ({
   id: row.id,
@@ -119,6 +122,23 @@ router.post(
     if (!placeData.success) {
       res.status(400).json(createApiError("invalid place data"));
       return;
+    }
+
+    if (parsed.data.historyId) {
+      const [history] = await db
+        .select({ id: placeRecommendationHistories.id })
+        .from(placeRecommendationHistories)
+        .where(
+          and(
+            eq(placeRecommendationHistories.id, parsed.data.historyId),
+            historyOwnedBy(req.userId),
+          ),
+        );
+
+      if (!history) {
+        res.status(400).json(createApiError("invalid history id"));
+        return;
+      }
     }
 
     await db.execute(sql`
