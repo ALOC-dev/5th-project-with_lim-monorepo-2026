@@ -3,7 +3,7 @@ import { CustomOverlayMap, Map, Polyline } from "react-kakao-maps-sdk";
 
 import { tokens } from "../../../design-system/tokens.generated";
 import type { CourseOption } from "../course.types";
-import { getCourseRoutePath } from "../courseMap";
+import { getCourseMapPoints, getCourseRoutePath } from "../courseMap";
 import { S } from "./CourseMap.styled";
 
 const COURSE_SINGLE_POINT_MAP_LEVEL = 4;
@@ -16,20 +16,21 @@ type CourseMapProps = {
 
 export const CourseMap = ({ option, height }: CourseMapProps) => {
   const routePath = useMemo(() => getCourseRoutePath(option), [option]);
+  const mapPoints = useMemo(() => getCourseMapPoints(option), [option]);
   const [map, setMap] = useState<kakao.maps.Map | null>(null);
-  const center = routePath[0];
+  const center = mapPoints[0];
   const fitMapToRoute = useCallback(
     (targetMap: kakao.maps.Map) => {
-      if (routePath.length === 0) return;
-      if (routePath.length === 1) {
-        const point = routePath[0];
+      if (mapPoints.length === 0) return;
+      if (mapPoints.length === 1) {
+        const point = mapPoints[0];
         if (!point) return;
         targetMap.setCenter(new kakao.maps.LatLng(point.lat, point.lng));
         targetMap.setLevel(COURSE_SINGLE_POINT_MAP_LEVEL);
         return;
       }
       const bounds = new kakao.maps.LatLngBounds();
-      routePath.forEach(({ lat, lng }) => bounds.extend(new kakao.maps.LatLng(lat, lng)));
+      mapPoints.forEach(({ lat, lng }) => bounds.extend(new kakao.maps.LatLng(lat, lng)));
       targetMap.setBounds(
         bounds,
         COURSE_MAP_BOUNDS_PADDING.top,
@@ -38,7 +39,7 @@ export const CourseMap = ({ option, height }: CourseMapProps) => {
         COURSE_MAP_BOUNDS_PADDING.left,
       );
     },
-    [routePath],
+    [mapPoints],
   );
   const handleMapCreate = useCallback(
     (createdMap: kakao.maps.Map) => {
@@ -61,13 +62,15 @@ export const CourseMap = ({ option, height }: CourseMapProps) => {
         onCreate={handleMapCreate}
         style={{ height: "100%", width: "100%" }}
       >
-        <Polyline
-          path={routePath.map(({ lat, lng }) => ({ lat, lng }))}
-          strokeColor={tokens.color.primary[500]}
-          strokeOpacity={0.8}
-          strokeStyle="solid"
-          strokeWeight={4}
-        />
+        {routePath.length >= 2 ? (
+          <Polyline
+            path={routePath.map(({ lat, lng }) => ({ lat, lng }))}
+            strokeColor={tokens.color.primary[500]}
+            strokeOpacity={0.8}
+            strokeStyle="solid"
+            strokeWeight={4}
+          />
+        ) : null}
         {option.stops.map((stop, index) => (
           <CustomOverlayMap
             key={stop.id}

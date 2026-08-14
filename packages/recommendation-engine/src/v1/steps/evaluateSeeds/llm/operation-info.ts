@@ -51,6 +51,7 @@ export const parseOperationInfoWithLlmFallback = async ({
   operationVerifier,
   sourceName,
   sourceTextKind,
+  logger,
 }: ParseOperationInfoOptions): Promise<OperationInfoParseResult> => {
   if (!text?.trim()) {
     return {
@@ -95,12 +96,29 @@ export const parseOperationInfoWithLlmFallback = async ({
     });
     return toParseResult(response, sourceName);
   } catch (error) {
+    logRecoverableOperationInfoLlmFailure(logger, evidence.candidateId, sourceName, error);
     return {
       parser: "none",
       reason:
         error instanceof Error ? error.message : `${sourceName} LLM operation-hour fallback failed`,
     };
   }
+};
+
+export const logRecoverableOperationInfoLlmFailure = (
+  logger: ParseOperationInfoOptions["logger"],
+  candidateId: string,
+  sourceName: EnrichmentSourceName,
+  error: unknown,
+): void => {
+  logger
+    ?.withContext({ extra: { candidateId, source: sourceName } })
+    .error("evaluateSeeds.enrichment.operation_hours_llm.failure", error, {
+      provider: "OPENAI",
+      recoverable: true,
+      fallbackStatus: "UNKNOWN",
+      sourceName,
+    });
 };
 
 const toParseResult = (

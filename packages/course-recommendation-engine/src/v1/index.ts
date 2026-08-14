@@ -1,11 +1,10 @@
-export {
-  type CourseEngineConfig,
-  DEFAULT_COURSE_ENGINE_CONFIG,
-} from "./configs.js";
+export { type CourseEngineConfig, DEFAULT_COURSE_ENGINE_CONFIG } from "./configs.js";
 export * from "./contracts.js";
 export {
   CourseRecommendationEngine,
+  type CourseRecommendationEngineFactory,
   type CourseRecommendationEngineOptions,
+  createCourseRecommendationEngine,
 } from "./engine.js";
 export {
   type CourseCurationCandidate,

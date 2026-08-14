@@ -1,12 +1,16 @@
 import type { ReactNode } from "react";
 import { useCallback, useMemo, useState } from "react";
+import { useLocation } from "react-router-dom";
 
 import PageRoot from "../../components/PageRoot/PageRoot";
 import { tokens } from "../../design-system/tokens.generated";
 import DateSelectionBottomSheet from "./components/date/DateSelectionBottomSheet";
 import LocationSelectionBottomSheet from "./components/location/LocationSelectionBottomSheet";
-import PlaceRecommendationFormContent from "./PlaceRecommendationFormContent";
-import { getPlaceRecommendationFormInitialValues } from "./initialValues";
+import {
+  getPlaceRecommendationFormInitialValues,
+  getPlaceRecommendationRetryInitialValues,
+  type PlaceRecommendationFormInitialValues,
+} from "./initialValues";
 import { buildPlaceRecommendationUserInput } from "./input";
 import {
   PlaceRecommendationFormInputContext,
@@ -15,42 +19,57 @@ import {
   PlaceRecommendationFormUiContext,
   type PlaceRecommendationFormUiContextType,
 } from "./PlaceRecommendationForm.context";
+import PlaceRecommendationFormContent from "./PlaceRecommendationFormContent";
 
-const PlaceRecommendationFlowProvider = ({ children }: { readonly children: ReactNode }) => {
+const PlaceRecommendationFlowProvider = ({
+  children,
+  initialValues,
+}: {
+  readonly children: ReactNode;
+  readonly initialValues: PlaceRecommendationFormInitialValues;
+}) => {
   const [locations, setLocations] = useState<PlaceRecommendationFormInputContextType["locations"]>(
-    () => getPlaceRecommendationFormInitialValues().locations || [],
+    () => [...initialValues.locations],
   );
 
   // 필수 입력 상태
-  const [date, setDate] = useState(() => getPlaceRecommendationFormInitialValues().date);
-  const [time24h, setTime24h] = useState(() => getPlaceRecommendationFormInitialValues().time24h);
+  const [date, setDate] = useState(() => initialValues.date);
+  const [time24h, setTime24h] = useState(() => initialValues.time24h);
   const [userNaturalLanguageRequest, setUserNaturalLanguageRequest] = useState(
-    () => getPlaceRecommendationFormInitialValues().userNaturalLanguageRequest,
+    () => initialValues.userNaturalLanguageRequest,
   );
 
   // 선택 입력 값 상태
   const [stayDurationMinutes, setStayDurationMinutes] = useState(
-    () => getPlaceRecommendationFormInitialValues().stayDurationMinutes,
+    () => initialValues.stayDurationMinutes,
   );
   const [numberOfPeople, setNumberOfPeople] = useState(
-    () => getPlaceRecommendationFormInitialValues().numberOfPeople,
+    () => initialValues.numberOfPeople,
   );
-  const [partyType, setPartyType] = useState(
-    () => getPlaceRecommendationFormInitialValues().partyType,
-  );
+  const [partyType, setPartyType] = useState(() => initialValues.partyType);
   const [activityType, setActivityType] = useState(
-    () => getPlaceRecommendationFormInitialValues().activityType,
+    () => initialValues.activityType,
   );
   const [budgetPerPerson, setBudgetPerPerson] = useState(
-    () => getPlaceRecommendationFormInitialValues().budgetPerPerson,
+    () => initialValues.budgetPerPerson,
   );
 
   // 선택 입력 활성화(체크박스) 여부를 관리하는 boolean 상태
-  const [isStayDurationEnabled, setIsStayDurationEnabled] = useState(false);
-  const [isActivityTypeEnabled, setIsActivityTypeEnabled] = useState(false);
-  const [isNumberOfPeopleEnabled, setIsNumberOfPeopleEnabled] = useState(false);
-  const [isPartyTypeEnabled, setIsPartyTypeEnabled] = useState(false);
-  const [isBudgetEnabled, setIsBudgetEnabled] = useState(false);
+  const [isStayDurationEnabled, setIsStayDurationEnabled] = useState(
+    () => initialValues.isStayDurationEnabled,
+  );
+  const [isActivityTypeEnabled, setIsActivityTypeEnabled] = useState(
+    () => initialValues.isActivityTypeEnabled,
+  );
+  const [isNumberOfPeopleEnabled, setIsNumberOfPeopleEnabled] = useState(
+    () => initialValues.isNumberOfPeopleEnabled,
+  );
+  const [isPartyTypeEnabled, setIsPartyTypeEnabled] = useState(
+    () => initialValues.isPartyTypeEnabled,
+  );
+  const [isBudgetEnabled, setIsBudgetEnabled] = useState(
+    () => initialValues.isBudgetEnabled,
+  );
 
   const [activeSheet, setActiveSheet] = useState<PlaceRecommendationFormSheet | null>(null);
 
@@ -200,8 +219,13 @@ const PlaceRecommendationFlowProvider = ({ children }: { readonly children: Reac
 };
 
 const PlaceRecommendationFormPage = () => {
+  const location = useLocation();
+  const initialValues =
+    getPlaceRecommendationRetryInitialValues(location.state as unknown) ??
+    getPlaceRecommendationFormInitialValues();
+
   return (
-    <PlaceRecommendationFlowProvider>
+    <PlaceRecommendationFlowProvider initialValues={initialValues}>
       <PageRoot backgroundColor={tokens.color.neutral[50]} layout="contained">
         <PlaceRecommendationFormContent />
         <LocationSelectionBottomSheet />

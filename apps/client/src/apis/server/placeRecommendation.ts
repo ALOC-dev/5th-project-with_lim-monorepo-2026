@@ -1,8 +1,10 @@
-import type { ApiResponse } from "@monorepo/api-contracts";
 import {
+  type ApiResponse,
   createApiError,
   createApiResponse,
   PLACE_RECOMMENDATION_PROGRESS_STEPS,
+  type PlaceRecommendationFormLocationSnapshot,
+  PlaceRecommendationJobRequestSchema,
 } from "@monorepo/api-contracts";
 import type { UserInput } from "@monorepo/recommendation-engine/v1/contracts";
 import { z } from "zod";
@@ -40,11 +42,17 @@ export type PlaceRecommendationProgressSseEvent = z.infer<
   typeof PlaceRecommendationProgressSseEventSchema
 >;
 
+export type CreatePlaceRecommendationJobVariables = {
+  readonly input: UserInput;
+  readonly formLocations: readonly PlaceRecommendationFormLocationSnapshot[];
+};
+
 export const createPlaceRecommendationJob = async (
-  userInput: UserInput,
+  variables: CreatePlaceRecommendationJobVariables,
 ): Promise<ApiResponse<PlaceRecommendationJobResponse>> => {
   try {
-    const response = await serverApi.post("api/recommend", { json: userInput }).json<unknown>();
+    const body = PlaceRecommendationJobRequestSchema.parse(variables);
+    const response = await serverApi.post("api/recommend", { json: body }).json<unknown>();
 
     return createApiResponse(PlaceRecommendationJobResponseSchema.parse(response));
   } catch (error) {

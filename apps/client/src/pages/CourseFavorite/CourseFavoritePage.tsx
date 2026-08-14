@@ -5,6 +5,7 @@ import { Icon } from "../../components/Icon";
 import { Skeleton } from "../../components/Skeleton";
 import { CourseIconButton } from "../../features/CourseRecommendation/components/CourseIconButton";
 import { CoursePage } from "../../features/CourseRecommendation/components/CoursePage";
+import type { CourseFavorite } from "../../features/CourseRecommendation/course.types";
 import {
   formatDate,
   formatMinutes,
@@ -42,15 +43,14 @@ export const CourseFavoritePage = () => {
     retry: false,
   });
   const remove = useMutation({
-    mutationFn: (favorite: { courseId: string; optionId: string }) =>
-      courseRepository.toggleFavorite(favorite.courseId, favorite.optionId, false),
+    mutationFn: (favorite: CourseFavorite) => courseRepository.removeFavorite(favorite),
     onSuccess: (_result, favorite) =>
       void Promise.all([
         queryClient.invalidateQueries({ queryKey: ["course-favorites"] }),
         queryClient.invalidateQueries({
-          queryKey: ["course-option", favorite.courseId, favorite.optionId],
+          queryKey: ["course-option", favorite.recommendationId, favorite.optionId],
         }),
-        queryClient.invalidateQueries({ queryKey: ["course", favorite.courseId] }),
+        queryClient.invalidateQueries({ queryKey: ["course", favorite.recommendationId] }),
       ]),
   });
 
@@ -81,11 +81,12 @@ export const CourseFavoritePage = () => {
           <S.FavoriteList>
             {favorites.data.map((favorite) => (
               <S.Favorite key={`${favorite.recommendationId}:${favorite.optionId}`}>
-                <time>{formatDate(favorite.savedAt)}</time>
+                <time>{favorite.savedAt ? formatDate(favorite.savedAt) : "저장일 정보 없음"}</time>
                 <S.FavoriteOpen
                   onClick={() =>
                     void navigate(
                       `/course/recommendation/${encodeURIComponent(favorite.recommendationId)}/option/${encodeURIComponent(favorite.optionId)}`,
+                      { state: { favorite } },
                     )
                   }
                   type="button"
@@ -99,12 +100,7 @@ export const CourseFavoritePage = () => {
                 <CourseIconButton
                   aria-label={`${favorite.option.title} 찜 삭제`}
                   disabled={remove.isPending}
-                  onClick={() =>
-                    remove.mutate({
-                      courseId: favorite.recommendationId,
-                      optionId: favorite.optionId,
-                    })
-                  }
+                  onClick={() => remove.mutate(favorite)}
                   type="button"
                 >
                   <Icon name="heart-filled" />

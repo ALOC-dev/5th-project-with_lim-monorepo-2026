@@ -1,5 +1,6 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { useLocation } from "react-router-dom";
 
 import BottomSheet from "../../components/BottomSheet/BottomSheet";
 import { Button } from "../../components/Button";
@@ -9,59 +10,154 @@ import { Input } from "../../components/Input";
 import { SearchInput } from "../../components/SearchInput";
 import { CourseIconButton } from "../../features/CourseRecommendation/components/CourseIconButton";
 import { CoursePage } from "../../features/CourseRecommendation/components/CoursePage";
-import type { CoursePlace } from "../../features/CourseRecommendation/course.types";
-import { MAX_SELECTED_PLACES } from "../../features/CourseRecommendation/courseRecommendation.constants";
+import type {
+  CoursePacePreference,
+  CoursePlace,
+  CoursePlaceSource,
+} from "../../features/CourseRecommendation/course.types";
+import {
+  type CourseFormValidationField,
+  getCourseFormValidationError,
+  getDefaultCourseSchedule,
+  isSameCoursePlace,
+  MAX_DURATION_HOURS,
+  MAX_SELECTED_PLACES,
+  MIN_DURATION_HOURS,
+  toggleCoursePlace,
+} from "../../features/CourseRecommendation/courseForm";
 import { courseRepository } from "../../features/CourseRecommendation/courseRepository";
 import { useAppBackNavigate, useAppNavigate } from "../../routes/useAppNavigate";
 import { S } from "./CourseRecommendationFormPage.styled";
+import { getCourseRecommendationRetryDraft } from "./retryDraft";
 
 export const CourseRecommendationFormPage = () => {
   const navigate = useAppNavigate();
   const navigateBack = useAppBackNavigate("/");
-  const [places, setPlaces] = useState<CoursePlace[]>([]);
-  const [date, setDate] = useState("2026-07-18");
-  const [startTime, setStartTime] = useState("18:30");
-  const [durationHours, setDurationHours] = useState(3);
+  const location = useLocation();
+  const retryDraft = getCourseRecommendationRetryDraft(location.state as unknown);
+  const defaultSchedule = getDefaultCourseSchedule();
+  const [places, setPlaces] = useState<CoursePlace[]>(() => [...(retryDraft?.places ?? [])]);
+  const [date, setDate] = useState(() => retryDraft?.date ?? defaultSchedule.date);
+  const [startTime, setStartTime] = useState(
+    () => retryDraft?.startTime ?? defaultSchedule.startTime,
+  );
+  const [durationHours, setDurationHours] = useState(() => retryDraft?.durationHours ?? 3);
+  const [numberOfPeople, setNumberOfPeople] = useState(() => retryDraft?.numberOfPeople ?? 2);
+  const [budgetPerPersonWon, setBudgetPerPersonWon] = useState<number | undefined>(
+    () => retryDraft?.budgetPerPersonWon,
+  );
+  const [pacePreference, setPacePreference] = useState<CoursePacePreference>(
+    () => retryDraft?.pacePreference ?? "NORMAL",
+  );
   const [isPickerOpen, setPickerOpen] = useState(false);
-  const [pickerSource, setPickerSource] = useState<"FAVORITE" | "KAKAO">("FAVORITE");
+  const [pickerSource, setPickerSource] = useState<CoursePlaceSource>("SAVED_PLACE");
   const [query, setQuery] = useState("");
+  const pickerTriggerRef = useRef<HTMLButtonElement>(null);
+  const dateRef = useRef<HTMLInputElement>(null);
+  const startTimeRef = useRef<HTMLInputElement>(null);
+  const numberOfPeopleRef = useRef<HTMLInputElement>(null);
+  const budgetRef = useRef<HTMLInputElement>(null);
+  const retrySavedPlaceIds =
+    retryDraft?.places.flatMap(({ savedPlaceId }) => (savedPlaceId ? [savedPlaceId] : [])) ?? [];
+  const retrySavedPlacesQuery = useQuery({
+    queryKey: ["course-picker", "SAVED_PLACE", ""],
+    queryFn: () => courseRepository.listPickerPlaces("", "SAVED_PLACE"),
+    enabled: retrySavedPlaceIds.length > 0,
+    retry: false,
+  });
   const pickerQuery = useQuery({
     queryKey: ["course-picker", pickerSource, query],
     queryFn: () => courseRepository.listPickerPlaces(query, pickerSource),
-    enabled: isPickerOpen && (pickerSource === "FAVORITE" || query.trim().length > 0),
+    enabled: isPickerOpen && (pickerSource === "SAVED_PLACE" || query.trim().length > 0),
     retry: false,
   });
+  const savedPlaceById = new Map(
+    retrySavedPlacesQuery.data?.flatMap((place) =>
+      place.savedPlaceId ? [[place.savedPlaceId, place] as const] : [],
+    ) ?? [],
+  );
+  const displayPlaces = places.map((place) =>
+    place.savedPlaceId ? (savedPlaceById.get(place.savedPlaceId) ?? place) : place,
+  );
   const createMutation = useMutation({
     mutationFn: () =>
-      courseRepository.startRecommendation({ places, date, startTime, durationHours }),
+      courseRepository.startRecommendation({
+        places,
+        date,
+        startTime,
+        durationHours,
+        numberOfPeople,
+        ...(budgetPerPersonWon ? { budgetPerPersonWon } : {}),
+        pacePreference,
+      }),
     onSuccess: (course) => void navigate(`/course/recommendation/${encodeURIComponent(course.id)}`),
   });
   const toggle = (place: CoursePlace) =>
-    setPlaces((current) =>
-      current.some(({ id }) => id === place.id)
-        ? current.filter(({ id }) => id !== place.id)
-        : current.length < MAX_SELECTED_PLACES
-          ? [...current, place]
-          : current,
-    );
+    setPlaces((current) => [...toggleCoursePlace(current, place)]);
+  const validationInput = {
+    selectedPlaceCount: places.length,
+    numberOfPeople,
+    ...(budgetPerPersonWon !== undefined ? { budgetPerPersonWon } : {}),
+    date,
+    startTime,
+  } as const;
+  const formError = getCourseFormValidationError(validationInput);
+  const errorDescriptionFor = (field: CourseFormValidationField) =>
+    formError?.field === field ? "course-form-error" : undefined;
+  const focusValidationField = (field: CourseFormValidationField) => {
+    switch (field) {
+      case "places":
+        pickerTriggerRef.current?.focus();
+        return;
+      case "numberOfPeople":
+        numberOfPeopleRef.current?.focus();
+        return;
+      case "budgetPerPersonWon":
+        budgetRef.current?.focus();
+        return;
+      case "date":
+        dateRef.current?.focus();
+        return;
+      case "startTime":
+        startTimeRef.current?.focus();
+    }
+  };
+  const handleSubmit = () => {
+    const validationError = getCourseFormValidationError(validationInput);
+    if (validationError) {
+      focusValidationField(validationError.field);
+      return;
+    }
+    createMutation.mutate();
+  };
 
   return (
     <CoursePage onBack={navigateBack} title="코스 추천">
       <S.Scroll>
         <S.Section>
           <S.Heading>
-            선택 장소 {places.length} / {MAX_SELECTED_PLACES}
+            후보 장소 {places.length} / {MAX_SELECTED_PLACES}
           </S.Heading>
-          <S.PickerOpen onClick={() => setPickerOpen(true)} type="button">
-            <strong>{places.length === 0 ? "장소 선택" : "선택 장소"}</strong>
+          <S.Helper>결과에는 후보 중 2~6곳이 포함되며, 제외된 이유도 함께 보여드려요.</S.Helper>
+          <S.PickerOpen
+            aria-describedby={errorDescriptionFor("places")}
+            aria-invalid={formError?.field === "places"}
+            id="course-places"
+            onClick={() => setPickerOpen(true)}
+            ref={pickerTriggerRef}
+            type="button"
+          >
+            <strong>{places.length === 0 ? "후보 장소 선택" : "선택한 후보"}</strong>
             <span>
               {places.length === 0
-                ? "즐겨찾기 또는 검색으로 장소를 골라주세요."
-                : `${places[0]?.name ?? ""} 외 ${places.length - 1}곳`}
+                ? "저장한 장소 또는 검색으로 후보를 골라주세요."
+                : displayPlaces.length === 1
+                  ? displayPlaces[0]?.name
+                  : `${displayPlaces[0]?.name ?? ""} 외 ${displayPlaces.length - 1}곳`}
             </span>
             <Icon name="chevron-right" size={20} />
           </S.PickerOpen>
-          {places.map((place) => (
+          {displayPlaces.map((place) => (
             <S.SelectedPlace key={place.id}>
               <span>{place.name}</span>
               <CourseIconButton
@@ -80,8 +176,11 @@ export const CourseRecommendationFormPage = () => {
             <S.Field>
               <label htmlFor="course-date">날짜</label>
               <Input
+                aria-describedby={errorDescriptionFor("date")}
+                aria-invalid={formError?.field === "date"}
                 id="course-date"
                 onChange={(event) => setDate(event.target.value)}
+                ref={dateRef}
                 type="date"
                 value={date}
               />
@@ -89,8 +188,11 @@ export const CourseRecommendationFormPage = () => {
             <S.Field>
               <label htmlFor="course-time">시작 시간</label>
               <Input
+                aria-describedby={errorDescriptionFor("startTime")}
+                aria-invalid={formError?.field === "startTime"}
                 id="course-time"
                 onChange={(event) => setStartTime(event.target.value)}
+                ref={startTimeRef}
                 type="time"
                 value={startTime}
               />
@@ -103,13 +205,69 @@ export const CourseRecommendationFormPage = () => {
               onChange={(event) => setDurationHours(Number(event.target.value))}
               value={durationHours}
             >
-              {[2, 3, 4, 5].map((hours) => (
+              {Array.from(
+                { length: MAX_DURATION_HOURS - MIN_DURATION_HOURS + 1 },
+                (_, index) => MIN_DURATION_HOURS + index,
+              ).map((hours) => (
                 <option key={hours} value={hours}>
                   {hours}시간
                 </option>
               ))}
             </S.Select>
           </S.Field>
+          <S.FieldGrid>
+            <S.Field>
+              <label htmlFor="course-people">인원</label>
+              <Input
+                aria-describedby={errorDescriptionFor("numberOfPeople")}
+                aria-invalid={formError?.field === "numberOfPeople"}
+                id="course-people"
+                max={20}
+                min={1}
+                onChange={(event) => setNumberOfPeople(Number(event.target.value))}
+                ref={numberOfPeopleRef}
+                type="number"
+                value={numberOfPeople}
+              />
+            </S.Field>
+            <S.Field>
+              <label htmlFor="course-pace">코스 페이스</label>
+              <S.Select
+                id="course-pace"
+                onChange={(event) => setPacePreference(event.target.value as CoursePacePreference)}
+                value={pacePreference}
+              >
+                <option value="RELAXED">여유롭게</option>
+                <option value="NORMAL">적당하게</option>
+                <option value="PACKED">알차게</option>
+              </S.Select>
+            </S.Field>
+          </S.FieldGrid>
+          <S.Field>
+            <label htmlFor="course-budget">1인당 예산 (선택)</label>
+            <Input
+              aria-describedby={errorDescriptionFor("budgetPerPersonWon")}
+              aria-invalid={formError?.field === "budgetPerPersonWon"}
+              id="course-budget"
+              max={500_000}
+              min={5_000}
+              onChange={(event) =>
+                setBudgetPerPersonWon(
+                  event.target.value === "" ? undefined : Number(event.target.value),
+                )
+              }
+              placeholder="예: 50000"
+              ref={budgetRef}
+              step={1_000}
+              type="number"
+              value={budgetPerPersonWon ?? ""}
+            />
+          </S.Field>
+          {formError ? (
+            <S.FieldError id="course-form-error" role="alert">
+              {formError.message}
+            </S.FieldError>
+          ) : null}
         </S.Section>
         {createMutation.isError ? (
           <FeedbackState kind="error" title="코스 추천 요청을 만들지 못했어요" />
@@ -117,8 +275,9 @@ export const CourseRecommendationFormPage = () => {
       </S.Scroll>
       <S.Bottom>
         <Button
-          disabled={places.length === 0 || createMutation.isPending}
-          onClick={() => createMutation.mutate()}
+          aria-describedby={formError ? "course-form-error" : undefined}
+          disabled={createMutation.isPending}
+          onClick={handleSubmit}
           type="button"
           width="100%"
         >
@@ -134,31 +293,31 @@ export const CourseRecommendationFormPage = () => {
         ariaLabel="장소 선택"
       >
         <S.Sheet>
-          <S.Heading>장소 선택</S.Heading>
+          <S.Heading>후보 장소 선택</S.Heading>
           <S.Tabs>
             <S.Tab
-              aria-pressed={pickerSource === "FAVORITE"}
-              $active={pickerSource === "FAVORITE"}
+              aria-pressed={pickerSource === "SAVED_PLACE"}
+              $active={pickerSource === "SAVED_PLACE"}
               onClick={() => {
-                setPickerSource("FAVORITE");
+                setPickerSource("SAVED_PLACE");
                 setQuery("");
               }}
               type="button"
             >
-              즐겨찾기
+              저장한 장소
             </S.Tab>
             <S.Tab
-              aria-pressed={pickerSource === "KAKAO"}
-              $active={pickerSource === "KAKAO"}
-              onClick={() => setPickerSource("KAKAO")}
+              aria-pressed={pickerSource === "DIRECT_SEARCH"}
+              $active={pickerSource === "DIRECT_SEARCH"}
+              onClick={() => setPickerSource("DIRECT_SEARCH")}
               type="button"
             >
               장소 검색
             </S.Tab>
           </S.Tabs>
-          {pickerSource === "KAKAO" ? (
+          {pickerSource === "DIRECT_SEARCH" ? (
             <SearchInput
-              backHandler={() => setPickerSource("FAVORITE")}
+              backHandler={() => setPickerSource("SAVED_PLACE")}
               clearHandler={() => setQuery("")}
               isSearchMode
               onChange={(event) => setQuery(event.target.value)}
@@ -167,10 +326,16 @@ export const CourseRecommendationFormPage = () => {
             />
           ) : null}
           <S.Count>
-            선택 장소 {places.length} / {MAX_SELECTED_PLACES}
+            후보 장소 {places.length} / {MAX_SELECTED_PLACES}
           </S.Count>
           <S.PickerResults>
-            {pickerQuery.isPending ? (
+            {pickerSource === "DIRECT_SEARCH" && query.trim().length === 0 ? (
+              <FeedbackState
+                description="상호명이나 장소명으로 후보를 찾아보세요."
+                kind="empty"
+                title="장소를 검색해 주세요"
+              />
+            ) : pickerQuery.isFetching ? (
               <FeedbackState kind="loading" title="장소를 불러오는 중이에요" />
             ) : pickerQuery.isError ? (
               <FeedbackState
@@ -181,7 +346,9 @@ export const CourseRecommendationFormPage = () => {
             ) : pickerQuery.data?.length ? (
               <S.List>
                 {pickerQuery.data.map((place) => {
-                  const selected = places.some(({ id }) => id === place.id);
+                  const selected = places.some((selectedPlace) =>
+                    isSameCoursePlace(selectedPlace, place),
+                  );
                   const atLimit = places.length >= MAX_SELECTED_PLACES && !selected;
                   return (
                     <S.ListItem key={place.id}>
@@ -207,15 +374,17 @@ export const CourseRecommendationFormPage = () => {
             ) : (
               <FeedbackState
                 description={
-                  pickerSource === "FAVORITE"
-                    ? "마음에 드는 장소를 찜하면 여기에서 바로 선택할 수 있어요."
+                  pickerSource === "SAVED_PLACE"
+                    ? "장소 추천에서 저장한 장소를 여기에서 선택할 수 있어요."
                     : query.trim().length === 0
                       ? "장소명으로 검색해 보세요."
                       : "다른 검색어로 다시 찾아보세요."
                 }
                 kind="empty"
                 title={
-                  pickerSource === "FAVORITE" ? "아직 찜한 장소가 없어요" : "검색 결과가 없어요"
+                  pickerSource === "SAVED_PLACE"
+                    ? "아직 저장한 장소가 없어요"
+                    : "검색 결과가 없어요"
                 }
               />
             )}

@@ -1,6 +1,6 @@
 import type { UserInput } from "../../../interfaces/input.contracts.js";
 import { generateRecommendationObject, RECOMMENDATION_LLM_MODEL_ID } from "../../../llm/ai-sdk.js";
-import type { SearchQuery } from "../contracts.js";
+import { type SearchQuery, TMAP_SEARCH_COUNT_MAX } from "../contracts.js";
 import {
   LlmDiscoveryContextResponseSchema,
   MAX_DISCOVERY_TERM_COUNT,
@@ -128,9 +128,6 @@ const withBroadFallbackQuery = (queries: string[], userInput: UserInput): string
   return [...queries.slice(0, -1), fallbackQuery];
 };
 
-/** TMAP POI 검색의 한 페이지 상한. 이보다 크게 요청해도 더 오지 않는다. */
-const MAX_COUNT_PER_QUERY = 20;
-
 /**
  * seed 목표치를 검색어들에 균등 배분한다.
  *
@@ -149,7 +146,7 @@ export const distributeSeedCounts = (
 
   return queries.map((query, index) => ({
     query,
-    count: Math.max(1, Math.min(MAX_COUNT_PER_QUERY, base + (index < remainder ? 1 : 0))),
+    count: Math.max(1, Math.min(TMAP_SEARCH_COUNT_MAX, base + (index < remainder ? 1 : 0))),
     page: 1,
   }));
 };

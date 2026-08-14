@@ -10,6 +10,10 @@ import { tokens } from "../../design-system/tokens.generated";
 import PlaceRecommendationResultPending from "../../features/PlaceRecommendationResult/components/PlaceRecommendationResultPending";
 import PlaceRecommendationResultContent from "../../features/PlaceRecommendationResult/PlaceRecommendationResultContent";
 import { useAppNavigate } from "../../routes/useAppNavigate";
+import {
+  createPlaceRecommendationRetryRouteState,
+  type PlaceRecommendationRetryRouteState,
+} from "../PlaceRecommendationForm/initialValues";
 import { toCompletedPlaceRecommendationEngineOutput } from "../PlaceRecommendationHistory/PlaceRecommendationHistory.data";
 
 const getPlaceRecommendationResultQueryKey = (recommendationId: string) =>
@@ -19,10 +23,12 @@ const PlaceRecommendationResultStatusFeedback = ({
   kind,
   title,
   description,
+  retryState,
 }: {
   readonly kind: "loading" | "empty" | "error";
   readonly title: string;
   readonly description?: string;
+  readonly retryState?: PlaceRecommendationRetryRouteState;
 }) => {
   const navigate = useAppNavigate();
 
@@ -34,7 +40,10 @@ const PlaceRecommendationResultStatusFeedback = ({
           kind === "error"
             ? {
                 label: "다시 추천받기",
-                onClick: () => void navigate("/place/recommendation/form"),
+                onClick: () =>
+                  retryState
+                    ? void navigate("/place/recommendation/form", { state: retryState })
+                    : void navigate("/place/recommendation/form"),
               }
             : undefined
         }
@@ -96,6 +105,10 @@ const PlaceRecommendationResultPage = () => {
         <PlaceRecommendationResultStatusFeedback
           description={recommendation.data.errorMessage}
           kind="error"
+          retryState={createPlaceRecommendationRetryRouteState(
+            recommendation.data.input,
+            recommendation.data.formLocations,
+          )}
           title="추천 결과를 만들지 못했어요"
         />
       );

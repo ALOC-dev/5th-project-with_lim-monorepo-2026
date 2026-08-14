@@ -130,7 +130,15 @@ const PlaceRecommendationFormContent = () => {
     if (userInput === null) return;
 
     dispatchPlaceRecommendationRequest(userInput, (requestInput) => {
-      recommendationMutation.mutate(requestInput);
+      recommendationMutation.mutate({
+        input: requestInput,
+        formLocations: locations.map(({ lat, lng, placeName, roadNameAddress }) => ({
+          lat,
+          lng,
+          ...(placeName ? { placeName } : {}),
+          roadNameAddress,
+        })),
+      });
     });
   };
 

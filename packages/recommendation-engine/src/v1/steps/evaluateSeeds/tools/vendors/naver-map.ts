@@ -39,6 +39,7 @@ export const scrapeNaverMapCandidate = async (
     operationVerifier,
     sourceName: "naver-map",
     sourceTextKind: "scraped_page",
+    logger: options.logger,
   });
   const operationInfo = operationParse.operationInfo;
   const sourceUrls = [searchUrl];

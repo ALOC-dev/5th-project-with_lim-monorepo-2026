@@ -17,6 +17,7 @@ export {
   consoleSink,
   createJsonlFileSink,
   createLogger,
+  type FlushableLogSink,
   type LogEvent,
   type Logger,
   type LogLevel,
@@ -24,6 +25,13 @@ export {
   noopLogger,
   noopSink,
 } from "./observability/logger.js";
+export {
+  type KakaoLocalCredentials,
+  type KakaoLocalItem,
+  type KakaoLocalSearchResponse,
+  searchKakaoLocalRaw,
+} from "./steps/discoverSeeds/vendors/kakao-local.js";
+export type { LocalSeedSearchParams } from "./steps/discoverSeeds/vendors/types.js";
 export type {
   CandidateEnrichment,
   CandidateEnrichmentClient,

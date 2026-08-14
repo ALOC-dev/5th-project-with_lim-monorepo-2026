@@ -184,6 +184,7 @@ export const createAgenticWebEnrichmentClient = ({
               abortSignal: abortController.signal,
             });
           } catch (error) {
+            logRecoverableAgenticCandidateFailure(logger, evidence.candidateId, error);
             return buildUnknownEnrichment(
               evidence.candidateId,
               operationVerifier,
@@ -201,6 +202,25 @@ export const createAgenticWebEnrichmentClient = ({
       await ownedBrowser?.close();
     }
   };
+};
+
+/**
+ * 후보 하나의 agentic/OpenAI 호출이 실패해 UNKNOWN으로 강등되는 경로를 남긴다.
+ * 이 이벤트는 추천 결과를 바꾸지 않으며, QA monitor가 실제 transport/auth/quota
+ * 오류인 경우에만 infrastructure signal로 정규화한다.
+ */
+export const logRecoverableAgenticCandidateFailure = (
+  logger: Logger | undefined,
+  candidateId: string,
+  error: unknown,
+): void => {
+  logger
+    ?.withContext({ extra: { candidateId, source: "agentic" } })
+    .error("evaluateSeeds.enrichment.agentic_candidate.failure", error, {
+      provider: "OPENAI",
+      recoverable: true,
+      fallbackStatus: "UNKNOWN",
+    });
 };
 
 const mapWithConcurrency = async <TItem, TResult>(
@@ -326,6 +346,7 @@ const enrichWithAgenticWeb = async (
     {
       onToolEvent: options.onToolEvent,
       openAiApiKey: options.openAiApiKey,
+      logger: options.logger,
     },
   );
 };
@@ -335,7 +356,7 @@ const buildFinalEnrichmentFromAgentic = async (
   memo: Map<AgenticEnrichmentSource, CandidateEnrichment>,
   evidence: CandidateScoringEvidence,
   operationVerifier: OperationVerifier,
-  options: Pick<AgenticWebEnrichmentOptions, "onToolEvent" | "openAiApiKey">,
+  options: Pick<AgenticWebEnrichmentOptions, "onToolEvent" | "openAiApiKey" | "logger">,
 ): Promise<CandidateEnrichment> => {
   if (finalized.selectedSource === "agentic") {
     const operationParse = await parseOperationInfoWithLlmFallback({
@@ -345,6 +366,7 @@ const buildFinalEnrichmentFromAgentic = async (
       sourceName: "agentic-web",
       sourceTextKind: "agentic_fetch",
       openAiApiKey: options.openAiApiKey,
+      logger: options.logger,
     });
     const operationInfo = operationParse.operationInfo;
     const sourceUrls = unique(finalized.sourceUrls);

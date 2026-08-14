@@ -1,7 +1,12 @@
 import { randomUUID } from "node:crypto";
 import { EventEmitter } from "node:events";
 
-import { createApiError, type PlaceRecommendationSseEvent } from "@monorepo/api-contracts";
+import {
+  createApiError,
+  type PlaceRecommendationFormLocationSnapshot,
+  PlaceRecommendationJobRequestSchema,
+  type PlaceRecommendationSseEvent,
+} from "@monorepo/api-contracts";
 import {
   DEFAULT_ENGINE_CONFIG,
   type EngineOutput,
@@ -17,7 +22,11 @@ import { db } from "../db/client.js";
 import { placeRecommendationHistories } from "../db/schema.js";
 import { asyncHandler } from "../lib/asyncHandler.js";
 import { requireAuth } from "../middleware/auth.js";
-import { presentRecommendationError, RECOMMENDATION_FAILURE_EVENT } from "./error-presentation.js";
+import {
+  presentRecommendationError,
+  presentStoredRecommendationFailure,
+  RECOMMENDATION_FAILURE_EVENT,
+} from "./error-presentation.js";
 import {
   deriveRecommendationHistoryStatus,
   deriveRecommendationHistoryTitle,
@@ -38,6 +47,16 @@ type JobState = {
   started: boolean;
 };
 
+const formLocationsMatchInput = (
+  userInput: UserInput,
+  formLocations: readonly PlaceRecommendationFormLocationSnapshot[],
+): boolean =>
+  userInput.location.length === formLocations.length &&
+  userInput.location.every(
+    (location, index) =>
+      location.lat === formLocations[index]?.lat && location.lng === formLocations[index]?.lng,
+  );
+
 export const createRecommendationRouter = (secrets: RecommendationEngineSecrets): Router => {
   const router = Router();
   const jobStore = new Map<string, JobState>();
@@ -46,8 +65,14 @@ export const createRecommendationRouter = (secrets: RecommendationEngineSecrets)
     "/",
     requireAuth,
     asyncHandler(async (req, res) => {
-      const parsed = UserInputSchema.safeParse(req.body);
-      if (!parsed.success) {
+      const request = PlaceRecommendationJobRequestSchema.safeParse(req.body);
+      if (!request.success) {
+        res.status(400).json(createApiError("invalid input"));
+        return;
+      }
+
+      const parsed = UserInputSchema.safeParse(request.data.input);
+      if (!parsed.success || !formLocationsMatchInput(parsed.data, request.data.formLocations)) {
         res.status(400).json(createApiError("invalid input"));
         return;
       }
@@ -58,6 +83,7 @@ export const createRecommendationRouter = (secrets: RecommendationEngineSecrets)
         userIds: [req.userId],
         title: deriveRecommendationHistoryTitle(parsed.data.userNaturalLanguageRequest),
         input: parsed.data,
+        formLocations: request.data.formLocations,
       });
       jobStore.set(jobId, {
         userId: req.userId,
@@ -107,10 +133,10 @@ export const createRecommendationRouter = (secrets: RecommendationEngineSecrets)
         return;
       }
       if (storedStatus === "FAILED") {
+        const failure = presentStoredRecommendationFailure(history.errorCode);
         res.write(
           `event: error\ndata: ${JSON.stringify({
-            type: "error",
-            message: history.errorMessage ?? RECOMMENDATION_FAILURE_EVENT.message,
+            ...failure,
           })}\n\n`,
         );
         res.end();
@@ -172,6 +198,8 @@ export const createRecommendationRouter = (secrets: RecommendationEngineSecrets)
         const emitTerminalDelivery = (
           delivery: RecommendationTerminalDelivery,
           output: Extract<EngineOutput, { readonly status: "SUCCESS" }> | null,
+          failureEvent: Extract<PlaceRecommendationSseEvent, { readonly type: "error" }> =
+            RECOMMENDATION_FAILURE_EVENT,
         ): void => {
           switch (delivery) {
             case "result":
@@ -182,7 +210,7 @@ export const createRecommendationRouter = (secrets: RecommendationEngineSecrets)
               emitEvent({ type: "result", data: output.userOutput });
               return;
             case "error":
-              emitEvent(RECOMMENDATION_FAILURE_EVENT);
+              emitEvent(failureEvent);
               return;
             case "disconnect":
               closeSubscribersAndDiscardJob();
@@ -208,9 +236,14 @@ export const createRecommendationRouter = (secrets: RecommendationEngineSecrets)
                 code: presentation.internal.code,
                 message: presentation.publicEvent.message,
               }),
-            persistFailureFallback,
+            () =>
+              persistRecommendationTerminalState(jobId, {
+                kind: "FAILED",
+                code: presentation.internal.code,
+                message: presentation.publicEvent.message,
+              }),
           );
-          emitTerminalDelivery(delivery, null);
+          emitTerminalDelivery(delivery, null, presentation.publicEvent);
         };
         const processRecommendation = async (): Promise<void> => {
           // 실행 단위로 로그/입력/결과를 파일에 남긴다. stdout만 보던 예전에는

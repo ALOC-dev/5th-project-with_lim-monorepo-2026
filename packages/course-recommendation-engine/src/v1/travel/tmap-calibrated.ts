@@ -80,10 +80,9 @@ const toCalibration = (
   };
 };
 
-export const createCalibratedTmapMatrixClient = (
-  options: CalibratedTmapMatrixOptions = {},
-): TravelMatrixClient =>
-  async ({ places, maxWalkableMeters, concurrency, tmapAppKey }) => {
+export const createCalibratedTmapMatrixClient =
+  (options: CalibratedTmapMatrixOptions = {}): TravelMatrixClient =>
+  async ({ places, maxWalkableMeters, concurrency, tmapAppKey, signal }) => {
     if (!tmapAppKey) {
       throw new Error("TMAP app key is required for pedestrian travel times");
     }
@@ -118,14 +117,15 @@ export const createCalibratedTmapMatrixClient = (
     // 실패해 엔진이 정적 추정으로 떨어지게 한다.
     const [head, ...rest] = samples;
     if (head) {
-      const headLeg = await fetchLeg(head.from, head.to, tmapAppKey);
+      const headLeg = await fetchLeg(head.from, head.to, tmapAppKey, signal);
       if (headLeg) measured.push({ pair: head, leg: headLeg });
 
       await runWithConcurrency(rest, concurrency, async (pair) => {
         try {
-          const leg = await fetchLeg(pair.from, pair.to, tmapAppKey);
+          const leg = await fetchLeg(pair.from, pair.to, tmapAppKey, signal);
           if (leg) measured.push({ pair, leg });
         } catch {
+          signal?.throwIfAborted();
           // 이 표본만 버린다. 남은 표본으로 보정한다.
         }
       });

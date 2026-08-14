@@ -74,7 +74,10 @@ export const createAgenticEnrichmentTools = ({
       result = await run();
     } catch (error) {
       errorReason = error instanceof Error ? error.message : String(error);
-      toolLogger?.error(`evaluateSeeds.enrichment.tool.${sourceName}.failure`, error);
+      toolLogger?.error(`evaluateSeeds.enrichment.tool.${sourceName}.failure`, error, {
+        recoverable: true,
+        fallbackStatus: "UNKNOWN",
+      });
       result = buildUnknownEnrichment(
         evidence.candidateId,
         operationVerifier,
@@ -112,6 +115,7 @@ export const createAgenticEnrichmentTools = ({
                 scrapePlaceDetails: options.kakaoScrapePlaceDetails,
                 kakaoRestApiKey: options.kakaoRestApiKey,
                 openAiApiKey: options.openAiApiKey,
+                logger: options.logger,
               }),
             ),
           ),
@@ -128,6 +132,7 @@ export const createAgenticEnrichmentTools = ({
                 clientSecret: options.clientSecret,
                 openAiApiKey: options.openAiApiKey,
                 abortSignal: options.abortSignal,
+                logger: options.logger,
               }),
             ),
           ),
@@ -146,6 +151,7 @@ export const createAgenticEnrichmentTools = ({
                 scrapeCache: options.naverMapScrapeCache,
                 scrapeRequests: options.scrapeRequests,
                 openAiApiKey: options.openAiApiKey,
+                logger: options.logger,
               }),
             ),
           ),

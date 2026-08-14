@@ -18,7 +18,7 @@ const PwaStatusScreen = ({ action, description, title, tone }: PwaStatusScreenPr
   return (
     <PageRoot backgroundColor={tokens.color.primary[50]} layout="contained">
       <S.Content>
-        <S.Icon alt="" src="/pwa-192x192.png" />
+        <S.Icon alt="" src={tone === "boot" ? "/splash-map.png" : "/pwa-192x192.png"} />
         <S.Brand>ALOC</S.Brand>
         <S.Copy>
           <S.Title>{title}</S.Title>

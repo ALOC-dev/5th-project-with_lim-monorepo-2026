@@ -15,12 +15,11 @@ type GenerateCourseObjectOptions<TObject> = {
   system: string;
   prompt: string;
   maxRetries?: number;
+  signal?: AbortSignal;
 };
 
-const createCourseOpenAiModel = (
-  modelId = COURSE_LLM_MODEL_ID,
-  apiKey?: string,
-): LanguageModel => (apiKey ? createOpenAI({ apiKey })(modelId) : openai(modelId));
+const createCourseOpenAiModel = (modelId = COURSE_LLM_MODEL_ID, apiKey?: string): LanguageModel =>
+  apiKey ? createOpenAI({ apiKey })(modelId) : openai(modelId);
 
 export const generateCourseObject = async <TObject>({
   modelId,
@@ -28,6 +27,7 @@ export const generateCourseObject = async <TObject>({
   schema,
   maxRetries,
   openAiApiKey,
+  signal,
   ...options
 }: GenerateCourseObjectOptions<TObject>): Promise<TObject> => {
   try {
@@ -36,10 +36,12 @@ export const generateCourseObject = async <TObject>({
       model: createCourseOpenAiModel(modelId, openAiApiKey),
       output: Output.object({ schema }),
       maxRetries: maxRetries ?? COURSE_LLM_MAX_RETRIES,
+      abortSignal: signal,
     });
 
     return output;
   } catch (error) {
+    signal?.throwIfAborted();
     const reason = error instanceof Error ? error.message : String(error);
     throw new Error(`${task} LLM call failed: ${reason}`);
   }

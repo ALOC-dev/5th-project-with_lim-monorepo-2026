@@ -21,6 +21,11 @@ export const S = {
     color: ${tokens.color.neutral[900]};
     ${tokens.typography.title.xs};
   `,
+  Helper: styled.p`
+    margin: -4px 0 0;
+    color: ${tokens.color.neutral[700]};
+    ${tokens.typography.body.xs};
+  `,
   PickerOpen: styled.button`
     display: grid;
     grid-template-columns: 1fr auto;
@@ -71,6 +76,11 @@ export const S = {
       color: ${tokens.color.neutral[700]};
       ${tokens.typography.label.sm};
     }
+  `,
+  FieldError: styled.p`
+    margin: 0;
+    color: ${tokens.color.warning[500]};
+    ${tokens.typography.body.xs};
   `,
   Select: styled.select`
     height: 48px;

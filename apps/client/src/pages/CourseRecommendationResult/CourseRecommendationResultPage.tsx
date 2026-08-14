@@ -6,10 +6,15 @@ import { toast } from "sonner";
 import FeedbackState from "../../components/FeedbackState/FeedbackState";
 import { CourseMap } from "../../features/CourseRecommendation/components/CourseMap";
 import { CoursePage } from "../../features/CourseRecommendation/components/CoursePage";
-import { formatMinutes } from "../../features/CourseRecommendation/courseRecommendation.utils";
+import {
+  formatCourseCost,
+  formatMinutes,
+  getCourseCandidateCounts,
+} from "../../features/CourseRecommendation/courseRecommendation.utils";
 import { courseRepository } from "../../features/CourseRecommendation/courseRepository";
 import { CourseRecommendationResultPending } from "../../features/CourseRecommendationResult/CourseRecommendationResultPending";
 import { useAppBackNavigate, useAppNavigate } from "../../routes/useAppNavigate";
+import { createCourseRecommendationRetryRouteState } from "../CourseRecommendationForm/retryDraft";
 import { S } from "./CourseRecommendationResultPage.styled";
 
 export const CourseRecommendationResultPage = () => {
@@ -22,7 +27,10 @@ export const CourseRecommendationResultPage = () => {
     queryKey: ["course", courseId],
     queryFn: () => courseRepository.getRecommendation(courseId ?? ""),
     enabled: Boolean(courseId),
-    refetchInterval: (query) => (query.state.data?.status === "PENDING" ? 5_000 : false),
+    refetchInterval: (query) =>
+      query.state.data?.status === "PENDING" || query.state.data?.status === "RUNNING"
+        ? 5_000
+        : false,
     retry: false,
   });
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -69,14 +77,26 @@ export const CourseRecommendationResultPage = () => {
         <FeedbackState
           action={{
             label: "다시 추천받기",
-            onClick: () => void navigate("/course/recommendation/form"),
+            onClick: () =>
+              void navigate("/course/recommendation/form", {
+                state: createCourseRecommendationRetryRouteState(recommendation.input),
+              }),
           }}
+          description={
+            recommendation.candidateDecisions.length
+              ? recommendation.candidateDecisions
+                  .filter(({ code }) => code !== "INCLUDED")
+                  .slice(0, 3)
+                  .map(({ candidateName, message }) => `${candidateName}: ${message}`)
+                  .join(" · ")
+              : "후보 장소의 영업시간과 이동 조건을 바꿔 다시 시도해 주세요."
+          }
           kind="empty"
           title="조건에 맞는 코스를 찾지 못했어요"
         />
       </CoursePage>
     );
-  if (recommendation.status === "PENDING") {
+  if (recommendation.status === "PENDING" || recommendation.status === "RUNNING") {
     return (
       <CourseRecommendationResultPending
         courseId={courseId}
@@ -98,7 +118,10 @@ export const CourseRecommendationResultPage = () => {
         <FeedbackState
           action={{
             label: "다시 추천받기",
-            onClick: () => void navigate("/course/recommendation/form"),
+            onClick: () =>
+              void navigate("/course/recommendation/form", {
+                state: createCourseRecommendationRetryRouteState(recommendation.input),
+              }),
           }}
           description={recommendation.errorMessage}
           kind="error"
@@ -118,7 +141,7 @@ export const CourseRecommendationResultPage = () => {
     <CoursePage onBack={() => navigate("/course/recommendation/history")} title="코스 결과">
       <S.ResultMap>
         <S.MapLabel aria-live="polite">
-          {selectedIndex + 1}번 코스 · {selected.type}
+          {selectedIndex + 1}번 코스 · {selected.courseType.label}
         </S.MapLabel>
         <CourseMap option={selected} />
       </S.ResultMap>
@@ -131,37 +154,59 @@ export const CourseRecommendationResultPage = () => {
             {selectedIndex + 1}번 코스 선택됨
           </S.SelectionStatus>
         </S.ResultHeader>
-        {recommendation.options.map((option, index) => (
-          <S.Option $selected={option.id === selected.id} key={option.id}>
-            <S.OptionSelect
-              aria-label={`${index + 1}번 ${option.type} 코스 선택`}
-              aria-pressed={option.id === selected.id}
-              onClick={() => setSelectedId(option.id)}
-              type="button"
-            >
-              <b>{index + 1}</b>
-              <span>
-                <strong>{option.type}</strong>
-                <small>{option.stops.map((stop) => stop.name).join(" → ")}</small>
-                <small>
-                  {option.stops.length}곳 · 총 {formatMinutes(option.totalDurationMinutes)} · 이동{" "}
-                  {option.totalTravelMinutes}분
-                </small>
-              </span>
-            </S.OptionSelect>
-            <S.TextButton
-              aria-label={`${index + 1}번 ${option.type} 코스 상세 보기`}
-              onClick={() =>
-                void navigate(
-                  `/course/recommendation/${encodeURIComponent(courseId)}/option/${encodeURIComponent(option.id)}`,
-                )
-              }
-              type="button"
-            >
-              상세 보기
-            </S.TextButton>
-          </S.Option>
-        ))}
+        {recommendation.legacy ? <S.LegacyBadge>이전 추천 결과</S.LegacyBadge> : null}
+        {recommendation.options.map((option, index) => {
+          const counts = getCourseCandidateCounts(option);
+          const omitted = option.candidateDecisions.filter(({ code }) => code !== "INCLUDED");
+          return (
+            <S.Option $selected={option.id === selected.id} key={option.id}>
+              <S.OptionRow>
+                <S.OptionSelect
+                  aria-label={`${index + 1}번 ${option.courseType.label} 코스 선택`}
+                  aria-pressed={option.id === selected.id}
+                  onClick={() => setSelectedId(option.id)}
+                  type="button"
+                >
+                  <b>{option.rank}</b>
+                  <span>
+                    <strong>{option.title}</strong>
+                    <small>{option.stops.map((stop) => stop.name).join(" → ")}</small>
+                    <small>
+                      후보 {counts.total}곳 중 {counts.included}곳 사용 · 총{" "}
+                      {formatMinutes(option.totalDurationMinutes)} · 도보{" "}
+                      {option.totalTravelMinutes}분
+                    </small>
+                    <small>{formatCourseCost(option.estimatedCostPerPerson)}</small>
+                  </span>
+                </S.OptionSelect>
+                <S.TextButton
+                  aria-label={`${index + 1}번 ${option.courseType.label} 코스 상세 보기`}
+                  onClick={() =>
+                    void navigate(
+                      `/course/recommendation/${encodeURIComponent(courseId)}/option/${encodeURIComponent(option.id)}`,
+                    )
+                  }
+                  type="button"
+                >
+                  상세 보기
+                </S.TextButton>
+              </S.OptionRow>
+              <S.OptionReason>{option.reasonTexts[0]}</S.OptionReason>
+              {omitted.length ? (
+                <S.Decisions>
+                  <summary>포함하지 않은 후보 {omitted.length}곳</summary>
+                  <ul>
+                    {omitted.map((decision) => (
+                      <li key={`${decision.candidateId}:${decision.code}`}>
+                        <strong>{decision.candidateName}</strong> · {decision.message}
+                      </li>
+                    ))}
+                  </ul>
+                </S.Decisions>
+              ) : null}
+            </S.Option>
+          );
+        })}
       </S.Result>
     </CoursePage>
   );

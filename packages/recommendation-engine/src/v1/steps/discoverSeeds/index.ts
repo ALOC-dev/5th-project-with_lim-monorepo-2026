@@ -26,7 +26,7 @@ export const discoverSeeds = async (
     });
 
     const accumulatedSeeds: LocalSeed[] = [];
-    const responses = await fetchProviderSeeds(queries, options);
+    const responses = await fetchProviderSeeds(queries, options, stepLogger);
     const nextQueries: typeof context.queries = [];
 
     const responsesByQuery = responses.flatMap((response, index) => {

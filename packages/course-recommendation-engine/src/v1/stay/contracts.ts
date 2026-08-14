@@ -78,8 +78,7 @@ export type StayEstimateResponse = z.infer<typeof StayEstimateResponseSchema>;
 export type StayEstimateRequest = {
   candidates: StayEstimateCandidate[];
   openAiApiKey?: string;
+  signal?: AbortSignal;
 };
 
-export type StayEstimatorClient = (
-  request: StayEstimateRequest,
-) => Promise<StayEstimateResponse>;
+export type StayEstimatorClient = (request: StayEstimateRequest) => Promise<StayEstimateResponse>;

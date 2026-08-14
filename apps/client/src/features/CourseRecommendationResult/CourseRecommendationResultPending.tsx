@@ -4,8 +4,10 @@ import { getCourseStreamUrl } from "../../apis/server/courses";
 import { RecommendationProgress } from "../../components/RecommendationProgress";
 import { useAppNavigate } from "../../routes/useAppNavigate";
 import {
+  advanceCourseProgressStep,
   COURSE_PROGRESS_LABELS,
   type CourseProgressStep,
+  isCourseProgressStep,
   toCourseProgressSteps,
 } from "../CourseRecommendation/courseRecommendation.constants";
 
@@ -21,7 +23,13 @@ export const CourseRecommendationResultPending = ({
   onTerminal,
 }: CourseRecommendationResultPendingProps) => {
   const navigate = useAppNavigate();
-  const [progressStep, setProgressStep] = useState<CourseProgressStep>("input_validated");
+  const [progressStep, setProgressStep] = useState<CourseProgressStep>("resolving_candidates");
+  const [isTakingLong, setTakingLong] = useState(false);
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => setTakingLong(true), 90_000);
+    return () => window.clearTimeout(timeoutId);
+  }, []);
 
   useEffect(() => {
     const source = new EventSource(getCourseStreamUrl(courseId), { withCredentials: true });
@@ -31,11 +39,10 @@ export const CourseRecommendationResultPending = ({
         if (typeof data !== "object" || data === null) return;
         const record = data as { type?: string; step?: string };
         if (record.type !== "progress") return;
-        setProgressStep(
-          record.step === "generating_options" || record.step === "persisting_results"
-            ? record.step
-            : "input_validated",
-        );
+        const nextStep = record.step;
+        if (nextStep && isCourseProgressStep(nextStep)) {
+          setProgressStep((current) => advanceCourseProgressStep(current, nextStep));
+        }
       } catch {
         // Polling remains the recovery path when a progress payload is malformed.
       }
@@ -73,9 +80,13 @@ export const CourseRecommendationResultPending = ({
 
   return (
     <RecommendationProgress
-      description={COURSE_PROGRESS_LABELS[progressStep]}
+      description={
+        isTakingLong
+          ? `${COURSE_PROGRESS_LABELS[progressStep]} 화면을 닫아도 작업은 계속되며 추천 기록에서 다시 확인할 수 있어요.`
+          : COURSE_PROGRESS_LABELS[progressStep]
+      }
       headerTitle="코스 추천 중"
-      onBack={() => void navigate("/")}
+      onBack={() => void navigate("/course/recommendation/history")}
       steps={toCourseProgressSteps(progressStep)}
       title="코스 추천을 만드는 중이에요"
     />

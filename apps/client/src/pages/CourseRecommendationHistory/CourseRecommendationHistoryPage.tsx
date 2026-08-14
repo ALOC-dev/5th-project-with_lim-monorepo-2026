@@ -52,7 +52,9 @@ export const CourseRecommendationHistoryPage = () => {
     queryFn: () => courseRepository.listHistory(),
     retry: false,
     refetchInterval: (query) =>
-      query.state.data?.some((item) => item.status === "PENDING") ? 5_000 : false,
+      query.state.data?.some((item) => item.status === "PENDING" || item.status === "RUNNING")
+        ? 5_000
+        : false,
   });
   const [editing, setEditing] = useState<CourseHistoryItem | null>(null);
   const [title, setTitle] = useState("");
@@ -68,7 +70,7 @@ export const CourseRecommendationHistoryPage = () => {
   });
   const remove = useMutation({
     mutationFn: () =>
-      deleting?.status === "PENDING"
+      deleting?.status === "PENDING" || deleting?.status === "RUNNING"
         ? courseRepository.cancelPendingHistory(deleting.id)
         : courseRepository.deleteHistory(deleting?.id ?? ""),
     onSuccess: () => {
@@ -136,7 +138,7 @@ export const CourseRecommendationHistoryPage = () => {
                       cardInfo
                     )}
                     <S.HistoryActions>
-                      {item.status === "PENDING" ? (
+                      {item.status === "PENDING" || item.status === "RUNNING" ? (
                         <S.HistorySpinner aria-label="추천 생성 중" role="status" />
                       ) : null}
                       {item.status === "SUCCESS" ? (
@@ -209,14 +211,17 @@ export const CourseRecommendationHistoryPage = () => {
           setDeleting(null);
         }}
         description={
-          deleting?.status === "PENDING"
+          deleting?.status === "PENDING" || deleting?.status === "RUNNING"
             ? "생성 중인 코스 추천을 취소합니다."
             : "삭제한 기록은 다시 복구할 수 없어요."
         }
         id="course-delete"
         isOpen={Boolean(deleting)}
         primaryAction={{
-          label: deleting?.status === "PENDING" ? "취소하기" : "삭제하기",
+          label:
+            deleting?.status === "PENDING" || deleting?.status === "RUNNING"
+              ? "취소하기"
+              : "삭제하기",
           onClick: () => remove.mutate(),
           disabled: remove.isPending,
         }}
@@ -228,12 +233,14 @@ export const CourseRecommendationHistoryPage = () => {
           },
         }}
         title={
-          deleting?.status === "PENDING" ? "추천 생성을 취소할까요?" : "추천 기록을 삭제할까요?"
+          deleting?.status === "PENDING" || deleting?.status === "RUNNING"
+            ? "추천 생성을 취소할까요?"
+            : "추천 기록을 삭제할까요?"
         }
       >
         {remove.isError ? (
           <S.ModalError role="alert">
-            {deleting?.status === "PENDING"
+            {deleting?.status === "PENDING" || deleting?.status === "RUNNING"
               ? "추천 생성을 취소하지 못했어요."
               : "추천 기록을 삭제하지 못했어요."}
           </S.ModalError>

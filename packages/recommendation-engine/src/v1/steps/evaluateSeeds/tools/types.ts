@@ -1,3 +1,4 @@
+import type { Logger } from "../../../observability/logger.js";
 import type { UrlScrapeCacheMetadata } from "../utils/enrichment-types.js";
 import type { ScrapedUrlSnapshot, UrlScrapeCache } from "../utils/scrape-cache.js";
 
@@ -29,6 +30,7 @@ export type UrlScrapeResult = {
 };
 
 export type ScrapeNaverMapCandidateOptions = {
+  logger?: Logger;
   openAiApiKey?: string;
   timeoutMs: number;
   settleMs: number;
@@ -38,6 +40,7 @@ export type ScrapeNaverMapCandidateOptions = {
 };
 
 export type KakaoLocalCandidateOptions = {
+  logger?: Logger;
   openAiApiKey?: string;
   kakaoRestApiKey?: string;
   timeoutMs: number;
@@ -49,6 +52,7 @@ export type KakaoLocalCandidateOptions = {
 };
 
 export type NaverSearchCredentials = {
+  logger?: Logger;
   clientId: string;
   clientSecret: string;
   openAiApiKey?: string;

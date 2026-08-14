@@ -1,17 +1,19 @@
 import {
+  type ApiResponse,
   CancelCourseResponseDataSchema,
-  CourseOptionDetailSchema,
+  CourseOptionAnyDetailSchema,
   CourseResultSchema,
-  CreateCourseRequestSchema,
-  CreateCourseResponseDataSchema,
   createApiError,
   createApiResponseSchema,
+  CreateCourseRequestSchema,
+  CreateCourseResponseDataSchema,
   DeleteCourseResponseDataSchema,
-  type ApiResponse,
   ListCoursesResponseDataSchema,
   ListFavoriteCourseOptionsResponseDataSchema,
+  RemoveSavedCourseOptionResponseDataSchema,
   RenameCourseRequestSchema,
   RenameCourseResponseDataSchema,
+  SearchCourseCandidatesResponseDataSchema,
   SetCourseOptionFavoriteRequestSchema,
   SetCourseOptionFavoriteResponseDataSchema,
 } from "@monorepo/api-contracts";
@@ -24,7 +26,7 @@ const ENDPOINT = "api/courses";
 const createResponseSchema = createApiResponseSchema(CreateCourseResponseDataSchema);
 const courseResultResponseSchema = createApiResponseSchema(CourseResultSchema);
 const listCoursesResponseSchema = createApiResponseSchema(ListCoursesResponseDataSchema);
-const optionResponseSchema = createApiResponseSchema(CourseOptionDetailSchema);
+const optionResponseSchema = createApiResponseSchema(CourseOptionAnyDetailSchema);
 const renameResponseSchema = createApiResponseSchema(RenameCourseResponseDataSchema);
 const deleteResponseSchema = createApiResponseSchema(DeleteCourseResponseDataSchema);
 const cancelResponseSchema = createApiResponseSchema(CancelCourseResponseDataSchema);
@@ -32,6 +34,12 @@ const favoritesResponseSchema = createApiResponseSchema(
   ListFavoriteCourseOptionsResponseDataSchema,
 );
 const favoriteResponseSchema = createApiResponseSchema(SetCourseOptionFavoriteResponseDataSchema);
+const candidateSearchResponseSchema = createApiResponseSchema(
+  SearchCourseCandidatesResponseDataSchema,
+);
+const removeSavedOptionResponseSchema = createApiResponseSchema(
+  RemoveSavedCourseOptionResponseDataSchema,
+);
 
 const coursePath = (courseId: string) => `${ENDPOINT}/${encodeURIComponent(courseId)}`;
 
@@ -134,5 +142,43 @@ export const setCourseOptionFavorite = async (optionId: string, favorite: boolea
   }
 };
 
+export const removeSavedCourseOption = async (savedOptionId: string) => {
+  try {
+    return removeSavedOptionResponseSchema.parse(
+      await serverApi
+        .delete(`${ENDPOINT}/options/favorites/${encodeURIComponent(savedOptionId)}`)
+        .json<unknown>(),
+    );
+  } catch (error) {
+    return createApiError(toApiClientErrorMessage(error));
+  }
+};
+
 export const getCourseStreamUrl = (courseId: string) =>
   new URL(`${coursePath(courseId)}/stream`, `${serverApiBaseUrl}/`).href;
+
+export const searchCourseCandidates = async ({
+  query,
+  location,
+}: {
+  readonly query: string;
+  readonly location?: { readonly lat: number; readonly lng: number };
+}) => {
+  const normalizedQuery = query.trim();
+  if (!normalizedQuery) {
+    return candidateSearchResponseSchema.parse({ success: true, data: { items: [] } });
+  }
+
+  try {
+    const searchParams: Record<string, string> = { q: normalizedQuery };
+    if (location) {
+      searchParams.lat = String(location.lat);
+      searchParams.lng = String(location.lng);
+    }
+    return candidateSearchResponseSchema.parse(
+      await serverApi.get("api/course-candidates/search", { searchParams }).json<unknown>(),
+    );
+  } catch (error) {
+    return createApiError(toApiClientErrorMessage(error));
+  }
+};

@@ -8,14 +8,18 @@ import {
   type SavePlaceResponseData,
 } from "@monorepo/api-contracts";
 import { PlaceRecommendationItemSchema } from "@monorepo/recommendation-engine/v1/contracts";
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import { Router } from "express";
 import { z } from "zod";
 
 import { db } from "../db/client.js";
-import { savedPlaces } from "../db/schema.js";
+import { favoritePlaces, savedPlaces } from "../db/schema.js";
 import { asyncHandler } from "../lib/asyncHandler.js";
 import { requireAuth } from "../middleware/auth.js";
+import {
+  planLegacySavedPlaceMigrations,
+  toSeoulMigrationSchedule,
+} from "../savedPlaces/legacyCompatibility.js";
 
 const router = Router();
 
@@ -26,11 +30,65 @@ const toSavedPlace = (row: typeof savedPlaces.$inferSelect): SavedPlace => ({
   createdAt: row.createdAt.toISOString(),
 });
 
+const migrateLegacyFavoritesForUser = async (userId: string): Promise<void> => {
+  const [legacyFavorites, existingSavedPlaces] = await Promise.all([
+    db
+      .select()
+      .from(favoritePlaces)
+      .where(and(eq(favoritePlaces.userId, userId), isNull(favoritePlaces.deletedAt)))
+      .orderBy(desc(favoritePlaces.createdAt)),
+    db
+      .select({ placeData: savedPlaces.placeData })
+      .from(savedPlaces)
+      .where(eq(savedPlaces.userId, userId)),
+  ]);
+
+  const plan = planLegacySavedPlaceMigrations(
+    legacyFavorites,
+    existingSavedPlaces,
+    toSeoulMigrationSchedule(new Date()),
+  );
+
+  if (plan.migrations.length > 0) {
+    const inserted = await db
+      .insert(savedPlaces)
+      .values(
+        plan.migrations.map((migration) => ({
+          userId,
+          historyId: null,
+          placeData: migration.placeData,
+          createdAt: migration.createdAt,
+        })),
+      )
+      // Another concurrent first read may have normalized the same canonical Kakao ID.
+      .onConflictDoNothing()
+      .returning({ id: savedPlaces.id });
+    console.info("normalized legacy favorite places", {
+      plannedCount: plan.migrations.length,
+      insertedCount: inserted.length,
+    });
+  }
+
+  if (plan.skipped.length > 0) {
+    const counts = plan.skipped.reduce<Record<string, number>>((accumulator, item) => {
+      accumulator[item.reason] = (accumulator[item.reason] ?? 0) + 1;
+      return accumulator;
+    }, {});
+    console.warn("skipped invalid legacy favorite places during normalization", {
+      counts,
+    });
+  }
+};
+
 // 저장한 장소 조회
 router.get(
   "/",
   requireAuth,
   asyncHandler(async (req, res) => {
+    // Compatibility read: legacy favorites remain untouched. We add validated snapshots
+    // to saved_places once per canonical Kakao ID, then return the canonical source only.
+    await migrateLegacyFavoritesForUser(req.userId);
+
     const rows = await db
       .select()
       .from(savedPlaces)

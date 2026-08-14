@@ -5,6 +5,9 @@ import type { CreateCourseRequest } from "@monorepo/api-contracts";
 
 import { createMockCourseRecommendationEngine } from "./engine.js";
 
+process.env.DATABASE_URL ??= "postgres://course-test:course-test@127.0.0.1:5432/course-test";
+process.env.JWT_SECRET ??= "course-engine-test-secret";
+
 const input: CreateCourseRequest = {
   date: "2026-08-11",
   startTime: "18:30",
@@ -31,18 +34,21 @@ const input: CreateCourseRequest = {
   ],
 };
 
+const mockContext = (onProgress: (step: string) => void = () => undefined) => ({
+  userId: "00000000-0000-4000-8000-000000000000",
+  signal: new AbortController().signal,
+  onProgress,
+});
+
 void test("mock course engine emits ordered progress and persists four display-ready options", async () => {
   const progress: string[] = [];
   const engine = createMockCourseRecommendationEngine("SUCCESS");
 
-  const result = await engine.generate(input, {
-    signal: new AbortController().signal,
-    onProgress: (step) => progress.push(step),
-  });
+  const result = await engine.generate(input, mockContext((step) => progress.push(step)));
 
   assert.deepEqual(progress, ["input_validated", "generating_options", "persisting_results"]);
   assert.equal(result.kind, "SUCCESS");
-  if (result.kind !== "SUCCESS") return;
+  if (result.kind !== "SUCCESS" || result.version !== 1) return;
   assert.equal(result.options.length, 4);
   assert.deepEqual(
     result.options.map((option) => option.type),
@@ -55,24 +61,21 @@ void test("mock course engine emits ordered progress and persists four display-r
 void test("mock course engine produces the configured empty result", async () => {
   const engine = createMockCourseRecommendationEngine("EMPTY");
 
-  const result = await engine.generate(input, {
-    signal: new AbortController().signal,
-    onProgress: () => undefined,
-  });
+  const result = await engine.generate(input, mockContext());
 
-  assert.deepEqual(result, { kind: "EMPTY" });
+  assert.deepEqual(result, { kind: "EMPTY", version: 1 });
 });
 
-void test("mock course engine fails when explicitly configured to fail", async () => {
+void test("mock course engine returns a typed failure when explicitly configured to fail", async () => {
   const engine = createMockCourseRecommendationEngine("FAILED");
 
-  await assert.rejects(
-    engine.generate(input, {
-      signal: new AbortController().signal,
-      onProgress: () => undefined,
-    }),
-    /Mock course recommendation engine failed/u,
-  );
+  const result = await engine.generate(input, mockContext());
+
+  assert.deepEqual(result, {
+    kind: "FAILED",
+    code: "COURSE_ENGINE_UNAVAILABLE",
+    retryable: true,
+  });
 });
 
 void test("mock course engine stops after pending cancellation", async () => {
@@ -81,7 +84,51 @@ void test("mock course engine stops after pending cancellation", async () => {
   controller.abort();
 
   await assert.rejects(
-    engine.generate(input, { signal: controller.signal, onProgress: () => undefined }),
+    engine.generate(input, {
+      userId: "00000000-0000-4000-8000-000000000000",
+      signal: controller.signal,
+      onProgress: () => undefined,
+    }),
     (error: unknown) => error instanceof Error && error.name === "AbortError",
   );
+});
+
+void test("explicit mock mode still returns display-ready v2 engine snapshots", async () => {
+  const engine = createMockCourseRecommendationEngine("SUCCESS");
+  const v2Input: CreateCourseRequest = {
+    version: 2,
+    candidates: [
+      {
+        source: "DIRECT_SEARCH",
+        kakaoPlaceId: "101",
+        name: "테스트 카페",
+        address: "서울 중구 테스트로 1",
+        category: "음식점 > 카페",
+        lat: 37.566,
+        lng: 126.978,
+      },
+      {
+        source: "DIRECT_SEARCH",
+        kakaoPlaceId: "102",
+        name: "테스트 식당",
+        address: "서울 중구 테스트로 2",
+        category: "음식점 > 한식",
+        lat: 37.567,
+        lng: 126.979,
+      },
+    ],
+    date: "2026-08-20",
+    startTime: "18:00",
+    durationHours: 3,
+    numberOfPeople: 2,
+    pacePreference: "NORMAL",
+  };
+
+  const result = await engine.generate(v2Input, mockContext());
+
+  assert.equal(result.kind, "SUCCESS");
+  if (result.kind !== "SUCCESS" || result.version !== 2) return;
+  assert.ok(result.options.length >= 1 && result.options.length <= 3);
+  assert.ok(result.options.every((option) => option.course.timeline.length >= 2));
+  assert.ok(result.options.every((option) => option.candidateDecisions.length === 2));
 });

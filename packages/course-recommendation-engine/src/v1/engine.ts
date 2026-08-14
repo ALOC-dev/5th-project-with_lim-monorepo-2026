@@ -3,12 +3,10 @@ import type {
   PlaceRecommendationItem,
 } from "@monorepo/recommendation-engine/v1/contracts";
 
-import {
-  type CourseEngineConfig,
-  DEFAULT_COURSE_ENGINE_CONFIG,
-} from "./configs.js";
+import { type CourseEngineConfig, DEFAULT_COURSE_ENGINE_CONFIG } from "./configs.js";
 import {
   type CourseEngineMeta,
+  type CourseEngineProgressStep,
   type CourseEngineOutput,
   type CourseInput,
   CourseInputSchema,
@@ -96,8 +94,16 @@ type ScoringContext = MealContext & {
   budgetPerPersonWon: number | undefined;
 };
 
-const LUNCH_WINDOW: MealWindow = { start: toMinute("11:30"), end: toMinute("13:30"), label: "점심" };
-const DINNER_WINDOW: MealWindow = { start: toMinute("17:30"), end: toMinute("20:00"), label: "저녁" };
+const LUNCH_WINDOW: MealWindow = {
+  start: toMinute("11:30"),
+  end: toMinute("13:30"),
+  label: "점심",
+};
+const DINNER_WINDOW: MealWindow = {
+  start: toMinute("17:30"),
+  end: toMinute("20:00"),
+  label: "저녁",
+};
 const MEAL_WINDOWS = [LUNCH_WINDOW, DINNER_WINDOW];
 const COURSE_ID_PREFIX = "course";
 
@@ -117,6 +123,7 @@ export class CourseRecommendationEngine {
   }
 
   async process(): Promise<CourseEngineOutput> {
+    throwIfAborted(this.options.signal);
     const startedAt = Date.now();
     const parsed = CourseInputSchema.safeParse(this.input);
 
@@ -129,10 +136,15 @@ export class CourseRecommendationEngine {
     }
 
     const userInput = parsed.data;
-    const [travel, stay] = await Promise.all([
-      resolveTravelMatrix(userInput, this.config, this.options),
-      resolveStayEstimates(userInput, this.config, this.options),
-    ]);
+    await emitProgress(this.options, "measuring_travel");
+    const [travel, stay] = await withAbort(
+      Promise.all([
+        resolveTravelMatrix(userInput, this.config, this.options),
+        resolveStayEstimates(userInput, this.config, this.options),
+      ]),
+      this.options.signal,
+    );
+    await emitProgress(this.options, "generating_courses");
     const candidates = buildCourses(userInput, this.config, travel.minutes, stay.byPlaceId);
 
     if (candidates.pool.length === 0) {
@@ -146,7 +158,12 @@ export class CourseRecommendationEngine {
       };
     }
 
-    const curation = await curateCourses(candidates.pool, userInput, this.config, this.options);
+    await emitProgress(this.options, "curating_courses");
+    const curation = await withAbort(
+      curateCourses(candidates.pool, userInput, this.config, this.options),
+      this.options.signal,
+    );
+    throwIfAborted(this.options.signal);
 
     return {
       status: "SUCCESS",
@@ -184,6 +201,53 @@ export type CourseRecommendationEngineOptions = {
    * 어느 쪽도 없으면 결정론 추정만 쓴다.
    */
   estimateStay?: StayEstimatorClient;
+  /** Cancels the run. Cancellation rejects `process()` with the signal's abort reason. */
+  signal?: AbortSignal;
+  /** Called before each externally observable engine phase. */
+  onProgress?: (step: CourseEngineProgressStep) => void | Promise<void>;
+};
+
+export type CourseRecommendationEngineFactory = (
+  input: unknown,
+  config?: CourseEngineConfig,
+  options?: CourseRecommendationEngineOptions,
+) => CourseRecommendationEngine;
+
+export const createCourseRecommendationEngine: CourseRecommendationEngineFactory = (
+  input,
+  config = DEFAULT_COURSE_ENGINE_CONFIG,
+  options = {},
+) => new CourseRecommendationEngine(input, config, options);
+
+const emitProgress = async (
+  options: CourseRecommendationEngineOptions,
+  step: CourseEngineProgressStep,
+): Promise<void> => {
+  throwIfAborted(options.signal);
+  await options.onProgress?.(step);
+  throwIfAborted(options.signal);
+};
+
+const throwIfAborted = (signal: AbortSignal | undefined): void => {
+  signal?.throwIfAborted();
+};
+
+const withAbort = async <T>(promise: Promise<T>, signal: AbortSignal | undefined): Promise<T> => {
+  if (!signal) return promise;
+  throwIfAborted(signal);
+
+  let rejectAbort: ((reason: unknown) => void) | undefined;
+  const aborted = new Promise<never>((_, reject) => {
+    rejectAbort = reject;
+  });
+  const onAbort = (): void => rejectAbort?.(signal.reason);
+  signal.addEventListener("abort", onAbort, { once: true });
+
+  try {
+    return await Promise.race([promise, aborted]);
+  } finally {
+    signal.removeEventListener("abort", onAbort);
+  }
 };
 
 type ResolvedStayEstimates = {
@@ -242,6 +306,7 @@ const resolveStayEstimates = async (
         ];
       }),
       openAiApiKey: options.openAiApiKey,
+      signal: options.signal,
     });
 
     let llmRefinedCount = 0;
@@ -254,6 +319,7 @@ const resolveStayEstimates = async (
 
     return { byPlaceId, llmRefinedCount, fallbackReason: null };
   } catch (error) {
+    throwIfAborted(options.signal);
     return {
       byPlaceId,
       llmRefinedCount: 0,
@@ -324,6 +390,7 @@ const resolveTravelMatrix = async (
       maxWalkableMeters: config.maxWalkableMeters,
       concurrency: config.travelRequestConcurrency,
       tmapAppKey: options.tmapAppKey,
+      signal: options.signal,
     });
 
     let overlaidPairCount = 0;
@@ -335,7 +402,8 @@ const resolveTravelMatrix = async (
 
         // 클라이언트가 한 방향만 채웠어도 도보는 대칭이므로 양방향에 적용한다.
         const value =
-          measured.minutesByPlaceId[from.id]?.[to.id] ?? measured.minutesByPlaceId[to.id]?.[from.id];
+          measured.minutesByPlaceId[from.id]?.[to.id] ??
+          measured.minutesByPlaceId[to.id]?.[from.id];
         if (value === undefined) continue;
 
         setTravelMinutes(minutes, fromIndex, toIndex, value);
@@ -346,7 +414,10 @@ const resolveTravelMatrix = async (
 
     // 보정 클라이언트는 추정한 쌍까지 돌려주므로, 실측 쌍 수는 클라이언트가 알려준
     // 값을 신뢰한다. 알려주지 않으면 돌려준 쌍을 전부 실측으로 본다.
-    const measuredPairCount = Math.min(measured.measuredPairCount ?? overlaidPairCount, totalPairCount);
+    const measuredPairCount = Math.min(
+      measured.measuredPairCount ?? overlaidPairCount,
+      totalPairCount,
+    );
 
     return {
       minutes,
@@ -356,6 +427,7 @@ const resolveTravelMatrix = async (
       fallbackReason: null,
     };
   } catch (error) {
+    throwIfAborted(options.signal);
     return noMeasurement(error instanceof Error ? error.message : String(error));
   }
 };
@@ -398,6 +470,7 @@ const curateCourses = async (
       candidates: candidates.map(toCourseCurationCandidate),
       targetCourseCount: config.targetCourseCount,
       openAiApiKey: options.openAiApiKey,
+      signal: options.signal,
     });
     const courseById = new Map(candidates.map((course) => [course.id, course]));
     const picked = curation.picks.flatMap((pick) => {
@@ -432,6 +505,7 @@ const curateCourses = async (
       fallbackReason: null,
     };
   } catch (error) {
+    throwIfAborted(options.signal);
     return fallback(error instanceof Error ? error.message : String(error));
   }
 };
@@ -573,7 +647,8 @@ const buildCourses = (
             totalWaitMinutes: state.totalWaitMinutes + waitMinutes,
             placeScoreSum: state.placeScoreSum + nextPlace.score,
             flowBonus:
-              state.flowBonus + getTransitionFlowBonus(getMetrics(metrics, state.last), nextMetrics),
+              state.flowBonus +
+              getTransitionFlowBonus(getMetrics(metrics, state.last), nextMetrics),
             travelFromPrevious: legMinutes,
             waitFromPrevious: waitMinutes,
             categoryMask: state.categoryMask | nextMetrics.categoryBit,
@@ -898,7 +973,9 @@ const simulateRoute = (
     if (arriveMinute === undefined) return undefined;
 
     const leaveMinute = arriveMinute + stayMinutes;
-    const waitFromPrevious = previous ? arriveMinute - (previous.endMinute + travelFromPrevious) : 0;
+    const waitFromPrevious = previous
+      ? arriveMinute - (previous.endMinute + travelFromPrevious)
+      : 0;
 
     previous = {
       mask: routeState.mask,
@@ -913,7 +990,9 @@ const simulateRoute = (
       placeScoreSum: (previous?.placeScoreSum ?? 0) + place.score,
       flowBonus:
         (previous?.flowBonus ?? 0) +
-        (previous ? getTransitionFlowBonus(getMetrics(context.metrics, previous.last), metrics) : 0),
+        (previous
+          ? getTransitionFlowBonus(getMetrics(context.metrics, previous.last), metrics)
+          : 0),
       travelFromPrevious,
       waitFromPrevious,
       categoryMask: (previous?.categoryMask ?? 0) | metrics.categoryBit,
@@ -1009,6 +1088,17 @@ const toCourseRecommendationItem = (
       total: round(scored.score),
     },
     reasons,
+    candidateDecisions: input.places.map((place) => {
+      const included = places.some((selected) => selected.id === place.id);
+      return {
+        placeId: place.id,
+        placeName: place.name,
+        decision: included ? "INCLUDED" : "NOT_IN_TOP_COMBINATION",
+        message: included
+          ? `${place.name}: 이 코스에 포함했습니다.`
+          : `${place.name}: 더 적합한 시간·이동 조합이 있어 이 옵션에는 포함하지 않았습니다.`,
+      };
+    }),
   });
 };
 
@@ -1427,15 +1517,41 @@ const round = (value: number, digits = 2): number => {
   return Math.round(value * factor) / factor;
 };
 
-const toInputError = (error: { issues: { path: PropertyKey[] }[] }) => {
+const toInputError = (error: {
+  issues: {
+    path: PropertyKey[];
+    code?: string;
+    maximum?: number | bigint;
+    minimum?: number | bigint;
+  }[];
+}) => {
   const isTooManyPlaces = error.issues.some(
-    (issue) => issue.path.length === 1 && issue.path[0] === "places",
+    (issue) =>
+      issue.path.length === 1 &&
+      issue.path[0] === "places" &&
+      issue.code === "too_big" &&
+      issue.maximum === 15,
   );
 
   if (isTooManyPlaces) {
     return {
       code: "COURSE_INPUT_TOO_MANY_PLACES",
       message: "Course recommendation accepts at most 15 places",
+    };
+  }
+
+  const isTooFewPlaces = error.issues.some(
+    (issue) =>
+      issue.path.length === 1 &&
+      issue.path[0] === "places" &&
+      issue.code === "too_small" &&
+      issue.minimum === 2,
+  );
+
+  if (isTooFewPlaces) {
+    return {
+      code: "COURSE_INPUT_TOO_FEW_PLACES",
+      message: "Course recommendation requires at least 2 places",
     };
   }
 
