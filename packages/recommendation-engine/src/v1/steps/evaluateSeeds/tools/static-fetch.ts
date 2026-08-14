@@ -24,7 +24,7 @@ const isPrivateIPv4 = (ip: string): boolean => {
 
 const isPrivateIPv6 = (ip: string): boolean => {
   const normalized = ip.toLowerCase();
-  if (normalized === "::1") return true; // loopback
+  if (normalized === "::1" || normalized === "::") return true; // loopback / unspecified
   if (normalized.startsWith("fe80:")) return true; // link-local
   if (normalized.startsWith("fc") || normalized.startsWith("fd")) return true; // unique local fc00::/7
   if (normalized.startsWith("::ffff:")) return isPrivateIPv4(normalized.replace("::ffff:", ""));

@@ -25,7 +25,7 @@ export default function LoginFormContent() {
 
       if (response.success) {
         toast.success("로그인에 성공했습니다!");
-        login();
+        login(response.data.user);
         void navigate("/", { replace: true });
       }
     } catch (error) {

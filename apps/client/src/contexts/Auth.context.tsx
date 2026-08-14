@@ -6,6 +6,7 @@ import {
 import { createContext, type ReactNode, useContext, useEffect, useState } from "react";
 
 import { requestLogout } from "../apis/auth";
+import { setUnauthorizedHandler } from "../apis/base";
 import { requestGetMe } from "../apis/users";
 
 const meResponseSchema = createApiResponseSchema(AuthenticatedUserResponseDataSchema);
@@ -14,7 +15,7 @@ type AuthContextType = {
   isAuthenticated: boolean; // 로그인 여부
   isLoading: boolean;
   user: AuthenticatedUser | null; // 로그인한 유저의 정보
-  login: () => void;
+  login: (user: AuthenticatedUser) => void;
   logout: () => Promise<void>;
 };
 
@@ -24,6 +25,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState<AuthenticatedUser | null>(null);
+
+  useEffect(() => {
+    // 세션 만료/무효화로 어떤 요청이든 401을 받으면 즉시 로그아웃 상태로 반영한다.
+    // ProtectedRoute가 isAuthenticated 변화를 보고 /login으로 리다이렉트해 준다.
+    setUnauthorizedHandler(() => {
+      setIsAuthenticated(false);
+      setUser(null);
+    });
+    return () => setUnauthorizedHandler(null);
+  }, []);
 
   useEffect(() => {
     const initializeAuth = async () => {
@@ -49,7 +60,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     void initializeAuth();
   }, []);
 
-  const login = () => setIsAuthenticated(true);
+  const login = (loggedInUser: AuthenticatedUser) => {
+    setIsAuthenticated(true);
+    setUser(loggedInUser);
+  };
 
   const logout = async (): Promise<void> => {
     const response = await requestLogout();
