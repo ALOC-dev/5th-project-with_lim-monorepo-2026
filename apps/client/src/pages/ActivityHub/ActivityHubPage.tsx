@@ -1,8 +1,12 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
+import { useState } from "react";
+import { toast } from "sonner";
 
+import { toApiClientErrorMessage } from "../../apis/errors";
 import BottomBar from "../../components/BottomBar/BottomBar";
 import { Icon } from "../../components/Icon";
+import Modal from "../../components/Modal/Modal";
 import PageRoot from "../../components/PageRoot/PageRoot";
 import { useAuth } from "../../contexts/Auth.context";
 import { tokens } from "../../design-system/tokens.generated";
@@ -44,6 +48,28 @@ const activityLinks: readonly ActivityLink[] = [
 export const ActivityHubPage = () => {
   const navigate = useAppNavigate();
   const { logout } = useAuth();
+  const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  const closeLogoutModal = () => {
+    if (isLoggingOut) return;
+    setIsLogoutModalOpen(false);
+  };
+
+  const confirmLogout = async (): Promise<void> => {
+    if (isLoggingOut) return;
+
+    setIsLoggingOut(true);
+
+    try {
+      await logout();
+      setIsLogoutModalOpen(false);
+      toast.success("로그아웃되었습니다.");
+    } catch (error) {
+      setIsLoggingOut(false);
+      toast.error(`로그아웃에 실패했습니다. (${toApiClientErrorMessage(error)})`);
+    }
+  };
 
   return (
     <PageRoot backgroundColor={tokens.color.neutral[50]} layout="contained">
@@ -76,7 +102,11 @@ export const ActivityHubPage = () => {
               <span>계정 관리</span>
               <Icon name="chevron-right" size={16} />
             </S.StaticMenuItem>
-            <S.MenuButton aria-label="로그아웃" onClick={logout} type="button">
+            <S.MenuButton
+              aria-label="로그아웃"
+              onClick={() => setIsLogoutModalOpen(true)}
+              type="button"
+            >
               <Icon name="logout" size={20} />
               <span>로그아웃</span>
               <Icon name="chevron-right" size={16} />
@@ -86,6 +116,25 @@ export const ActivityHubPage = () => {
       </S.Content>
 
       <BottomBar />
+      <Modal
+        id="logout-confirm-modal"
+        isOpen={isLogoutModalOpen}
+        close={closeLogoutModal}
+        title="로그아웃할까요?"
+        description="로그아웃하면 다시 로그인해야 해요."
+        primaryAction={{
+          label: "로그아웃",
+          onClick: () => {
+            void confirmLogout();
+          },
+          disabled: isLoggingOut,
+        }}
+        secondaryAction={{
+          label: "취소",
+          onClick: closeLogoutModal,
+          disabled: isLoggingOut,
+        }}
+      />
     </PageRoot>
   );
 };

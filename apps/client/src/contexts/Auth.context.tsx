@@ -5,6 +5,7 @@ import {
 } from "@monorepo/api-contracts";
 import { createContext, type ReactNode, useContext, useEffect, useState } from "react";
 
+import { requestLogout } from "../apis/auth";
 import { requestGetMe } from "../apis/users";
 
 const meResponseSchema = createApiResponseSchema(AuthenticatedUserResponseDataSchema);
@@ -14,7 +15,7 @@ type AuthContextType = {
   isLoading: boolean;
   user: AuthenticatedUser | null; // 로그인한 유저의 정보
   login: () => void;
-  logout: () => void;
+  logout: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -50,7 +51,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const login = () => setIsAuthenticated(true);
 
-  const logout = () => {
+  const logout = async (): Promise<void> => {
+    const response = await requestLogout();
+    if (!response.success) throw new Error(response.error);
+
     setIsAuthenticated(false);
     setUser(null);
   };

@@ -3,6 +3,7 @@ import "modern-css-reset/dist/reset.css";
 import { ThemeProvider } from "@emotion/react";
 import React from "react";
 import ReactDOM from "react-dom/client";
+import { Toaster } from "sonner";
 
 import App from "./App";
 import { AuthProvider } from "./contexts/Auth.context";
@@ -25,6 +26,13 @@ const renderApp = () => {
         <AuthProvider>
           <App />
         </AuthProvider>
+        <Toaster
+          closeButton
+          position="top-center"
+          richColors
+          theme="light"
+          toastOptions={{ duration: 4_000 }}
+        />
       </ThemeProvider>
     </React.StrictMode>,
   );
