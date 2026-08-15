@@ -4,7 +4,6 @@ import FeedbackState from "./components/FeedbackState/FeedbackState";
 import PageRoot from "./components/PageRoot/PageRoot";
 import { useAuth } from "./contexts/Auth.context";
 import { tokens } from "./design-system/tokens.generated";
-import { ActivityHubPage } from "./pages/ActivityHub/ActivityHubPage";
 import { CourseFavoritePage } from "./pages/CourseFavorite/CourseFavoritePage";
 import { CourseRecommendationFormPage } from "./pages/CourseRecommendationForm/CourseRecommendationFormPage";
 import { CourseRecommendationHistoryPage } from "./pages/CourseRecommendationHistory/CourseRecommendationHistoryPage";
@@ -17,6 +16,7 @@ import ForgotPasswordResetForm from "./pages/ForgotPassword/ForgotPasswordResetF
 import HealthCheckPage from "./pages/HealthCheck/page";
 import HomePage from "./pages/Home/HomePage";
 import LoginPage from "./pages/Login/LoginPage";
+import { MyPage } from "./pages/MyPage/MyPageContent";
 import PlaceRecommendationFormPage from "./pages/PlaceRecommendationForm/PlaceRecommendationFormPage";
 import PlaceRecommendationHistoryPage from "./pages/PlaceRecommendationHistory/PlaceRecommendationHistoryPage";
 import PlaceRecommendationResultPage from "./pages/PlaceRecommendationResult/PlaceRecommendationResultPage";
@@ -73,7 +73,7 @@ export const router = createBrowserRouter([
               },
               {
                 path: "/my",
-                element: <ActivityHubPage />,
+                element: <MyPage />,
               },
             ],
           },

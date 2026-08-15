@@ -43,7 +43,7 @@ const activityLinks: readonly ActivityLink[] = [
   },
 ];
 
-export const ActivityHubPage = () => {
+export const MyPage = () => {
   const navigate = useAppNavigate();
   const { logout } = useAuth();
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
@@ -72,7 +72,7 @@ export const ActivityHubPage = () => {
   return (
     <>
       <S.Content>
-        <S.PageTitle>마이</S.PageTitle>
+        <S.PageTitle>마이페이지</S.PageTitle>
 
         <S.Section aria-labelledby="activity-heading">
           <S.SectionTitle id="activity-heading">내 활동</S.SectionTitle>
@@ -166,7 +166,7 @@ const S = {
     display: flex;
     flex-direction: column;
     gap: 20px;
-    padding: 52px 24px 24px;
+    padding: 28px 24px 24px;
   `,
   PageTitle: styled.h1`
     margin: 0;

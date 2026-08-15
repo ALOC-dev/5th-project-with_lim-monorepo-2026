@@ -6,7 +6,7 @@ import { S } from "./BottomBar.styled";
 
 const navigationItems = [
   { icon: "home", label: "홈", to: "/" },
-  { icon: "person", label: "마이", to: "/my" },
+  { icon: "person", label: "마이페이지", to: "/my" },
 ] as const;
 
 const BottomBar = () => {
