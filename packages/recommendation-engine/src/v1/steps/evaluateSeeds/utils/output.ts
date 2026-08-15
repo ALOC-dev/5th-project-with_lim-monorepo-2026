@@ -71,7 +71,7 @@ export const toPlaceRecommendationItem = (
       lat: seed.latitude,
       lng: seed.longitude,
       placeName: seed.name,
-      roadAddressKo: getOutputAddress(seed),
+      roadAddressKo: seed.roadAddress || seed.address,
     },
     priceRangePerPerson: getRecommendationPriceRange(evidence),
     score: Math.round(scores.total),
@@ -83,21 +83,6 @@ export const toPlaceRecommendationItem = (
     }),
   });
 };
-
-/**
- * TMap search POI can give a road name without a building number. Its firstNo/
- * secondNo fields are not safe to append (they can be jibun numbers), so a
- * numberless road name falls back to the provider's complete jibun address.
- * Kakao's complete road address remains preferred.
- */
-export const getOutputAddress = (
-  seed: Pick<RankedCandidate["evidence"]["raw"]["seed"], "roadAddress" | "address">,
-): string =>
-  hasRoadBuildingNumber(seed.roadAddress) ? seed.roadAddress : seed.address || seed.roadAddress;
-
-// `테헤란로1길`의 1은 도로명 일부이지 건물 번호가 아니다. 공백 뒤의 번지만
-// 완전한 도로명 주소의 증거로 인정한다.
-const hasRoadBuildingNumber = (value: string): boolean => /\s\d+(?:-\d+)?(?:\s|$)/u.test(value);
 
 const getOtherReferenceUrls = (
   evidence: RankedCandidate["evidence"],

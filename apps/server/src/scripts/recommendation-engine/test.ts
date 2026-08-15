@@ -371,12 +371,9 @@ const executeEngineTest = async (
   const engine = new RecommendationEngine(input, testConfig, {
     logger: monitor.logger,
     secrets: getRecommendationEngineSecretsFromEnv(),
-    onProcessStart: createEngineProcessStartHook({
-      input,
-      invocationState,
-      lifecycle,
-    }),
   });
+  if (lifecycle) writeEngineProcessStartedLifecycleMarkerSync(lifecycle);
+  invocationState.processStarted = true;
   const result = EngineOutputSchema.parse(await engine.process());
   const reportFields = getEngineReportFields(result);
   const log = {

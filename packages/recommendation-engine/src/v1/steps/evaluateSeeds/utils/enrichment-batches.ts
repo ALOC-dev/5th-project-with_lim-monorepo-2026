@@ -1,7 +1,6 @@
 import type { EngineConfig } from "../../../configs/types.js";
 import type { UserInput } from "../../../interfaces/input.contracts.js";
 import type { Logger } from "../../../observability/logger.js";
-import type { RecommendationEvaluationSession } from "../evaluation-session.js";
 import { type ReferenceUrlResolution, toReferenceUrlLog } from "../tools/reference-urls.js";
 import {
   mergeEvidenceWithEnrichment,
@@ -30,7 +29,6 @@ type EnrichmentBatchLog = {
   operationVerifiedCount: number;
   semanticPassedCount: number;
   semanticPenalizedCount: number;
-  semanticRejectedCount: number;
   referenceVerifiedCount: number;
   referenceRejectedCount: number;
   selectedSoFar: number;
@@ -41,7 +39,6 @@ export type EnrichmentBatchCollection = {
   enrichedEvidences: CandidateScoringEvidence[];
   referenceUrlResolutions: ReferenceUrlResolution[];
   semanticPenalizedCount: number;
-  semanticRejectedCount: number;
   notSemanticallyEvaluatedDueToOperationUnknown: Array<{
     candidateId: string;
     source: CandidateEnrichment["source"];
@@ -61,7 +58,6 @@ export const collectEnrichmentBatches = async ({
   logger,
   enrichCandidates,
   resolveReferenceUrls,
-  session,
 }: {
   userInput: UserInput;
   evidences: CandidateScoringEvidence[];
@@ -69,7 +65,6 @@ export const collectEnrichmentBatches = async ({
   logger: Logger;
   enrichCandidates: EnrichCandidates;
   resolveReferenceUrls: ResolveReferenceUrls;
-  session?: RecommendationEvaluationSession;
 }): Promise<EnrichmentBatchCollection> => {
   const maxEvidenceCount = getMaxEvidenceCount(evidences.length, config);
   const scoringPoolSize = getScoringPoolSize(config);
@@ -77,7 +72,6 @@ export const collectEnrichmentBatches = async ({
   const selectedEvidences: CandidateScoringEvidence[] = [];
   const allReferenceUrlResolutions: ReferenceUrlResolution[] = [];
   let semanticPenalizedCount = 0;
-  let semanticRejectedCount = 0;
   const notSemanticallyEvaluatedDueToOperationUnknown: EnrichmentBatchCollection["notSemanticallyEvaluatedDueToOperationUnknown"] =
     [];
   const batches: EnrichmentBatchLog[] = [];
@@ -101,14 +95,10 @@ export const collectEnrichmentBatches = async ({
       scoringPoolSize,
     });
 
-    const batchEnrichments = await enrichWithSessionCache({
-      userInput,
-      evidences: batchEvidences,
+    const batchEnrichments = await enrichCandidates(
+      { userInput, evidences: batchEvidences },
       logger,
-      enrichCandidates,
-      session,
-      batchNo,
-    });
+    );
     allEnrichments.push(...batchEnrichments);
     const enrichmentByCandidateId = new Map(
       batchEnrichments.map((enrichment) => [enrichment.candidateId, enrichment]),
@@ -136,30 +126,23 @@ export const collectEnrichmentBatches = async ({
       evidence,
       semanticFit: assessSemanticFit(evidence),
     }));
-    // 일반적인 업종 차이는 감점으로만 다루되, 사용자가 명시한 식문화/서울 권역과
-    // 구조화된 후보 정보가 정면으로 충돌할 때는 참조 URL·LLM 점수까지 진행시키지 않는다.
-    // 정보가 없거나 복수 지역/복수 식문화를 말한 요청은 REJECT가 아니라 PASS/PENALIZE다.
-    const semanticPassed = semanticAssessments
-      .filter(({ semanticFit }) => semanticFit.status !== "REJECT")
-      .map(({ evidence, semanticFit }) => ({
-        ...evidence,
-        semanticFit,
-      }));
+    // 의미 게이트는 후보를 탈락시키지 않고 감점만 한다(rejected는 항상 비어 있다).
+    // 예전에는 빈 배열을 만들어 넘기고 로그에 `rejectedCount: 0`을 찍어, 지표를
+    // 보는 사람이 "탈락이 하나도 없다"고 오해하게 만들었다.
+    const semanticPassed = semanticAssessments.map(({ evidence, semanticFit }) => ({
+      ...evidence,
+      semanticFit,
+    }));
     const semanticPenalized = semanticAssessments.filter(
       ({ semanticFit }) => semanticFit.status === "PENALIZE",
     );
-    const semanticRejected = semanticAssessments.filter(
-      ({ semanticFit }) => semanticFit.status === "REJECT",
-    );
     semanticPenalizedCount += semanticPenalized.length;
-    semanticRejectedCount += semanticRejected.length;
 
     logger.info("evaluateSeeds.semantic_gate.filtered", {
       batchNo,
       evaluatedCount: semanticAssessments.length,
       passedCount: semanticPassed.length,
       penalizedCount: semanticPenalized.length,
-      rejectedCount: semanticRejected.length,
       penalized: semanticPenalized.map(({ evidence, semanticFit }) => ({
         candidateId: evidence.candidateId,
         name: evidence.name,
@@ -171,16 +154,6 @@ export const collectEnrichmentBatches = async ({
         negativeSignals: semanticFit.negativeSignals,
         ...getSemanticScoreAdjustment(semanticFit),
       })),
-      rejected: semanticRejected.map(({ evidence, semanticFit }) => ({
-        candidateId: evidence.candidateId,
-        name: evidence.name,
-        category: evidence.category,
-        status: semanticFit.status,
-        severity: semanticFit.severity,
-        score: semanticFit.score,
-        reason: semanticFit.reason,
-        negativeSignals: semanticFit.negativeSignals,
-      })),
     });
 
     const finishReferenceUrls = logger.startTimer("evaluateSeeds.reference_urls.success");
@@ -188,13 +161,7 @@ export const collectEnrichmentBatches = async ({
       batchNo,
       evidenceCount: semanticPassed.length,
     });
-    const referenceUrlResolutions = await resolveReferencesWithSessionCache({
-      evidences: semanticPassed,
-      logger,
-      resolveReferenceUrls,
-      session,
-      batchNo,
-    });
+    const referenceUrlResolutions = await resolveReferenceUrls(semanticPassed);
     allReferenceUrlResolutions.push(...referenceUrlResolutions);
     const batchReferenceRejectedCount = referenceUrlResolutions.filter(
       (resolution) => !resolution.referenceUrls,
@@ -224,7 +191,6 @@ export const collectEnrichmentBatches = async ({
       operationVerifiedCount: operationVerifiedEvidences.length,
       semanticPassedCount: semanticPassed.length,
       semanticPenalizedCount: semanticPenalized.length,
-      semanticRejectedCount: semanticRejected.length,
       referenceVerifiedCount: verified.length,
       referenceRejectedCount: batchReferenceRejectedCount,
       selectedSoFar: selectedEvidences.length,
@@ -238,129 +204,12 @@ export const collectEnrichmentBatches = async ({
     enrichedEvidences: selectedEvidences.slice(0, scoringPoolSize),
     referenceUrlResolutions: allReferenceUrlResolutions,
     semanticPenalizedCount,
-    semanticRejectedCount,
     notSemanticallyEvaluatedDueToOperationUnknown,
     operationVerifiedCount,
     referenceRejectedCount,
     evaluatedEvidenceCount,
     batches,
   };
-};
-
-const enrichWithSessionCache = async ({
-  userInput,
-  evidences,
-  logger,
-  enrichCandidates,
-  session,
-  batchNo,
-}: {
-  userInput: UserInput;
-  evidences: CandidateScoringEvidence[];
-  logger: Logger;
-  enrichCandidates: EnrichCandidates;
-  session?: RecommendationEvaluationSession;
-  batchNo: number;
-}): Promise<CandidateEnrichment[]> => {
-  if (!session) return enrichCandidates({ userInput, evidences }, logger);
-
-  const hitByCandidateId = new Map<string, CandidateEnrichment>();
-  const misses: CandidateScoringEvidence[] = [];
-  let fingerprintMismatchCount = 0;
-  for (const evidence of evidences) {
-    const cached = session.getEnrichment(evidence);
-    if (cached.status === "HIT") hitByCandidateId.set(evidence.candidateId, cached.value);
-    else {
-      misses.push(evidence);
-      if (cached.reason === "FINGERPRINT_MISMATCH") fingerprintMismatchCount += 1;
-    }
-  }
-  logger.info("evaluateSeeds.enrichment.cache", {
-    batchNo,
-    hitCount: hitByCandidateId.size,
-    missCount: misses.length,
-    fingerprintMismatchCount,
-  });
-
-  const fresh = misses.length
-    ? await enrichCandidates({ userInput, evidences: misses }, logger)
-    : [];
-  const evidenceById = new Map(misses.map((evidence) => [evidence.candidateId, evidence]));
-  let writeCount = 0;
-  for (const enrichment of fresh) {
-    const evidence = evidenceById.get(enrichment.candidateId);
-    if (evidence && session.setEnrichment(evidence, enrichment)) writeCount += 1;
-  }
-  logger.info("evaluateSeeds.enrichment.cache_write", {
-    batchNo,
-    writeCount,
-    skippedUnstableCount: fresh.length - writeCount,
-  });
-
-  const freshByCandidateId = new Map(
-    fresh.map((enrichment) => [enrichment.candidateId, enrichment]),
-  );
-  return evidences.flatMap((evidence) => {
-    const enrichment =
-      hitByCandidateId.get(evidence.candidateId) ?? freshByCandidateId.get(evidence.candidateId);
-    return enrichment ? [enrichment] : [];
-  });
-};
-
-const resolveReferencesWithSessionCache = async ({
-  evidences,
-  logger,
-  resolveReferenceUrls,
-  session,
-  batchNo,
-}: {
-  evidences: CandidateScoringEvidence[];
-  logger: Logger;
-  resolveReferenceUrls: ResolveReferenceUrls;
-  session?: RecommendationEvaluationSession;
-  batchNo: number;
-}): Promise<ReferenceUrlResolution[]> => {
-  if (!session) return resolveReferenceUrls(evidences);
-
-  const hitByCandidateId = new Map<string, ReferenceUrlResolution>();
-  const misses: CandidateScoringEvidence[] = [];
-  let fingerprintMismatchCount = 0;
-  for (const evidence of evidences) {
-    const cached = session.getReference(evidence);
-    if (cached.status === "HIT") hitByCandidateId.set(evidence.candidateId, cached.value);
-    else {
-      misses.push(evidence);
-      if (cached.reason === "FINGERPRINT_MISMATCH") fingerprintMismatchCount += 1;
-    }
-  }
-  logger.info("evaluateSeeds.reference_urls.cache", {
-    batchNo,
-    hitCount: hitByCandidateId.size,
-    missCount: misses.length,
-    fingerprintMismatchCount,
-  });
-
-  const fresh = misses.length ? await resolveReferenceUrls(misses) : [];
-  const evidenceById = new Map(misses.map((evidence) => [evidence.candidateId, evidence]));
-  let writeCount = 0;
-  for (const resolution of fresh) {
-    const evidence = evidenceById.get(resolution.evidence.candidateId);
-    if (evidence && session.setReference(evidence, resolution)) writeCount += 1;
-  }
-  logger.info("evaluateSeeds.reference_urls.cache_write", {
-    batchNo,
-    writeCount,
-    skippedFailureCount: fresh.length - writeCount,
-  });
-
-  const freshByCandidateId = new Map(
-    fresh.map((resolution) => [resolution.evidence.candidateId, resolution]),
-  );
-  return evidences.flatMap((evidence) => {
-    const resolution =
-      hitByCandidateId.get(evidence.candidateId) ?? freshByCandidateId.get(evidence.candidateId);
-    return resolution ? [resolution] : [];
-  });
 };
 
 export const getMaxEvidenceCount = (evidenceCount: number, config: EngineConfig): number =>

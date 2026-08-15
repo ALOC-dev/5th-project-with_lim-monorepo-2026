@@ -19,8 +19,6 @@ export type ReferenceQueryVariant = {
 export type ReferenceIdentityScore = {
   nameScore: number;
   addressScore: number;
-  /** Candidate seed와 지도 provider entity 사이의 실제 거리. */
-  distanceMeters?: number;
   distanceScore?: number;
   identityScore: number;
   accepted: boolean;
@@ -35,7 +33,6 @@ export type ReferenceUrlMatch = {
 
 const CLOSE_PLACE_DISTANCE_METERS = 300;
 const MAX_DISTANCE_SCORE_METERS = 2_000;
-export const MAX_REFERENCE_ENTITY_DISTANCE_METERS = 250;
 
 export const buildReferenceQueryVariants = (
   evidence: CandidateScoringEvidence,
@@ -122,19 +119,6 @@ export const scoreTextReferenceIdentity = (
   });
 };
 
-/**
- * 동일 상호의 다른 지점을 URL로 연결하지 않기 위한 추가 근거다. 기존 `accepted`는
- * 후보 탐색을 위한 넓은 recall 기준으로 그대로 두고, 이 함수는 lone map reference를
- * 최종 출력으로 채택할 때만 쓴다.
- */
-export const hasReferenceEntityEvidence = (
-  identity: Pick<ReferenceIdentityScore, "nameScore" | "addressScore" | "distanceMeters">,
-): boolean =>
-  (identity.distanceMeters !== undefined &&
-    identity.distanceMeters <= MAX_REFERENCE_ENTITY_DISTANCE_METERS &&
-    identity.nameScore >= 0.62) ||
-  (identity.nameScore >= 0.82 && identity.addressScore >= 0.8);
-
 const toVariant = (
   parts: Array<string | undefined>,
   nameAlias: string,
@@ -189,7 +173,6 @@ const toReferenceIdentityScore = ({
     return {
       nameScore,
       addressScore,
-      distanceMeters,
       distanceScore,
       identityScore: Math.max(weightedIdentity, nameScore * 0.85 + (distanceScore ?? 0) * 0.15),
       accepted: true,
@@ -201,7 +184,6 @@ const toReferenceIdentityScore = ({
     return {
       nameScore,
       addressScore,
-      distanceMeters,
       distanceScore,
       identityScore: Math.max(
         weightedIdentity,
@@ -216,7 +198,6 @@ const toReferenceIdentityScore = ({
     return {
       nameScore,
       addressScore,
-      distanceMeters,
       distanceScore,
       identityScore: Math.max(weightedIdentity, nameScore * 0.85 + addressScore * 0.15),
       accepted: true,
@@ -227,7 +208,6 @@ const toReferenceIdentityScore = ({
   return {
     nameScore,
     addressScore,
-    distanceMeters,
     distanceScore,
     identityScore: weightedIdentity,
     accepted: false,

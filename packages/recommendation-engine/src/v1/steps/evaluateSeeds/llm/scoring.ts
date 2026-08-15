@@ -1,8 +1,4 @@
-import {
-  generateRecommendationObject,
-  RECOMMENDATION_LLM_MAX_CONCURRENCY_PER_RUN,
-  RECOMMENDATION_LLM_MODEL_ID,
-} from "../../../llm/ai-sdk.js";
+import { generateRecommendationObject, RECOMMENDATION_LLM_MODEL_ID } from "../../../llm/ai-sdk.js";
 import type { CandidateScoringEvidence } from "../utils/evidence.js";
 import {
   type LlmCandidateEvaluation,
@@ -16,10 +12,9 @@ export { LlmCandidateEvaluationSchema } from "./scoring.contracts.js";
 export type { LlmScoringClient, LlmScoringRequest } from "./scoring.types.js";
 
 const SCORING_MODEL_ID = RECOMMENDATION_LLM_MODEL_ID;
+const LIVE_SCORING_MAX_CONCURRENCY = 4;
 /** 한 번의 LLM 호출에 함께 넘길 후보 수. diversity 판단과 호출 수 절감을 함께 노린다. */
-// 기본 scoring pool(10)을 한 요청에서 함께 비교한다. 호출 수를 줄이는 동시에
-// diversity 점수가 서로 다른 chunk에 분산되는 일을 막는다.
-const SCORING_CHUNK_SIZE = 10;
+const SCORING_CHUNK_SIZE = 8;
 
 const SCORING_SYSTEM_PROMPT = `너는 지역 추천 엔진의 후보 평가기다.
 주어진 후보 evidence를 보고 각 후보별 점수를 0~100 정수/실수로 평가한다.
@@ -33,12 +28,6 @@ const SCORING_SYSTEM_PROMPT = `너는 지역 추천 엔진의 후보 평가기�
 - accessibility: 거리, 이동 편의성, 영업 시간 적합성
 - diversity: 후보 목록 안에서 중복 카테고리/경험을 피하는 다양성
 
-활동 유형 규칙:
-- userFit.activityType가 있으면 자연어 요청과 함께 inputMatch의 구조화된 의도로 반영한다.
-- MEAL은 식사, CAFE는 카페/음료, DRINK는 음주 중심 장소, ACTIVITY는 전시·체험·실내 활동 등
-  비식사 활동을 뜻한다. ACTIVITY를 기본적으로 식당이나 카페로 간주하지 않는다.
-- 자연어 요청에 더 구체적인 제약이 있으면 그 제약을 우선하되, activityType을 무시하지 않는다.
-
 규칙:
 - 입력된 모든 candidateId에 대해 정확히 하나의 evaluation을 반환한다.
 - candidateId는 입력값을 그대로 사용한다.
@@ -48,9 +37,6 @@ const SCORING_SYSTEM_PROMPT = `너는 지역 추천 엔진의 후보 평가기�
 - rationaleFacts에는 사용자가 바로 읽을 수 있는 주력 메뉴/공간/이용 맥락을 최소 1개 포함한다.
 - matchedSignals.label은 UI의 추천 근거로 그대로 노출될 수 있게 90자 이내의 자연스러운 한국어 문장으로 쓴다.
 - semanticFit.status가 PENALIZE면 해당 negativeSignals를 반드시 반영하고 inputMatch를 낮춘다.
-- "조용한/quiet"처럼 주관적인 공간 특성은 이름·업종·거리·일반 지도 URL만으로 입증되지 않는다.
-  입력 evidence에 후보별 명시 근거가 없으면 matchedSignals나 rationaleFacts에서 조용하다고 단정하지 말고,
-  해당 제약의 inputMatch를 낮추며 negativeSignals에 근거 부족을 남긴다.
 - 출력은 반드시 JSON schema만 따른다. 마크다운이나 설명 문장은 붙이지 않는다.`;
 
 const buildScoringUserPrompt = (evidences: CandidateScoringEvidence[]): string =>
@@ -63,7 +49,7 @@ const buildScoringUserPrompt = (evidences: CandidateScoringEvidence[]): string =
 
 export const createOpenAiLlmScoringClient =
   (modelId = SCORING_MODEL_ID): LlmScoringClient =>
-  async ({ evidences, openAiApiKey, logger }) => {
+  async ({ evidences, openAiApiKey }) => {
     const object = await generateRecommendationObject({
       task: "evaluate.scoring",
       modelId,
@@ -71,11 +57,6 @@ export const createOpenAiLlmScoringClient =
       schema: LlmCandidateEvaluationsResponseSchema,
       system: SCORING_SYSTEM_PROMPT,
       prompt: buildScoringUserPrompt(evidences),
-      onTelemetry: (telemetry) =>
-        logger?.info("recommendation.llm_task", {
-          ...telemetry,
-          candidateCount: evidences.length,
-        }),
     });
     return validateEvaluationCoverage(object, evidences);
   };
@@ -96,48 +77,24 @@ const openAiLlmScoringClient = createOpenAiLlmScoringClient();
  */
 export const createScoringPipeline =
   (client: LlmScoringClient, chunkSize = SCORING_CHUNK_SIZE): LlmScoringClient =>
-  async ({ evidences, openAiApiKey, logger }) => {
+  async ({ evidences, openAiApiKey }) => {
     if (evidences.length === 0) return [];
 
     const scoredChunks = await mapWithConcurrency(
       toChunks(evidences, chunkSize),
-      RECOMMENDATION_LLM_MAX_CONCURRENCY_PER_RUN,
+      LIVE_SCORING_MAX_CONCURRENCY,
       async (chunk) => {
         try {
-          const scored = await client({ evidences: chunk, openAiApiKey, logger });
-          const returnedCandidateIds = new Set(scored.map((evaluation) => evaluation.candidateId));
-          const missing = chunk.filter((evidence) => !returnedCandidateIds.has(evidence.candidateId));
-          if (missing.length === 0) return scored;
-
-          // schema-valid 응답이 일부 후보만 누락한 경우에는 discovery/evaluation 전체를
-          // 다시 시작하지 않는다. 누락된 후보만 기존 직렬 LLM lane에서 보완해 이미
-          // 확보한 후보의 scoring과 diversity 비교를 보존한다.
-          logger?.info("evaluateSeeds.llm_scoring.partial_response", {
-            requestedCount: chunk.length,
-            returnedCount: scored.length,
-            missingCount: missing.length,
-          });
-          const recovered = await mapWithConcurrency(
-            missing,
-            RECOMMENDATION_LLM_MAX_CONCURRENCY_PER_RUN,
-            async (evidence) => {
-              try {
-                return await client({ evidences: [evidence], openAiApiKey, logger });
-              } catch {
-                return [];
-              }
-            },
-          );
-          return [...scored, ...recovered.flat()];
+          return await client({ evidences: chunk, openAiApiKey });
         } catch {
           // 청크가 통째로 실패하면 후보 단위로 낮춰 재시도한다. 한 후보의 이상한
           // 응답 때문에 같은 청크의 나머지까지 잃지 않게 한다.
           const perCandidate = await mapWithConcurrency(
             chunk,
-            RECOMMENDATION_LLM_MAX_CONCURRENCY_PER_RUN,
+            LIVE_SCORING_MAX_CONCURRENCY,
             async (evidence) => {
               try {
-                return await client({ evidences: [evidence], openAiApiKey, logger });
+                return await client({ evidences: [evidence], openAiApiKey });
               } catch {
                 return [];
               }

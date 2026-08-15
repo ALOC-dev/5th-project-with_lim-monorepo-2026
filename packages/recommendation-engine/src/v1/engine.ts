@@ -17,16 +17,10 @@ import {
   type SearchQuery,
 } from "./steps/discoverSeeds/contracts.js";
 import { discoverSeeds } from "./steps/discoverSeeds/index.js";
-import {
-  createDiscoveryContextWithLlm,
-  createInitialDiscoveryPlanWithLlm,
-} from "./steps/discoverSeeds/llm/approaches.js";
-import { createRecommendationEvaluationSession } from "./steps/evaluateSeeds/evaluation-session.js";
+import { createDiscoveryContextWithLlm } from "./steps/discoverSeeds/llm/approaches.js";
 import { evaluateSeeds } from "./steps/evaluateSeeds/index.js";
-import { getLocationCentroid } from "./utils/geography.js";
 
 const MAX_DISCOVERY_ATTEMPTS = 5;
-const CASCADE_INITIAL_EVALUATION_SEED_MULTIPLIER = 3;
 
 export type RecommendationProgressStep = 'input_validated' | 'discovering' | 'evaluating' | 'enriching' | 'scoring';
 
@@ -68,12 +62,12 @@ const DEFAULT_SEARCH_RADIUS_KM = 5;
 const getDefaultSearchLocation = (
   userInput: UserInput,
 ): DiscoveryContext["queries"][number]["location"] | undefined => {
-  const center = getLocationCentroid(userInput.location);
-  if (!center) return undefined;
+  const [firstLocation] = userInput.location;
+  if (!firstLocation) return undefined;
 
   return {
-    longitude: center.lng,
-    latitude: center.lat,
+    longitude: firstLocation.lng,
+    latitude: firstLocation.lat,
     radiusKm: DEFAULT_SEARCH_RADIUS_KM,
   };
 };
@@ -149,65 +143,46 @@ const buildRecommendationOriginContext = (userInput: UserInput): RecommendationO
     label: index === 0 ? "나" : `참여자 ${index + 1}`,
     location,
   }));
-  const center = getLocationCentroid(origins.map((origin) => origin.location));
 
   return {
     mode: origins.length > 1 ? "GROUP" : "SINGLE",
     origins,
-    ...(center ? { center } : {}),
+    ...(origins.length > 0
+      ? { center: toCenterLocation(origins.map((origin) => origin.location)) }
+      : {}),
   };
 };
 
 const toOriginId = (index: number): string => (index === 0 ? "host" : `member-${index}`);
 
-type RecommendationEngineSteps = {
-  createInitialDiscoveryPlanWithLlm: typeof createInitialDiscoveryPlanWithLlm;
-  createDiscoveryContextWithLlm: typeof createDiscoveryContextWithLlm;
-  discoverSeeds: typeof discoverSeeds;
-  evaluateSeeds: typeof evaluateSeeds;
-};
-
-/**
- * Deterministic test seams for the engine's side-effecting steps.
- * These are not used by the public server API; production uses the default implementations.
- */
-export type RecommendationEngineTestDependencies = Partial<RecommendationEngineSteps>;
+const toCenterLocation = (
+  locations: UserInput["location"][number][],
+): UserInput["location"][number] => ({
+  lat: locations.reduce((sum, location) => sum + location.lat, 0) / locations.length,
+  lng: locations.reduce((sum, location) => sum + location.lng, 0) / locations.length,
+});
 
 export type RecommendationEngineOptions = {
-  onProcessStart?: () => void;
   onProgress?: (step: RecommendationProgressStep) => void;
   loggingActivated?: boolean;
   logger?: Logger;
   secrets?: RecommendationEngineSecrets;
-  testDependencies?: RecommendationEngineTestDependencies;
 };
 
 
 export class RecommendationEngine {
-  private readonly onProcessStart: RecommendationEngineOptions["onProcessStart"];
   private readonly onProgress : RecommendationEngineOptions['onProgress'];
   private readonly config: EngineConfig;
   private readonly logger: Logger;
   private readonly secrets: RecommendationEngineSecrets;
   private readonly userInput: UserInput;
-  private readonly steps: RecommendationEngineSteps;
 
   constructor(input: UserInput, config: EngineConfig, options: RecommendationEngineOptions = {}) {
-    this.onProcessStart = options.onProcessStart;
     this.onProgress = options.onProgress;
     this.config = config;
     this.logger = options.logger ?? (options.loggingActivated ? consoleLogger : noopLogger);
     this.secrets = options.secrets ?? {};
     this.userInput = input;
-    this.steps = {
-      createInitialDiscoveryPlanWithLlm:
-        options.testDependencies?.createInitialDiscoveryPlanWithLlm ??
-        createInitialDiscoveryPlanWithLlm,
-      createDiscoveryContextWithLlm:
-        options.testDependencies?.createDiscoveryContextWithLlm ?? createDiscoveryContextWithLlm,
-      discoverSeeds: options.testDependencies?.discoverSeeds ?? discoverSeeds,
-      evaluateSeeds: options.testDependencies?.evaluateSeeds ?? evaluateSeeds,
-    };
   }
 
   /**
@@ -220,10 +195,9 @@ export class RecommendationEngine {
     logger: Logger,
   ): Promise<SearchQuery[]> {
     try {
-      const regenerated = await this.steps.createDiscoveryContextWithLlm(this.userInput, {
+      const regenerated = await createDiscoveryContextWithLlm(this.userInput, {
         openAiApiKey: this.secrets.openAiApiKey,
         targetSeedCount: this.config.targetCount * this.config.candidatePoolMultiplier,
-        logger,
         retry: {
           previousQueries: previousQueries.map((query) => query.query),
           previousFailureReason,
@@ -245,7 +219,6 @@ export class RecommendationEngine {
   }
 
   async process(): Promise<EngineOutput> {
-    this.onProcessStart?.();
     // 요청 단위 retry 상태만 지역 변수로 유지한다.
     // 엔진 인스턴스에 실행 결과를 저장하지 않아 같은 인스턴스 재호출도 독립적으로 동작한다.
     let discoveryState: EngineDiscoveryState = {
@@ -253,7 +226,6 @@ export class RecommendationEngine {
       queries: [],
     };
     let discoverySeedPool: DiscoverySeedPool = EMPTY_DISCOVERY_SEED_POOL;
-    const evaluationSession = createRecommendationEvaluationSession();
     const finish = this.logger.startTimer("engine.process.success");
     this.logger.info("engine.process.start", {
       maxDiscoveryAttempts: MAX_DISCOVERY_ATTEMPTS,
@@ -263,37 +235,13 @@ export class RecommendationEngine {
     try {
       const finishDiscoveryContext = this.logger.startTimer("engine.discovery_context.success");
       this.onProgress?.('input_validated');
-      const initialPlan = await this.steps.createInitialDiscoveryPlanWithLlm(this.userInput, {
+      const initialQueries = await createDiscoveryContextWithLlm(this.userInput, {
         openAiApiKey: this.secrets.openAiApiKey,
         targetSeedCount: this.config.targetCount * this.config.candidatePoolMultiplier,
-        logger: this.logger,
       });
-      this.logger.info("engine.intent_classified", {
-        intent: initialPlan.intent,
-        ...(initialPlan.intent === "UNSUPPORTED"
-          ? { reason: initialPlan.reason }
-          : { queryCount: initialPlan.queries.length }),
-      });
-
-      if (initialPlan.intent === "UNSUPPORTED") {
-        this.logger.warn("engine.unsupported_request", { reason: initialPlan.reason });
-        this.logger.warn("engine.process.failure", {
-          failedStep: "intentClassification",
-          errorCode: "UNSUPPORTED_RECOMMENDATION_REQUEST",
-        });
-        return {
-          status: "ERROR",
-          userInput: this.userInput,
-          error: {
-            code: "UNSUPPORTED_RECOMMENDATION_REQUEST",
-            message: "This request cannot be handled as a place recommendation request.",
-          },
-        };
-      }
-
       discoveryState = {
         ...discoveryState,
-        queries: hydrateQueriesWithLocation(initialPlan.queries, this.userInput),
+        queries: hydrateQueriesWithLocation(initialQueries, this.userInput),
       };
       finishDiscoveryContext({
         queryCount: discoveryState.queries.length,
@@ -332,7 +280,7 @@ export class RecommendationEngine {
         ...discoveryState,
         attemptNo: currAttemptNo,
       });
-      const discoverSeedsResult = await this.steps.discoverSeeds(discoveryContext, attemptLogger, {
+      const discoverSeedsResult = await discoverSeeds(discoveryContext, attemptLogger, {
         secrets: { tmapAppKey: this.secrets.tmapAppKey },
       });
       if (!discoverSeedsResult.ok) {
@@ -362,81 +310,16 @@ export class RecommendationEngine {
         nextQueryCount: discoverSeedsOutput.nextQueries.length,
       });
 
-      // 후보가 너무 적은 상태에서 곧바로 영업시간/참조 URL 보강을 시작하면
-      // 부족 판정 뒤 같은 run에서 discovery attempt를 다시 한 번 전부 돌게 된다.
-      // 첫 시도에만 다음 TMap query를 저비용으로 한 번 더 소비해 최소 3배 후보를 모은다.
-      let latestDiscoverSeedsOutput = discoverSeedsOutput;
-      const minimumInitialSeedCount =
-        this.config.targetCount * CASCADE_INITIAL_EVALUATION_SEED_MULTIPLIER;
       if (
-        currAttemptNo === 1 &&
-        discoverySeedPool.seedKeys.length < minimumInitialSeedCount &&
+        discoverySeedPool.seedKeys.length < this.config.targetCount &&
         discoverSeedsOutput.nextQueries.length > 0
       ) {
-        const seedPoolCountBeforePrefetch = discoverySeedPool.seedKeys.length;
-        attemptLogger.info("engine.discovery_prefetch.start", {
-          seedPoolCountBefore: seedPoolCountBeforePrefetch,
-          minimumInitialSeedCount,
-          nextQueryCount: discoverSeedsOutput.nextQueries.length,
-        });
-        const prefetchState: EngineDiscoveryState = {
+        discoveryState = {
           ...discoveryState,
           alreadyCheckedIds: Array.from(
             new Set([...discoveryState.alreadyCheckedIds, ...discoverSeedsOutput.seedKeys]),
           ),
           queries: discoverSeedsOutput.nextQueries,
-          previousFailureReason: "LOW_QUALITY",
-        };
-        const prefetchContext = buildDiscoveryContext(this.config, {
-          ...prefetchState,
-          attemptNo: currAttemptNo,
-        });
-        const prefetchResult = await this.steps.discoverSeeds(
-          prefetchContext,
-          attemptLogger,
-          { secrets: { tmapAppKey: this.secrets.tmapAppKey } },
-        );
-        if (prefetchResult.ok) {
-          latestDiscoverSeedsOutput = prefetchResult.data;
-          discoverySeedPool = appendDiscoverSeedsOutputToPool(
-            discoverySeedPool,
-            latestDiscoverSeedsOutput,
-          );
-          discoveryState = {
-            ...prefetchState,
-            alreadyCheckedIds: Array.from(
-              new Set([...prefetchState.alreadyCheckedIds, ...latestDiscoverSeedsOutput.seedKeys]),
-            ),
-            queries: latestDiscoverSeedsOutput.nextQueries,
-          };
-          attemptLogger.info("engine.discovery_prefetch.success", {
-            seedPoolCountBefore: seedPoolCountBeforePrefetch,
-            seedPoolCountAfter: discoverySeedPool.seedKeys.length,
-            minimumInitialSeedCount,
-            nextQueryCount: latestDiscoverSeedsOutput.nextQueries.length,
-          });
-        } else {
-          attemptLogger.warn("engine.discovery_prefetch.failure", {
-            failedStep: prefetchResult.failedStep,
-            errorCode: prefetchResult.errorCode,
-            seedPoolCount: discoverySeedPool.seedKeys.length,
-          });
-        }
-      }
-
-      if (
-        discoverySeedPool.seedKeys.length < this.config.targetCount &&
-        latestDiscoverSeedsOutput.nextQueries.length > 0
-      ) {
-        discoveryState = {
-          ...discoveryState,
-          alreadyCheckedIds: Array.from(
-            new Set([
-              ...discoveryState.alreadyCheckedIds,
-              ...latestDiscoverSeedsOutput.seedKeys,
-            ]),
-          ),
-          queries: latestDiscoverSeedsOutput.nextQueries,
           previousFailureReason:
             discoverySeedPool.seedKeys.length === 0 ? "ZERO_SEEDS" : "LOW_QUALITY",
         };
@@ -449,10 +332,10 @@ export class RecommendationEngine {
         continue;
       }
 
-      const evaluateSeedsInput = toEvaluateSeedsInput(discoverySeedPool, latestDiscoverSeedsOutput);
+      const evaluateSeedsInput = toEvaluateSeedsInput(discoverySeedPool, discoverSeedsOutput);
       this.onProgress?.('evaluating');
 
-      const evaluateSeedsResult = await this.steps.evaluateSeeds(
+      const evaluateSeedsResult = await evaluateSeeds(
         this.userInput,
         evaluateSeedsInput,
         this.config,
@@ -465,7 +348,6 @@ export class RecommendationEngine {
             openAiApiKey: this.secrets.openAiApiKey,
           },
           onProgress: this.onProgress,
-          session: evaluationSession,
         },
       );
       if (!evaluateSeedsResult.ok) {
@@ -495,8 +377,8 @@ export class RecommendationEngine {
         // 결과를 다 봤다"는 건 "다른 검색어도 소용없다"는 뜻이 아니다. 실패 사유를
         // 알려주고 새 검색어를 만들어 한 번 더 시도한다.
         const nextQueries =
-          latestDiscoverSeedsOutput.nextQueries.length > 0
-            ? latestDiscoverSeedsOutput.nextQueries
+          discoverSeedsOutput.nextQueries.length > 0
+            ? discoverSeedsOutput.nextQueries
             : await this.regenerateQueries(discoveryState.queries, reason, attemptLogger);
 
         if (nextQueries.length === 0) {
@@ -526,7 +408,7 @@ export class RecommendationEngine {
           alreadyCheckedIds: Array.from(
             new Set([
               ...discoveryState.alreadyCheckedIds,
-              ...latestDiscoverSeedsOutput.seedKeys,
+              ...discoverSeedsOutput.seedKeys,
               ...excludeSeedKeys,
             ]),
           ),

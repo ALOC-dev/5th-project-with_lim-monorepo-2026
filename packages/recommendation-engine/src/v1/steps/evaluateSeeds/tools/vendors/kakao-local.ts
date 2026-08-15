@@ -57,7 +57,6 @@ export const enrichWithKakaoLocal = async (
     operationVerifier,
     sourceName: "kakao-local",
     sourceTextKind: "scraped_page",
-    allowLlmFallback: options.allowLlmFallback,
     logger: options.logger,
   });
   const operationInfo = operationParse.operationInfo;
@@ -91,15 +90,6 @@ export const enrichWithKakaoLocal = async (
         sourceUrls,
         confidence: operationVerification.confidence,
         identityMatchScore: match.identity.identityScore,
-        referenceIdentity: {
-          nameScore: match.identity.nameScore,
-          addressScore: match.identity.addressScore,
-          ...(match.identity.distanceMeters === undefined
-            ? {}
-            : { distanceMeters: match.identity.distanceMeters }),
-          identityScore: match.identity.identityScore,
-          acceptedReason: match.identity.acceptedReason,
-        },
         operationParser: operationParse.parser,
         operationParseReason: operationParse.reason,
         sourceTextKind: "scraped_page",

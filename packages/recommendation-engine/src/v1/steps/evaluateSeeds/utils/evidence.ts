@@ -1,5 +1,4 @@
 import type { UserInput } from "../../../interfaces/input.contracts.js";
-import { getLocationCentroid } from "../../../utils/geography.js";
 import type { LocalSeed } from "../../discoverSeeds/vendors/contracts.js";
 import type { CandidateEnrichment } from "./enrichment-types.js";
 import type { SemanticFitAssessment } from "./semantic-fit.js";
@@ -15,7 +14,6 @@ export type CandidateScoringEvidence = {
   userFit: {
     naturalLanguageRequest: string;
     partyType: UserInput["partyType"];
-    activityType?: NonNullable<UserInput["activityType"]>;
     numberOfPeople: UserInput["numberOfPeople"];
     budgetPerPerson: UserInput["budgetPerPerson"];
   };
@@ -77,7 +75,6 @@ export const buildCandidateScoringEvidence = (
     userFit: {
       naturalLanguageRequest: userInput.userNaturalLanguageRequest,
       partyType: userInput.partyType,
-      ...(userInput.activityType === undefined ? {} : { activityType: userInput.activityType }),
       numberOfPeople: userInput.numberOfPeople,
       budgetPerPerson: userInput.budgetPerPerson,
     },
@@ -108,10 +105,7 @@ const splitCategoryTags = (category: string): string[] =>
     .filter(Boolean);
 
 const toDistanceFromUserLocation = (seed: LocalSeed, userInput: UserInput): number | undefined => {
-  // 공급자가 distance를 주지 않는 경우에도 그룹 요청은 첫 번째(호스트) 위치가 아니라
-  // 모든 참여자의 중심점을 기준으로 접근성을 비교한다. 개별 출발지 거리는 output 단계에서
-  // 계속 별도로 계산하므로 공개 응답의 perOrigin 형태는 변하지 않는다.
-  const origin = getLocationCentroid(userInput.location);
+  const [origin] = userInput.location;
   if (!origin) return undefined;
 
   const dLat = toRadians(seed.latitude - origin.lat);

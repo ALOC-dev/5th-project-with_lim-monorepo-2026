@@ -37,7 +37,6 @@ export type ScrapeNaverMapCandidateOptions = {
   getBrowser: () => Promise<PlaywrightBrowser>;
   scrapeCache?: UrlScrapeCache;
   scrapeRequests: Map<string, Promise<UrlScrapeResult>>;
-  allowLlmFallback?: boolean;
 };
 
 export type KakaoLocalCandidateOptions = {
@@ -50,7 +49,6 @@ export type KakaoLocalCandidateOptions = {
   getBrowser: () => Promise<PlaywrightBrowser>;
   scrapeCache?: UrlScrapeCache;
   scrapeRequests: Map<string, Promise<UrlScrapeResult>>;
-  allowLlmFallback?: boolean;
 };
 
 export type NaverSearchCredentials = {
@@ -59,7 +57,4 @@ export type NaverSearchCredentials = {
   clientSecret: string;
   openAiApiKey?: string;
   abortSignal?: AbortSignal;
-  allowLlmFallback?: boolean;
-  /** Cascade probe에서 긴 Retry-After 대기를 피하기 위한 요청별 override. */
-  retryLimit?: number;
 };

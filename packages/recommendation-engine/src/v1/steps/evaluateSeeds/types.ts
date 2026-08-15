@@ -2,7 +2,6 @@ import type { RecommendationEngineSecrets } from "../../credentials.js";
 import type { PlaceRecommendationItem } from "../../interfaces/output.contracts.js";
 import type { EvaluateSeedsRetryReason } from "../discoverSeeds/contracts.js";
 import type { EvaluateSeedsOutput } from "./contracts.js";
-import type { RecommendationEvaluationSession } from "./evaluation-session.js";
 
 export type { EvaluateSeedsEvaluation, EvaluateSeedsOutput, ScoreBreakdown } from "./contracts.js";
 
@@ -32,7 +31,6 @@ export type EvaluateSeedsOptions = {
     "kakaoRestApiKey" | "naverSearchClientId" | "naverSearchClientSecret" | "openAiApiKey"
   >;
   onProgress?: (step: 'enriching' | 'scoring') => void;
-  session?: RecommendationEvaluationSession;
 };
 
 export type { PlaceRecommendationItem };

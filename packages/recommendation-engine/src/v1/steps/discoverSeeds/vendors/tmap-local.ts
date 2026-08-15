@@ -160,7 +160,7 @@ const buildSearchParams = (
   return searchParams;
 };
 
-export const toLocalSeed = (poi: TmapPoi): LocalSeed => {
+const toLocalSeed = (poi: TmapPoi): LocalSeed => {
   const longitude = Number(poi.frontLon ?? poi.noorLon);
   const latitude = Number(poi.frontLat ?? poi.noorLat);
 
@@ -187,15 +187,8 @@ const getTmapAddress = (poi: TmapPoi): string =>
     .filter(isNonEmptyString)
     .join(" ");
 
-/**
- * TMap 검색 POI의 `firstNo`/`secondNo`는 roadName의 건물 번호가 아니라 지번
- * 구성값으로 내려오는 사례가 있다. 예를 들어 `연무장길 16 25`는 실제로
- * `연무장길 14-5 / 성수동1가 16-25`인 장소를 잘못 합성한 값이었다.
- *
- * 확인되지 않은 지번을 도로명에 이어붙이는 것보다, 도로명만 보관하고 출력 단계에서
- * 완전한 지번 주소로 안전하게 fallback하는 편이 낫다.
- */
-const getTmapRoadAddress = (poi: TmapPoi): string => poi.roadName?.trim() ?? "";
+const getTmapRoadAddress = (poi: TmapPoi): string =>
+  [poi.roadName, poi.firstNo, poi.secondNo].filter(isNonEmptyString).join(" ");
 
 const isNonEmptyString = (value: unknown): value is string =>
   typeof value === "string" && value.length > 0;

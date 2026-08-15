@@ -4,7 +4,7 @@ import type { PlaceRecommendationItem } from "../../interfaces/output.contracts.
 import type { Logger } from "../../observability/logger.js";
 import type { DiscoverSeedsOutput } from "../discoverSeeds/contracts.js";
 import { type EvaluateSeedsEvaluation, EvaluateSeedsOutputSchema } from "./contracts.js";
-import { createCascadeEnrichmentClient } from "./llm/cascade-enrichment.js";
+import { createAgenticWebEnrichmentClient } from "./llm/enrichment.js";
 import {
   type LlmCandidateEvaluation,
   LlmCandidateEvaluationSchema,
@@ -20,10 +20,12 @@ import type { PlaywrightBrowser, UrlScrapeResult } from "./tools/types.js";
 import type { EvaluateSeedsOptions, EvaluateSeedsProcessResult } from "./types.js";
 import {
   collectEnrichmentBatches,
+  ENRICHMENT_BATCH_SIZE,
   getMaxEvidenceCount,
 } from "./utils/enrichment-batches.js";
 import { shouldRecommendByOperationHours } from "./utils/enrichment-merge.js";
 import type {
+  AgenticWebEnrichmentToolEvent,
   CandidateEnrichment,
   CandidateEnrichmentClient,
   CandidateEnrichmentRequest,
@@ -33,7 +35,6 @@ import { toEvaluateSeedsFailure, toEvaluateSeedsLlmScoringFailure } from "./util
 import { toEvaluateSeedsEvaluation, toPlaceRecommendationItem } from "./utils/output.js";
 import { buildRankedCandidates } from "./utils/ranking.js";
 import { createLocalFileUrlScrapeCache } from "./utils/scrape-cache.js";
-import { assessPreEnrichmentSemanticFit } from "./utils/semantic-fit.js";
 
 export type {
   CandidateEnrichment,
@@ -42,9 +43,10 @@ export type {
   LlmCandidateEvaluation,
   LlmScoringClient,
 };
+export { createAgenticWebEnrichmentClient };
 
-const boundedWebFetchCache = createLocalFileUrlScrapeCache({
-  namespace: "bounded-web-fetch",
+const agenticFetchCache = createLocalFileUrlScrapeCache({
+  namespace: "agentic-fetch",
 });
 const kakaoMapScrapeCache = createLocalFileUrlScrapeCache({
   namespace: "kakao-map",
@@ -53,6 +55,11 @@ const naverMapScrapeCache = createLocalFileUrlScrapeCache({
   namespace: "naver-map",
 });
 
+const LIVE_MAX_CANDIDATES = ENRICHMENT_BATCH_SIZE;
+const LIVE_MAX_CONCURRENCY = 4;
+const LIVE_MAX_FETCHES_PER_CANDIDATE = 2;
+const LIVE_MAX_TOOL_STEPS = 10;
+const LIVE_TIMEOUT_MS = 120_000;
 const LIVE_SCRAPE_TIMEOUT_MS = 20_000;
 const LIVE_SCRAPE_SETTLE_MS = 750;
 const LIVE_REFERENCE_URL_CONCURRENCY = 4;
@@ -91,23 +98,27 @@ const buildLiveEnrichmentClient = (
   logger: Logger,
   options: EvaluateSeedsOptions,
   getBrowser: () => Promise<PlaywrightBrowser>,
-): CandidateEnrichmentClient => {
-  const clientOptions = {
+): CandidateEnrichmentClient =>
+  createAgenticWebEnrichmentClient({
     getBrowser,
     openAiApiKey: options.secrets?.openAiApiKey,
     kakaoRestApiKey: options.secrets?.kakaoRestApiKey,
     clientId: options.secrets?.naverSearchClientId,
     clientSecret: options.secrets?.naverSearchClientSecret,
+    maxCandidates: LIVE_MAX_CANDIDATES,
+    maxConcurrency: LIVE_MAX_CONCURRENCY,
+    maxFetchesPerCandidate: LIVE_MAX_FETCHES_PER_CANDIDATE,
+    maxToolSteps: LIVE_MAX_TOOL_STEPS,
+    timeoutMs: LIVE_TIMEOUT_MS,
     scrapeTimeoutMs: LIVE_SCRAPE_TIMEOUT_MS,
     scrapeSettleMs: LIVE_SCRAPE_SETTLE_MS,
-    fetchCache: boundedWebFetchCache,
+    fetchCache: agenticFetchCache,
     kakaoScrapeCache: kakaoMapScrapeCache,
     kakaoScrapePlaceDetails: false,
     naverMapScrapeCache,
+    onToolEvent: (event) => logAgenticToolEvent(logger, event),
     logger,
-  };
-  return createCascadeEnrichmentClient(clientOptions);
-};
+  });
 
 const enrichCandidates = async (
   request: CandidateEnrichmentRequest,
@@ -116,6 +127,48 @@ const enrichCandidates = async (
   getBrowser: () => Promise<PlaywrightBrowser>,
 ): Promise<CandidateEnrichment[]> => {
   return buildLiveEnrichmentClient(logger, options, getBrowser)(request);
+};
+
+const logAgenticToolEvent = (logger: Logger, event: AgenticWebEnrichmentToolEvent): void => {
+  if (event.type === "search") {
+    logger.info("evaluateSeeds.enrichment.tool.search", {
+      candidateId: event.candidateId,
+      query: event.query,
+      resultCount: event.resultCount,
+      sourceUrls: event.sourceUrls,
+    });
+    return;
+  }
+
+  if (event.type === "fetch") {
+    logger.info("evaluateSeeds.enrichment.tool.fetch", {
+      candidateId: event.candidateId,
+      url: event.url,
+      cache: event.cache,
+      textLength: event.textLength,
+    });
+    return;
+  }
+
+  if (event.type === "lookup") {
+    logger.info("evaluateSeeds.enrichment.tool.lookup", {
+      candidateId: event.candidateId,
+      source: event.source,
+      status: event.status,
+      sourceUrls: event.sourceUrls,
+      placeMatchScore: event.placeMatchScore,
+    });
+    return;
+  }
+
+  logger.info("evaluateSeeds.enrichment.tool.finalize", {
+    candidateId: event.candidateId,
+    source: event.source,
+    status: event.status,
+    reason: event.reason,
+    sourceUrls: event.sourceUrls,
+    confidence: event.confidence,
+  });
 };
 
 export const evaluateSeeds = async (
@@ -140,31 +193,10 @@ export const evaluateSeeds = async (
     buildCandidateScoringEvidence(seed, getSeedKey(discoverSeedsOutput, index), userInput),
   );
   const prioritizedEvidences = prioritizeEvidencesForEvaluation(evidences, userInput);
-  const preEnrichmentAssessments = prioritizedEvidences.map((evidence) => ({
-    evidence,
-    semanticFit: assessPreEnrichmentSemanticFit(evidence),
-  }));
-  const prefilteredEvidences = preEnrichmentAssessments
-    .filter(({ semanticFit }) => semanticFit.status !== "REJECT")
-    .map(({ evidence }) => evidence);
   stepLogger.info("evaluateSeeds.evidence.built", {
     evidenceCount: evidences.length,
     candidateIds: evidences.map((evidence) => evidence.candidateId),
     prioritizedCandidateIds: prioritizedEvidences.map((evidence) => evidence.candidateId),
-    prefilteredCandidateIds: prefilteredEvidences.map((evidence) => evidence.candidateId),
-  });
-  stepLogger.info("evaluateSeeds.pre_enrichment_semantic_gate.filtered", {
-    evaluatedCount: preEnrichmentAssessments.length,
-    passedCount: prefilteredEvidences.length,
-    rejectedCount: preEnrichmentAssessments.length - prefilteredEvidences.length,
-    rejected: preEnrichmentAssessments
-      .filter(({ semanticFit }) => semanticFit.status === "REJECT")
-      .map(({ evidence, semanticFit }) => ({
-        candidateId: evidence.candidateId,
-        name: evidence.name,
-        reason: semanticFit.reason,
-        negativeSignals: semanticFit.negativeSignals,
-      })),
   });
 
   if (evidences.length === 0) {
@@ -181,12 +213,11 @@ export const evaluateSeeds = async (
     };
   }
 
-  // 2) 결정론 source와 제한된 targeted LLM으로 후보별 근거를 보강한다.
+  // 2) 외부 source와 LLM tool loop로 후보별 근거를 보강한다.
   // 여기서 얻은 operationInfo는 hard gate에 쓰이므로 stub/default 값을 만들지 않는다.
   let enrichedEvidences: CandidateScoringEvidence[];
   let operationVerifiedCount = 0;
   let semanticPenalizedCount = 0;
-  let semanticRejectedCount = 0;
   let referenceRejectedCount = 0;
   // 이 실행에서 쓰는 Chromium은 하나뿐이다. enrichment와 reference URL 해결이
   // 같은 인스턴스를 나눠 쓰고, 배치를 다 돈 뒤 한 번만 닫는다.
@@ -195,30 +226,29 @@ export const evaluateSeeds = async (
     options.onProgress?.('enriching');
     const finishEnrichment = stepLogger.startTimer("evaluateSeeds.enrichment.success");
     stepLogger.info("evaluateSeeds.enrichment.start", {
-      evidenceCount: prefilteredEvidences.length,
-      client: "cascade",
-      maxEvidenceCount: getMaxEvidenceCount(prefilteredEvidences.length, config),
+      evidenceCount: prioritizedEvidences.length,
+      client: "agentic",
+      initialBatchSize: LIVE_MAX_CANDIDATES,
+      maxEvidenceCount: getMaxEvidenceCount(prioritizedEvidences.length, config),
     });
     const enrichmentResult = await collectEnrichmentBatches({
       userInput,
-      evidences: prefilteredEvidences,
+      evidences: prioritizedEvidences,
       config,
       logger: stepLogger,
       enrichCandidates: (request, enrichmentLogger) =>
         enrichCandidates(request, enrichmentLogger, options, sharedBrowser.getBrowser),
       resolveReferenceUrls: (evidences) =>
         resolveReferenceUrlsForEvidences(evidences, options, sharedBrowser.getBrowser),
-      session: options.session,
     });
     enrichedEvidences = enrichmentResult.enrichedEvidences;
     operationVerifiedCount = enrichmentResult.operationVerifiedCount;
     semanticPenalizedCount = enrichmentResult.semanticPenalizedCount;
-    semanticRejectedCount = enrichmentResult.semanticRejectedCount;
     referenceRejectedCount = enrichmentResult.referenceRejectedCount;
     finishEnrichment({
       enrichmentCount: enrichmentResult.enrichments.length,
       evaluatedEvidenceCount: enrichmentResult.evaluatedEvidenceCount,
-      skippedEvidenceCount: prefilteredEvidences.length - enrichmentResult.evaluatedEvidenceCount,
+      skippedEvidenceCount: prioritizedEvidences.length - enrichmentResult.evaluatedEvidenceCount,
       verifiedOpenCount: enrichedEvidences.length,
       rejectedCount: enrichmentResult.evaluatedEvidenceCount - enrichedEvidences.length,
       batches: enrichmentResult.batches,
@@ -251,7 +281,6 @@ export const evaluateSeeds = async (
           rawTextSnippet: enrichment.rawTextSnippet?.slice(0, 1_500),
         })),
       semanticPenalizedCount,
-      semanticRejectedCount,
       notSemanticallyEvaluatedDueToOperationUnknown:
         enrichmentResult.notSemanticallyEvaluatedDueToOperationUnknown,
       referenceRejected: enrichmentResult.referenceUrlResolutions
@@ -288,7 +317,6 @@ export const evaluateSeeds = async (
       rejectedSeedKeyCount: discoverSeedsOutput.seedKeys.length,
       operationVerifiedCount,
       semanticPenalizedCount,
-      semanticRejectedCount,
       referenceRejectedCount,
     });
     return {
@@ -297,35 +325,6 @@ export const evaluateSeeds = async (
         status: "NEEDS_MORE_SEEDS",
         reason,
         excludeSeedKeys: discoverSeedsOutput.seedKeys,
-      },
-    };
-  }
-
-  // 후보 수가 목표에 미달한 상태에서 scoring하면 다음 discovery attempt에서 같은
-  // 검증 완료 후보를 다시 score해야 하고 diversity 비교도 깨진다. enrichment/reference
-  // session cache에 보존된 stable 후보와 새 후보를 합친 뒤 최종 한 번만 scoring한다.
-  if (
-    enrichedEvidences.length < config.targetCount &&
-    discoverSeedsOutput.nextQueries.length > 0
-  ) {
-    stepLogger.info("evaluateSeeds.llm_scoring.deferred", {
-      qualifiedCandidateCount: enrichedEvidences.length,
-      targetCount: config.targetCount,
-      nextQueryCount: discoverSeedsOutput.nextQueries.length,
-      reuseOnNextAttempt: true,
-    });
-    stepLogger.warn("evaluateSeeds.evaluation.needs_more_seeds", {
-      reason: "LOW_QUALITY",
-      qualifiedCandidateCount: enrichedEvidences.length,
-      targetCount: config.targetCount,
-      deferredScoring: true,
-    });
-    return {
-      ok: true,
-      needsMoreSeeds: {
-        status: "NEEDS_MORE_SEEDS",
-        reason: "LOW_QUALITY",
-        excludeSeedKeys: [],
       },
     };
   }
@@ -343,7 +342,6 @@ export const evaluateSeeds = async (
     const raw = await scoreCandidatesWithLlm({
       evidences: enrichedEvidences,
       openAiApiKey: options.secrets?.openAiApiKey,
-      logger: stepLogger,
     });
     llmEvaluations = raw.map((evaluation) => LlmCandidateEvaluationSchema.parse(evaluation));
     finishScoring({
@@ -445,7 +443,7 @@ const prioritizeEvidencesForEvaluation = (
     .sort((left, right) => right.score - left.score || left.index - right.index)
     .map(({ evidence }) => evidence);
 
-export const getLightweightEvaluationPriority = (
+const getLightweightEvaluationPriority = (
   evidence: CandidateScoringEvidence,
   userInput: UserInput,
 ): number => {
@@ -469,28 +467,6 @@ export const getLightweightEvaluationPriority = (
   }
   if (hasDrinkIntent(request) && /술집|호프|펍|포차|이자카야|와인|바\b/iu.test(candidateText)) {
     score += 30;
-  }
-  // 증명 가능한 식이/맥주 요청은 일반 업종보다 통과율이 낮다. 관련된 구조화 tag를
-  // 앞 배치로 보내야 같은 10개 후보 예산 안에서 5개 완주 확률이 올라간다. 이것은
-  // 후보의 claim을 확정하지 않으며, 실제 식이·맥주 hard gate는 enrichment 뒤에 그대로
-  // 적용된다.
-  if (
-    /비건|vegan/iu.test(request) &&
-    /비건|vegan|plant\s*-?\s*based|플랜트\s*-?\s*베이스드/iu.test(candidateText)
-  ) {
-    score += 45;
-  }
-  if (/채식|vegetarian/iu.test(request) && /채식|vegetarian/iu.test(candidateText)) {
-    score += 45;
-  }
-  if (/할랄|halal/iu.test(request) && /할랄|halal/iu.test(candidateText)) {
-    score += 45;
-  }
-  if (
-    /맥주|호프|펍|브루잉|\b(?:beer|pub|brewery)\b/iu.test(request) &&
-    /맥주|호프|펍|브루잉|\b(?:beer|pub|brewery)\b/iu.test(candidateText)
-  ) {
-    score += 45;
   }
 
   const distanceMeters = evidence.accessibilitySignals.distanceMeters;

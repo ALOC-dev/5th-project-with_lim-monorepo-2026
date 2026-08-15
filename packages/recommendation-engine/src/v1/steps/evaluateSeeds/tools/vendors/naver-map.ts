@@ -16,7 +16,6 @@ import {
 } from "../shared/constants.js";
 import {
   buildReferenceQueryVariants,
-  hasReferenceEntityEvidence,
   type ReferenceUrlMatch,
   scoreTextReferenceIdentity,
 } from "../shared/reference-query.js";
@@ -33,7 +32,6 @@ export const scrapeNaverMapCandidate = async (
 
   const { snapshot, cache } = await getOrScrapeNaverMapUrl(searchUrl, evidence, options);
   const searchableText = chooseCandidateText(snapshot.frameTexts, evidence);
-  const identity = scoreNaverMapTextIdentity(searchableText, evidence);
   const operationParse = await parseOperationInfoWithLlmFallback({
     text: searchableText,
     openAiApiKey: options.openAiApiKey,
@@ -41,7 +39,6 @@ export const scrapeNaverMapCandidate = async (
     operationVerifier,
     sourceName: "naver-map",
     sourceTextKind: "scraped_page",
-    allowLlmFallback: options.allowLlmFallback,
     logger: options.logger,
   });
   const operationInfo = operationParse.operationInfo;
@@ -60,7 +57,7 @@ export const scrapeNaverMapCandidate = async (
     operationInfo,
     operationVerification,
     priceRangePerPerson: inferPriceRangePerPersonFromText(searchableText, evidence.category),
-    rawTextSnippet: searchableText.slice(0, 7_000),
+    rawTextSnippet: searchableText.slice(0, 2_000),
     scrapeCache: cache,
     sourceDetails: [
       {
@@ -69,16 +66,7 @@ export const scrapeNaverMapCandidate = async (
         reason: operationVerification.reason,
         sourceUrls,
         confidence: operationVerification.confidence,
-        identityMatchScore: identity.identityScore,
-        referenceIdentity: {
-          nameScore: identity.nameScore,
-          addressScore: identity.addressScore,
-          ...(identity.distanceMeters === undefined
-            ? {}
-            : { distanceMeters: identity.distanceMeters }),
-          identityScore: identity.identityScore,
-          acceptedReason: identity.acceptedReason,
-        },
+        identityMatchScore: scoreNaverMapTextIdentity(searchableText, evidence).identityScore,
         operationParser: operationParse.parser,
         operationParseReason: operationParse.reason,
         sourceTextKind: "scraped_page",
@@ -116,8 +104,7 @@ export const resolveNaverMapReferenceUrl = async (
   //    캐시에 있으므로 사실상 공짜이고, 예전에는 이걸 재사용하지 않아 같은 장소를
   //    두 번 긁었다(에이전트 10회 101초 + 여기서 다시 240초).
   const reused = await resolveFromAlreadyScrapedUrls(evidence, options);
-  if (reused && hasReferenceEntityEvidence(reused.identity)) return reused;
-  let weakAcceptedMatch = reused;
+  if (reused) return reused;
 
   // 2) 그래도 못 찾으면 검색어 변형을 제한된 횟수만 시도한다.
   let emptyStreak = 0;
@@ -132,19 +119,13 @@ export const resolveNaverMapReferenceUrl = async (
     const identity = scoreNaverMapTextIdentity(searchableText, evidence);
 
     if (hasDetail && identity.accepted) {
-      const match = { url: searchUrl, query, identity };
-      // 동일 상호의 다른 지점은 이름만 맞아도 기존 broad identity score를 통과할 수
-      // 있다. 여기서는 즉시 반환하지 않고 정확한 주소/상세 entity 근거가 있는 다음
-      // query 변형을 계속 확인한다. 끝까지 없으면 caller가 lone weak Naver URL을
-      // 최종 reference로 쓰지 않도록 아래 fallback을 함께 검증한다.
-      if (hasReferenceEntityEvidence(identity)) return match;
-      weakAcceptedMatch ??= match;
+      return { url: searchUrl, query, identity };
     }
 
     emptyStreak = hasDetail ? 0 : emptyStreak + 1;
     if (emptyStreak >= MAX_CONSECUTIVE_EMPTY_RESULTS) break;
   }
-  return weakAcceptedMatch;
+  return undefined;
 };
 
 /**
