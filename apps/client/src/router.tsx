@@ -4,6 +4,7 @@ import FeedbackState from "./components/FeedbackState/FeedbackState";
 import PageRoot from "./components/PageRoot/PageRoot";
 import { useAuth } from "./contexts/Auth.context";
 import { tokens } from "./design-system/tokens.generated";
+import ChangePasswordPage from "./pages/ChangePassword/ChangePasswordPage";
 import { CourseFavoritePage } from "./pages/CourseFavorite/CourseFavoritePage";
 import { CourseRecommendationFormPage } from "./pages/CourseRecommendationForm/CourseRecommendationFormPage";
 import { CourseRecommendationHistoryPage } from "./pages/CourseRecommendationHistory/CourseRecommendationHistoryPage";
@@ -74,6 +75,10 @@ export const router = createBrowserRouter([
               {
                 path: "/my",
                 element: <MyPage />,
+              },
+              {
+                path: "/my/changepassword",
+                element: <ChangePasswordPage />,
               },
             ],
           },

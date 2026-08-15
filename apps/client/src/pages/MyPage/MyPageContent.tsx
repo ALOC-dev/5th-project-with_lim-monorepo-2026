@@ -45,7 +45,7 @@ const activityLinks: readonly ActivityLink[] = [
 
 export const MyPage = () => {
   const navigate = useAppNavigate();
-  const { logout } = useAuth();
+  const { logout, withdraw } = useAuth();
 
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -77,21 +77,20 @@ export const MyPage = () => {
     setIsWithdrawModalOpen(false);
   };
 
-  // const confirmWithdraw = async (): Promise<void> => {
-  //   if (isWithdrawing) return;
-  //   setIsWithdrawing(true);
+  const confirmWithdraw = async (): Promise<void> => {
+    if (isWithdrawing) return;
+    setIsWithdrawing(true);
 
-  //   try {
-  //     // api
-  //     setIsWithdrawModalOpen(false);
-  //     toast.success("회원탈퇴가 완료되었습니다.");
-  //     void navigate("/");
-  //   } catch (error) {
-  //     setIsWithdrawing(false);
-  //     toast.error(`회원탈퇴에 실패했습니다. (${toApiClientErrorMessage(error)})`);
-  //   }
-  // };
-
+    try {
+      await withdraw();
+      setIsWithdrawModalOpen(false);
+      toast.success("회원탈퇴가 완료되었습니다.");
+      void navigate("/");
+    } catch (error) {
+      setIsWithdrawing(false);
+      toast.error(`회원탈퇴에 실패했습니다. (${toApiClientErrorMessage(error)})`);
+    }
+  };
   return (
     <>
       <S.Content>
@@ -130,7 +129,7 @@ export const MyPage = () => {
 
             <S.MenuButton
               aria-label="비밀번호 재설정"
-              onClick={() => void navigate("/password-reset")} // 추후에 비밀번호 재설정 페이지로 변경필요
+              onClick={() => void navigate("/my/changepassword")}
               type="button"
             >
               <Icon name="password-reset" size={20} />
@@ -180,7 +179,7 @@ export const MyPage = () => {
         primaryAction={{
           label: "탈퇴하기",
           onClick: () => {
-            // 추가 필요
+            void confirmWithdraw();
           },
           disabled: isWithdrawing,
         }}
