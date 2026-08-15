@@ -46,8 +46,12 @@ const activityLinks: readonly ActivityLink[] = [
 export const MyPage = () => {
   const navigate = useAppNavigate();
   const { logout } = useAuth();
+
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  const [isWithdrawModalOpen, setIsWithdrawModalOpen] = useState(false);
+  const [isWithdrawing, setIsWithdrawing] = useState(false);
 
   const closeLogoutModal = () => {
     if (isLoggingOut) return;
@@ -56,7 +60,6 @@ export const MyPage = () => {
 
   const confirmLogout = async (): Promise<void> => {
     if (isLoggingOut) return;
-
     setIsLoggingOut(true);
 
     try {
@@ -68,6 +71,26 @@ export const MyPage = () => {
       toast.error(`로그아웃에 실패했습니다. (${toApiClientErrorMessage(error)})`);
     }
   };
+
+  const closeWithdrawModal = () => {
+    if (isWithdrawing) return;
+    setIsWithdrawModalOpen(false);
+  };
+
+  // const confirmWithdraw = async (): Promise<void> => {
+  //   if (isWithdrawing) return;
+  //   setIsWithdrawing(true);
+
+  //   try {
+  //     // api
+  //     setIsWithdrawModalOpen(false);
+  //     toast.success("회원탈퇴가 완료되었습니다.");
+  //     void navigate("/");
+  //   } catch (error) {
+  //     setIsWithdrawing(false);
+  //     toast.error(`회원탈퇴에 실패했습니다. (${toApiClientErrorMessage(error)})`);
+  //   }
+  // };
 
   return (
     <>
@@ -95,18 +118,33 @@ export const MyPage = () => {
         <S.Section aria-labelledby="settings-heading">
           <S.SectionTitle id="settings-heading">설정</S.SectionTitle>
           <S.MenuList>
-            <S.StaticMenuItem>
-              <Icon name="account-settings" size={20} />
-              <span>계정 관리</span>
-              <small>준비 중</small>
-            </S.StaticMenuItem>
             <S.MenuButton
               aria-label="로그아웃"
               onClick={() => setIsLogoutModalOpen(true)}
               type="button"
             >
-              <Icon name="logout" size={20} />
+              <Icon name="logout" size={24} />
               <span>로그아웃</span>
+              <Icon name="chevron-right" size={16} />
+            </S.MenuButton>
+
+            <S.MenuButton
+              aria-label="비밀번호 재설정"
+              onClick={() => void navigate("/password-reset")} // 추후에 비밀번호 재설정 페이지로 변경필요
+              type="button"
+            >
+              <Icon name="password-reset" size={20} />
+              <span>비밀번호 재설정</span>
+              <Icon name="chevron-right" size={16} />
+            </S.MenuButton>
+
+            <S.MenuButton
+              aria-label="회원탈퇴"
+              onClick={() => setIsWithdrawModalOpen(true)}
+              type="button"
+            >
+              <Icon name="withdraw" size={20} style={{ marginLeft: "2px" }} />
+              <span>회원탈퇴</span>
               <Icon name="chevron-right" size={16} />
             </S.MenuButton>
           </S.MenuList>
@@ -130,6 +168,26 @@ export const MyPage = () => {
           label: "취소",
           onClick: closeLogoutModal,
           disabled: isLoggingOut,
+        }}
+      />
+
+      <Modal
+        id="withdraw-confirm-modal"
+        isOpen={isWithdrawModalOpen}
+        close={closeWithdrawModal}
+        title="정말 탈퇴하시겠습니까?"
+        description="회원 탈퇴 시 계정 정보와 함께 모든 활동 내역이 즉시 삭제되며 다시 복구할 수 없습니다."
+        primaryAction={{
+          label: "탈퇴하기",
+          onClick: () => {
+            // 추가 필요
+          },
+          disabled: isWithdrawing,
+        }}
+        secondaryAction={{
+          label: "취소",
+          onClick: closeWithdrawModal,
+          disabled: isWithdrawing,
         }}
       />
     </>
