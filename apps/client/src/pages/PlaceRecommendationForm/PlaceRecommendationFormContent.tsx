@@ -4,7 +4,7 @@ import {
   PartyTypeSchema,
 } from "@monorepo/recommendation-engine/v1/contracts";
 import { useMutation } from "@tanstack/react-query";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { createPlaceRecommendationJob } from "../../apis/server/placeRecommendation";
 import { Button } from "../../components/Button";
@@ -36,6 +36,11 @@ const PARTY_OPTIONS: DropdownOption[] = [
   { label: "연인", value: "LOVERS" },
   { label: "동료", value: "COLLEAGUES" },
 ];
+
+const NUMBER_OF_PEOPLE_OPTIONS: DropdownOption[] = Array.from({ length: 20 }, (_, index) => {
+  const numberOfPeople = index + 1;
+  return { label: `${numberOfPeople}명`, value: String(numberOfPeople) };
+});
 
 const HOUR_OPTIONS: DropdownOption[] = Array.from({ length: 25 }, (_, hour) => {
   const value = String(hour).padStart(2, "0");
@@ -94,6 +99,10 @@ const PlaceRecommendationFormContent = () => {
   const navigateBack = useAppBackNavigate("/");
 
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+  const stayDurationInputRef = useRef<HTMLInputElement>(null);
+  const activityTypeSelectRef = useRef<HTMLSelectElement>(null);
+  const numberOfPeopleSelectRef = useRef<HTMLSelectElement>(null);
+  const partyTypeSelectRef = useRef<HTMLSelectElement>(null);
 
   const recommendationMutation = useMutation({
     mutationFn: createPlaceRecommendationJob,
@@ -177,7 +186,6 @@ const PlaceRecommendationFormContent = () => {
             />
             <S.TimeSeparator aria-hidden>:</S.TimeSeparator>
             <Dropdown
-              disabled={!timeHour}
               onChange={(minute) => setTime24h(`${timeHour}:${minute}`)}
               options={minuteOptions}
               placeholder="분"
@@ -226,19 +234,29 @@ const PlaceRecommendationFormContent = () => {
               type="checkbox"
               checked={isStayDurationEnabled}
               onChange={(e) => {
-                setIsStayDurationEnabled(e.target.checked);
-                if (!e.target.checked) setStayDurationMinutes(null);
+                if (e.target.checked) {
+                  setIsStayDurationEnabled(true);
+                  stayDurationInputRef.current?.focus();
+                  return;
+                }
+                setIsStayDurationEnabled(false);
+                setStayDurationMinutes(null);
               }}
             />
-            <S.OptionalLabel>머무는 시간</S.OptionalLabel>
+            <S.OptionalLabel>머무는 시간 (분)</S.OptionalLabel>
             <Input
+              ref={stayDurationInputRef}
               value={stayDurationMinutes || ""}
               onChange={(e) => {
                 const onlyNumber = e.target.value.replace(/[^0-9]/g, "");
                 setStayDurationMinutes(onlyNumber ? Number(onlyNumber) : null);
-                if (onlyNumber) setIsStayDurationEnabled(true);
+                if (onlyNumber !== "") setIsStayDurationEnabled(true);
               }}
-              placeholder="예: 120 (분)"
+              onBlur={(e) => {
+                if (e.currentTarget.value === "") setIsStayDurationEnabled(false);
+              }}
+              onFocus={() => setIsStayDurationEnabled(true)}
+              placeholder=""
             />
           </S.OptionalRow>
 
@@ -247,19 +265,32 @@ const PlaceRecommendationFormContent = () => {
               type="checkbox"
               checked={isActivityTypeEnabled}
               onChange={(e) => {
-                setIsActivityTypeEnabled(e.target.checked);
-                if (!e.target.checked) setActivityType(null);
+                if (e.target.checked) {
+                  setIsActivityTypeEnabled(true);
+                  activityTypeSelectRef.current?.focus();
+                  return;
+                }
+                setIsActivityTypeEnabled(false);
+                setActivityType(null);
               }}
             />
             <S.OptionalLabel>활동 유형</S.OptionalLabel>
             <Dropdown
+              ref={activityTypeSelectRef}
               value={activityType || undefined}
+              onBlur={(e) => {
+                if (e.currentTarget.value === "") setIsActivityTypeEnabled(false);
+              }}
+              onFocus={() => setIsActivityTypeEnabled(true)}
               onChange={(val) => {
                 const res = ActivityTypeSchema.safeParse(val);
                 if (res.success) {
                   setActivityType(res.data);
                   setIsActivityTypeEnabled(true);
+                  return;
                 }
+                setActivityType(null);
+                setIsActivityTypeEnabled(false);
               }}
               options={ACTIVITY_OPTIONS}
               placeholder="선택"
@@ -271,19 +302,39 @@ const PlaceRecommendationFormContent = () => {
               type="checkbox"
               checked={isNumberOfPeopleEnabled}
               onChange={(e) => {
-                setIsNumberOfPeopleEnabled(e.target.checked);
-                if (!e.target.checked) setNumberOfPeople(null);
+                if (e.target.checked) {
+                  setIsNumberOfPeopleEnabled(true);
+                  numberOfPeopleSelectRef.current?.focus();
+                  return;
+                }
+                setIsNumberOfPeopleEnabled(false);
+                setNumberOfPeople(null);
               }}
             />
             <S.OptionalLabel>인원</S.OptionalLabel>
-            <Input
-              value={numberOfPeople || ""}
-              onChange={(e) => {
-                const onlyNumber = e.target.value.replace(/[^0-9]/g, "");
-                setNumberOfPeople(onlyNumber ? Number(onlyNumber) : null);
-                if (onlyNumber) setIsNumberOfPeopleEnabled(true);
+            <Dropdown
+              ref={numberOfPeopleSelectRef}
+              value={numberOfPeople === null ? undefined : String(numberOfPeople)}
+              onBlur={(e) => {
+                if (e.currentTarget.value === "") setIsNumberOfPeopleEnabled(false);
               }}
-              placeholder="예 : 3 (명)"
+              onFocus={() => setIsNumberOfPeopleEnabled(true)}
+              onChange={(value) => {
+                const parsedNumberOfPeople = Number(value);
+                if (
+                  Number.isInteger(parsedNumberOfPeople) &&
+                  parsedNumberOfPeople >= 1 &&
+                  parsedNumberOfPeople <= 20
+                ) {
+                  setNumberOfPeople(parsedNumberOfPeople);
+                  setIsNumberOfPeopleEnabled(true);
+                  return;
+                }
+                setNumberOfPeople(null);
+                setIsNumberOfPeopleEnabled(false);
+              }}
+              options={NUMBER_OF_PEOPLE_OPTIONS}
+              placeholder="선택"
             />
           </S.OptionalRow>
 
@@ -292,20 +343,33 @@ const PlaceRecommendationFormContent = () => {
               type="checkbox"
               checked={isPartyTypeEnabled}
               onChange={(e) => {
-                setIsPartyTypeEnabled(e.target.checked);
-                if (!e.target.checked) setPartyType(null);
+                if (e.target.checked) {
+                  setIsPartyTypeEnabled(true);
+                  partyTypeSelectRef.current?.focus();
+                  return;
+                }
+                setIsPartyTypeEnabled(false);
+                setPartyType(null);
               }}
             />
             <S.OptionalLabel>관계 유형</S.OptionalLabel>
             <Dropdown
+              ref={partyTypeSelectRef}
               value={partyType || undefined}
+              onBlur={(e) => {
+                if (e.currentTarget.value === "") setIsPartyTypeEnabled(false);
+              }}
+              onFocus={() => setIsPartyTypeEnabled(true)}
               options={PARTY_OPTIONS}
               onChange={(val) => {
                 const res = PartyTypeSchema.safeParse(val);
                 if (res.success) {
                   setPartyType(res.data);
                   setIsPartyTypeEnabled(true);
+                  return;
                 }
+                setPartyType(null);
+                setIsPartyTypeEnabled(false);
               }}
               placeholder="선택"
             />
