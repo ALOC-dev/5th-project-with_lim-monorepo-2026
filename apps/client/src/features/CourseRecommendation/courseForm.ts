@@ -5,6 +5,10 @@ export const MIN_SELECTED_PLACES = 2;
 export const MAX_SELECTED_PLACES = 15;
 export const MIN_DURATION_HOURS = 2;
 export const MAX_DURATION_HOURS = 8;
+export const MIN_BUDGET_PER_PERSON_WON = 5_000;
+export const MAX_BUDGET_PER_PERSON_WON = 500_000;
+export const DEFAULT_BUDGET_PER_PERSON_WON = 40_000;
+export const BUDGET_PER_PERSON_STEP_WON = 5_000;
 
 const SEOUL_OFFSET_HOURS = 9;
 const MAX_SCHEDULE_DAYS = 365;
@@ -149,8 +153,8 @@ export const getCourseFormValidationError = (
   if (
     budgetPerPersonWon !== undefined &&
     (!Number.isInteger(budgetPerPersonWon) ||
-      budgetPerPersonWon < 5_000 ||
-      budgetPerPersonWon > 500_000)
+      budgetPerPersonWon < MIN_BUDGET_PER_PERSON_WON ||
+      budgetPerPersonWon > MAX_BUDGET_PER_PERSON_WON)
   ) {
     return {
       field: "budgetPerPersonWon",

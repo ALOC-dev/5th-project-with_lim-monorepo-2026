@@ -99,6 +99,19 @@ describe("course repository adapters", () => {
     });
   });
 
+  it("omits the budget from a v2 request when the optional control is disabled", () => {
+    const draft: CourseDraft = {
+      places: [],
+      date: "2026-08-15",
+      startTime: "18:30",
+      durationHours: 4,
+      numberOfPeople: 2,
+      pacePreference: "NORMAL",
+    };
+
+    expect(toCreateCourseV2Request(draft)).not.toHaveProperty("budgetPerPersonWon");
+  });
+
   it("does not reinterpret a legacy favorite_places id as a saved_places id", () => {
     const draft = toCourseDraft({
       places: [

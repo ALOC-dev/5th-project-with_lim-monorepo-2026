@@ -8,7 +8,7 @@ import { DatePicker } from "../../components/DatePicker/DatePicker";
 import { Dropdown, type DropdownOption } from "../../components/Dropdown";
 import FeedbackState from "../../components/FeedbackState/FeedbackState";
 import { Icon } from "../../components/Icon";
-import { Input } from "../../components/Input";
+import { ValueSlider } from "../../components/Rangeslider";
 import { SearchInput } from "../../components/SearchInput";
 import { Skeleton } from "../../components/Skeleton";
 import { CourseIconButton } from "../../features/CourseRecommendation/components/CourseIconButton";
@@ -19,16 +19,21 @@ import type {
   CoursePlaceSource,
 } from "../../features/CourseRecommendation/course.types";
 import {
+  BUDGET_PER_PERSON_STEP_WON,
   type CourseFormValidationField,
+  DEFAULT_BUDGET_PER_PERSON_WON,
   getCourseFormValidationError,
   getCourseScheduleDateBounds,
   getDefaultCourseSchedule,
   isSameCoursePlace,
+  MAX_BUDGET_PER_PERSON_WON,
   MAX_DURATION_HOURS,
   MAX_SELECTED_PLACES,
+  MIN_BUDGET_PER_PERSON_WON,
   MIN_DURATION_HOURS,
   toggleCoursePlace,
 } from "../../features/CourseRecommendation/courseForm";
+import { formatCurrency } from "../../features/CourseRecommendation/courseRecommendation.utils";
 import { courseRepository } from "../../features/CourseRecommendation/courseRepository";
 import { useAppBackNavigate, useAppNavigate } from "../../routes/useAppNavigate";
 import { S } from "./CourseRecommendationFormPage.styled";
@@ -47,6 +52,14 @@ const PACE_OPTIONS: readonly DropdownOption[] = [
   { label: "적당하게", value: "NORMAL" },
   { label: "알차게", value: "PACKED" },
 ];
+
+const NUMBER_OF_PEOPLE_OPTIONS: readonly DropdownOption[] = Array.from(
+  { length: 20 },
+  (_, index) => {
+    const value = index + 1;
+    return { label: `${value}명`, value: String(value) };
+  },
+);
 
 const HOUR_OPTIONS: readonly DropdownOption[] = Array.from({ length: 24 }, (_, hour) => {
   const value = String(hour).padStart(2, "0");
@@ -88,8 +101,11 @@ export const CourseRecommendationFormPage = () => {
   );
   const [durationHours, setDurationHours] = useState(() => retryDraft?.durationHours ?? 3);
   const [numberOfPeople, setNumberOfPeople] = useState(() => retryDraft?.numberOfPeople ?? 2);
-  const [budgetPerPersonWon, setBudgetPerPersonWon] = useState<number | undefined>(
-    () => retryDraft?.budgetPerPersonWon,
+  const [budgetPerPersonWon, setBudgetPerPersonWon] = useState(
+    () => retryDraft?.budgetPerPersonWon ?? DEFAULT_BUDGET_PER_PERSON_WON,
+  );
+  const [isBudgetEnabled, setBudgetEnabled] = useState(
+    () => retryDraft?.budgetPerPersonWon !== undefined,
   );
   const [pacePreference, setPacePreference] = useState<CoursePacePreference>(
     () => retryDraft?.pacePreference ?? "NORMAL",
@@ -100,7 +116,7 @@ export const CourseRecommendationFormPage = () => {
   const pickerTriggerRef = useRef<HTMLButtonElement>(null);
   const dateRef = useRef<HTMLInputElement>(null);
   const startTimeRef = useRef<HTMLSelectElement>(null);
-  const numberOfPeopleRef = useRef<HTMLInputElement>(null);
+  const numberOfPeopleRef = useRef<HTMLSelectElement>(null);
   const budgetRef = useRef<HTMLInputElement>(null);
   const retrySavedPlaceIds =
     retryDraft?.places.flatMap(({ savedPlaceId }) => (savedPlaceId ? [savedPlaceId] : [])) ?? [];
@@ -139,7 +155,7 @@ export const CourseRecommendationFormPage = () => {
         startTime,
         durationHours,
         numberOfPeople,
-        ...(budgetPerPersonWon ? { budgetPerPersonWon } : {}),
+        ...(isBudgetEnabled ? { budgetPerPersonWon } : {}),
         pacePreference,
       }),
     onSuccess: (course) => void navigate(`/course/recommendation/${encodeURIComponent(course.id)}`),
@@ -149,13 +165,12 @@ export const CourseRecommendationFormPage = () => {
   const validationInput = {
     selectedPlaceCount: places.length,
     numberOfPeople,
-    ...(budgetPerPersonWon !== undefined ? { budgetPerPersonWon } : {}),
+    ...(isBudgetEnabled ? { budgetPerPersonWon } : {}),
     date,
     startTime,
   } as const;
   const formError = getCourseFormValidationError(validationInput);
-  const errorDescriptionFor = (field: CourseFormValidationField) =>
-    formError?.field === field ? "course-form-error" : undefined;
+  const canSubmit = formError === null && !createMutation.isPending;
   const focusValidationField = (field: CourseFormValidationField) => {
     switch (field) {
       case "places":
@@ -186,6 +201,7 @@ export const CourseRecommendationFormPage = () => {
   return (
     <CoursePage onBack={navigateBack} title="코스 추천">
       <S.Scroll>
+        <S.RequiredNotice>*필수 입력</S.RequiredNotice>
         <S.Section>
           <S.SectionHeader>
             <S.Heading $required>후보 장소</S.Heading>
@@ -195,8 +211,6 @@ export const CourseRecommendationFormPage = () => {
           </S.SectionHeader>
           <S.Helper>결과에는 후보 중 2~6곳이 포함되며, 제외된 이유도 함께 보여드려요.</S.Helper>
           <S.PickerOpen
-            aria-describedby={errorDescriptionFor("places")}
-            aria-invalid={formError?.field === "places"}
             id="course-places"
             onClick={() => setPickerOpen(true)}
             ref={pickerTriggerRef}
@@ -230,8 +244,6 @@ export const CourseRecommendationFormPage = () => {
           <S.Field $required>
             <label htmlFor="course-date">날짜</label>
             <DatePicker
-              ariaDescribedBy={errorDescriptionFor("date")}
-              ariaInvalid={formError?.field === "date"}
               inputId="course-date"
               inputRef={dateRef}
               maxDate={scheduleDateBounds.maxDate}
@@ -245,8 +257,6 @@ export const CourseRecommendationFormPage = () => {
             <label htmlFor="course-time-hour">시각</label>
             <S.TimeSelection aria-label="시각 선택">
               <Dropdown
-                ariaDescribedBy={errorDescriptionFor("startTime")}
-                ariaInvalid={formError?.field === "startTime"}
                 id="course-time-hour"
                 onChange={(hour) => setStartTime(`${hour}:${startTimeMinute || "00"}`)}
                 options={HOUR_OPTIONS}
@@ -256,8 +266,6 @@ export const CourseRecommendationFormPage = () => {
               />
               <S.TimeSeparator aria-hidden>:</S.TimeSeparator>
               <Dropdown
-                ariaDescribedBy={errorDescriptionFor("startTime")}
-                ariaInvalid={formError?.field === "startTime"}
                 ariaLabel="분"
                 disabled={!startTimeHour}
                 id="course-time-minute"
@@ -280,16 +288,12 @@ export const CourseRecommendationFormPage = () => {
           <S.FieldGrid>
             <S.Field $required>
               <label htmlFor="course-people">인원</label>
-              <Input
-                aria-describedby={errorDescriptionFor("numberOfPeople")}
-                aria-invalid={formError?.field === "numberOfPeople"}
+              <Dropdown
                 id="course-people"
-                max={20}
-                min={1}
-                onChange={(event) => setNumberOfPeople(Number(event.target.value))}
+                onChange={(value) => setNumberOfPeople(Number(value))}
+                options={NUMBER_OF_PEOPLE_OPTIONS}
                 ref={numberOfPeopleRef}
-                type="number"
-                value={numberOfPeople}
+                value={String(numberOfPeople)}
               />
             </S.Field>
             <S.Field $required>
@@ -302,44 +306,35 @@ export const CourseRecommendationFormPage = () => {
               />
             </S.Field>
           </S.FieldGrid>
-          <S.Field>
-            <label htmlFor="course-budget">1인당 예산 (선택)</label>
-            <Input
-              aria-describedby={errorDescriptionFor("budgetPerPersonWon")}
-              aria-invalid={formError?.field === "budgetPerPersonWon"}
-              id="course-budget"
-              max={500_000}
-              min={5_000}
-              onChange={(event) =>
-                setBudgetPerPersonWon(
-                  event.target.value === "" ? undefined : Number(event.target.value),
-                )
-              }
-              placeholder="예: 50000"
+          <S.OptionalRow>
+            <S.Checkbox
+              checked={isBudgetEnabled}
+              id="course-budget-enabled"
+              onChange={(event) => setBudgetEnabled(event.target.checked)}
               ref={budgetRef}
-              step={1_000}
-              type="number"
-              value={budgetPerPersonWon ?? ""}
+              type="checkbox"
             />
-          </S.Field>
-          {formError ? (
-            <S.FieldError id="course-form-error" role="alert">
-              {formError.message}
-            </S.FieldError>
-          ) : null}
+            <S.OptionalLabel htmlFor="course-budget-enabled">1인당 예산</S.OptionalLabel>
+            <S.BudgetWrapper $disabled={!isBudgetEnabled} aria-disabled={!isBudgetEnabled}>
+              <S.BudgetAmountText>{formatCurrency(budgetPerPersonWon)}</S.BudgetAmountText>
+              <ValueSlider
+                ariaLabel="1인당 예산"
+                disabled={!isBudgetEnabled}
+                max={MAX_BUDGET_PER_PERSON_WON}
+                min={MIN_BUDGET_PER_PERSON_WON}
+                onChange={setBudgetPerPersonWon}
+                step={BUDGET_PER_PERSON_STEP_WON}
+                value={budgetPerPersonWon}
+              />
+            </S.BudgetWrapper>
+          </S.OptionalRow>
         </S.Section>
         {createMutation.isError ? (
           <FeedbackState kind="error" title="코스 추천 요청을 만들지 못했어요" />
         ) : null}
       </S.Scroll>
       <S.Bottom>
-        <Button
-          aria-describedby={formError ? "course-form-error" : undefined}
-          disabled={createMutation.isPending}
-          onClick={handleSubmit}
-          type="button"
-          width="100%"
-        >
+        <Button disabled={!canSubmit} onClick={handleSubmit} type="button" width="100%">
           코스 추천 받기
         </Button>
       </S.Bottom>

@@ -109,6 +109,12 @@ describe("getCourseFormValidationError", () => {
   it("returns null for a valid form", () => {
     expect(getCourseFormValidationError(validInput, now)).toBeNull();
   });
+
+  it("allows the per-person budget to be omitted", () => {
+    expect(
+      getCourseFormValidationError({ ...validInput, budgetPerPersonWon: undefined }, now),
+    ).toBeNull();
+  });
 });
 
 describe("toggleCoursePlace", () => {

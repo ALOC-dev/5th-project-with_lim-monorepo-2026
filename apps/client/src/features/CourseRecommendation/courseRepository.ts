@@ -109,7 +109,9 @@ export const toCourseDraft = (input: CreateCourseRequest): CourseDraft => {
       startTime: input.startTime,
       durationHours: input.durationHours,
       numberOfPeople: input.numberOfPeople,
-      ...(input.budgetPerPersonWon ? { budgetPerPersonWon: input.budgetPerPersonWon } : {}),
+      ...(input.budgetPerPersonWon !== undefined
+        ? { budgetPerPersonWon: input.budgetPerPersonWon }
+        : {}),
       pacePreference: input.pacePreference,
     };
   }
@@ -270,7 +272,9 @@ export const toCreateCourseV2Request = (draft: CourseDraft): CreateCourseV2Reque
   startTime: draft.startTime,
   durationHours: draft.durationHours,
   numberOfPeople: draft.numberOfPeople,
-  ...(draft.budgetPerPersonWon ? { budgetPerPersonWon: draft.budgetPerPersonWon } : {}),
+  ...(draft.budgetPerPersonWon !== undefined
+    ? { budgetPerPersonWon: draft.budgetPerPersonWon }
+    : {}),
   pacePreference: draft.pacePreference,
 });
 

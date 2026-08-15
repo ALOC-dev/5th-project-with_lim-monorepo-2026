@@ -203,14 +203,14 @@ export const S = {
     accent-color: ${tokens.color.primary["700"]};
   `,
 
-  OptionalLabel: styled.span`
+  OptionalLabel: styled.label`
     width: 90px;
     font-size: 13px;
     font-weight: 500;
     line-height: 18px;
     white-space: nowrap; // 두 줄로 줄바꿈 되지 않음
     flex-shrink: 0;
-    color: ${tokens.color.secondary["700"]};
+    color: ${tokens.color.neutral["700"]};
   `,
 
   BudgetWrapper: styled.div<{ $disabled: boolean }>`
@@ -226,7 +226,9 @@ export const S = {
   `,
 
   ButtonWrapper: styled.div`
-    margin-top: 24px;
+    flex: none;
+    padding: 16px 28px 24px;
+    border-top: 1px solid ${tokens.color.neutral["200"]};
   `,
 
   SubmitErrorMessage: styled.p`

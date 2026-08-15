@@ -13,6 +13,11 @@ export const S = {
     padding: 24px;
     overflow: auto;
   `,
+  RequiredNotice: styled.span`
+    margin-bottom: -8px;
+    color: ${tokens.color.primary[500]};
+    ${tokens.typography.label.xs};
+  `,
   Section: styled.section`
     display: flex;
     flex-direction: column;
@@ -111,6 +116,45 @@ export const S = {
         content: " *";
       }
     }
+  `,
+  OptionalRow: styled.div`
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    & > :last-child {
+      flex: 1;
+      width: 100%;
+    }
+  `,
+  Checkbox: styled.input`
+    width: 20px;
+    height: 20px;
+    flex: none;
+    cursor: pointer;
+    accent-color: ${tokens.color.primary[700]};
+  `,
+  OptionalLabel: styled.label`
+    width: 90px;
+    flex: none;
+    color: ${tokens.color.neutral[700]};
+    white-space: nowrap;
+    ${tokens.typography.label.sm};
+  `,
+  BudgetWrapper: styled.div<{ $disabled: boolean }>`
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    justify-content: center;
+    gap: 8px;
+    opacity: ${({ $disabled }) => ($disabled ? 0.4 : 1)};
+    pointer-events: ${({ $disabled }) => ($disabled ? "none" : "auto")};
+    transition: opacity 0.2s ease;
+  `,
+  BudgetAmountText: styled.div`
+    color: ${tokens.color.neutral[700]};
+    text-align: right;
+    ${tokens.typography.label.sm};
   `,
   FieldError: styled.p`
     margin: 0;

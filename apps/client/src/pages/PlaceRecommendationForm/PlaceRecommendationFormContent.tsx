@@ -4,7 +4,7 @@ import {
   PartyTypeSchema,
 } from "@monorepo/recommendation-engine/v1/contracts";
 import { useMutation } from "@tanstack/react-query";
-import { useRef, useState } from "react";
+import { useRef } from "react";
 
 import { createPlaceRecommendationJob } from "../../apis/server/placeRecommendation";
 import { Button } from "../../components/Button";
@@ -13,7 +13,6 @@ import { DatePicker } from "../../components/DatePicker/DatePicker";
 import { Dropdown, type DropdownOption } from "../../components/Dropdown";
 import Header from "../../components/Header/Header";
 import { Input } from "../../components/Input";
-import Modal from "../../components/Modal/Modal";
 import { RangeSlider } from "../../components/Rangeslider";
 import { useAppBackNavigate, useAppNavigate } from "../../routes/useAppNavigate";
 import { dispatchPlaceRecommendationRequest } from "./input";
@@ -98,7 +97,6 @@ const PlaceRecommendationFormContent = () => {
   const navigate = useAppNavigate();
   const navigateBack = useAppBackNavigate("/");
 
-  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
   const stayDurationInputRef = useRef<HTMLInputElement>(null);
   const activityTypeSelectRef = useRef<HTMLSelectElement>(null);
   const numberOfPeopleSelectRef = useRef<HTMLSelectElement>(null);
@@ -124,13 +122,6 @@ const PlaceRecommendationFormContent = () => {
     recommendationMutation.data?.success === false ? recommendationMutation.data.error : null;
 
   const handleRecommendationClick = () => {
-    const userInput = buildUserInput();
-    if (userInput === null) return;
-    setIsConfirmModalOpen(true);
-  };
-
-  const handleConfirmSubmit = () => {
-    setIsConfirmModalOpen(false);
     const userInput = buildUserInput();
     if (userInput === null) return;
 
@@ -177,6 +168,7 @@ const PlaceRecommendationFormContent = () => {
           <S.FormLabel $required>시각</S.FormLabel>
           <S.TimeSelection aria-label="시각 선택">
             <Dropdown
+              ariaLabel="시각(시)"
               onChange={(hour) => {
                 setTime24h(`${hour}:${hour === "24" ? "00" : timeMinute || "00"}`);
               }}
@@ -186,6 +178,8 @@ const PlaceRecommendationFormContent = () => {
             />
             <S.TimeSeparator aria-hidden>:</S.TimeSeparator>
             <Dropdown
+              ariaLabel="시각(분)"
+              disabled={!timeHour}
               onChange={(minute) => setTime24h(`${timeHour}:${minute}`)}
               options={minuteOptions}
               placeholder="분"
@@ -204,7 +198,11 @@ const PlaceRecommendationFormContent = () => {
               <S.LocationItem key={idx}>
                 <S.LocationBadge>{ALPHABETS[idx]}</S.LocationBadge>
                 <S.LocationText>{loc.roadNameAddress}</S.LocationText>
-                <S.RemoveButton type="button" onClick={() => handleRemoveLocation(idx)}>
+                <S.RemoveButton
+                  aria-label={`${loc.roadNameAddress} 출발지 삭제`}
+                  type="button"
+                  onClick={() => handleRemoveLocation(idx)}
+                >
                   ✕
                 </S.RemoveButton>
               </S.LocationItem>
@@ -218,10 +216,11 @@ const PlaceRecommendationFormContent = () => {
         </S.LocationSection>
 
         <S.TextareaContainer>
-          <S.FormLabel as="span" $required>
+          <S.FormLabel htmlFor="place-request" $required>
             요청사항
           </S.FormLabel>
           <S.StyledTextarea
+            id="place-request"
             value={userNaturalLanguageRequest}
             onChange={(e) => setUserNaturalLanguageRequest(e.target.value)}
             placeholder="예 : 대화하기 좋은 저녁 식사 장소를 추천해주세요."
@@ -231,6 +230,7 @@ const PlaceRecommendationFormContent = () => {
         <S.OptionalSection>
           <S.OptionalRow>
             <S.Checkbox
+              id="place-stay-duration-enabled"
               type="checkbox"
               checked={isStayDurationEnabled}
               onChange={(e) => {
@@ -243,8 +243,11 @@ const PlaceRecommendationFormContent = () => {
                 setStayDurationMinutes(null);
               }}
             />
-            <S.OptionalLabel>머무는 시간 (분)</S.OptionalLabel>
+            <S.OptionalLabel htmlFor="place-stay-duration-enabled">
+              머무는 시간 (분)
+            </S.OptionalLabel>
             <Input
+              aria-label="머무는 시간(분)"
               ref={stayDurationInputRef}
               value={stayDurationMinutes || ""}
               onChange={(e) => {
@@ -262,6 +265,7 @@ const PlaceRecommendationFormContent = () => {
 
           <S.OptionalRow>
             <S.Checkbox
+              id="place-activity-enabled"
               type="checkbox"
               checked={isActivityTypeEnabled}
               onChange={(e) => {
@@ -274,8 +278,9 @@ const PlaceRecommendationFormContent = () => {
                 setActivityType(null);
               }}
             />
-            <S.OptionalLabel>활동 유형</S.OptionalLabel>
+            <S.OptionalLabel htmlFor="place-activity-enabled">활동 유형</S.OptionalLabel>
             <Dropdown
+              ariaLabel="활동 유형"
               ref={activityTypeSelectRef}
               value={activityType || undefined}
               onBlur={(e) => {
@@ -299,6 +304,7 @@ const PlaceRecommendationFormContent = () => {
 
           <S.OptionalRow>
             <S.Checkbox
+              id="place-people-enabled"
               type="checkbox"
               checked={isNumberOfPeopleEnabled}
               onChange={(e) => {
@@ -311,8 +317,9 @@ const PlaceRecommendationFormContent = () => {
                 setNumberOfPeople(null);
               }}
             />
-            <S.OptionalLabel>인원</S.OptionalLabel>
+            <S.OptionalLabel htmlFor="place-people-enabled">인원</S.OptionalLabel>
             <Dropdown
+              ariaLabel="인원"
               ref={numberOfPeopleSelectRef}
               value={numberOfPeople === null ? undefined : String(numberOfPeople)}
               onBlur={(e) => {
@@ -340,6 +347,7 @@ const PlaceRecommendationFormContent = () => {
 
           <S.OptionalRow>
             <S.Checkbox
+              id="place-party-enabled"
               type="checkbox"
               checked={isPartyTypeEnabled}
               onChange={(e) => {
@@ -352,8 +360,9 @@ const PlaceRecommendationFormContent = () => {
                 setPartyType(null);
               }}
             />
-            <S.OptionalLabel>관계 유형</S.OptionalLabel>
+            <S.OptionalLabel htmlFor="place-party-enabled">관계 유형</S.OptionalLabel>
             <Dropdown
+              ariaLabel="관계 유형"
               ref={partyTypeSelectRef}
               value={partyType || undefined}
               onBlur={(e) => {
@@ -377,20 +386,22 @@ const PlaceRecommendationFormContent = () => {
 
           <S.OptionalRow>
             <S.Checkbox
+              id="place-budget-enabled"
               type="checkbox"
               checked={isBudgetEnabled}
               onChange={(e) => {
                 setIsBudgetEnabled(e.target.checked);
-                if (!e.target.checked) setBudgetPerPerson(null);
               }}
             />
-            <S.OptionalLabel>예산</S.OptionalLabel>
-            <S.BudgetWrapper $disabled={!isBudgetEnabled}>
+            <S.OptionalLabel htmlFor="place-budget-enabled">예산</S.OptionalLabel>
+            <S.BudgetWrapper $disabled={!isBudgetEnabled} aria-disabled={!isBudgetEnabled}>
               <S.BudgetAmountText>
                 {formatCurrency(budgetPerPerson?.[0] ?? 20000)} ~{" "}
                 {formatCurrency(budgetPerPerson?.[1] ?? 40000)}
               </S.BudgetAmountText>
               <RangeSlider
+                ariaLabels={["최소 예산", "최대 예산"]}
+                disabled={!isBudgetEnabled}
                 min={0}
                 max={150000}
                 step={5000}
@@ -406,37 +417,21 @@ const PlaceRecommendationFormContent = () => {
             </S.BudgetWrapper>
           </S.OptionalRow>
         </S.OptionalSection>
-
-        <S.ButtonWrapper>
-          {submitErrorMessage !== null && (
-            <S.SubmitErrorMessage role="alert">{submitErrorMessage}</S.SubmitErrorMessage>
-          )}
-          <Button
-            type="button"
-            width="100%"
-            disabled={!canSubmit}
-            onClick={handleRecommendationClick}
-          >
-            {recommendationMutation.isPending ? "추천 요청 중..." : "추천 받기"}
-          </Button>
-        </S.ButtonWrapper>
       </S.ScrollContent>
 
-      <Modal
-        id="recommendation-confirm-modal"
-        isOpen={isConfirmModalOpen}
-        close={() => setIsConfirmModalOpen(false)}
-        title="진행하시겠어요?"
-        description="추천 조건으로 다음 단계로 이동합니다."
-        secondaryAction={{
-          label: "취소",
-          onClick: () => setIsConfirmModalOpen(false),
-        }}
-        primaryAction={{
-          label: "진행",
-          onClick: handleConfirmSubmit,
-        }}
-      />
+      <S.ButtonWrapper>
+        {submitErrorMessage !== null && (
+          <S.SubmitErrorMessage role="alert">{submitErrorMessage}</S.SubmitErrorMessage>
+        )}
+        <Button
+          type="button"
+          width="100%"
+          disabled={!canSubmit}
+          onClick={handleRecommendationClick}
+        >
+          {recommendationMutation.isPending ? "추천 요청 중..." : "추천 받기"}
+        </Button>
+      </S.ButtonWrapper>
     </S.RootContainer>
   );
 };
