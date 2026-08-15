@@ -431,6 +431,40 @@ export const assessSemanticFit = (evidence: CandidateScoringEvidence): SemanticF
   };
 };
 
+/**
+ * 외부 claim 없이 seed의 구조화 필드만으로 확정 가능한 충돌만 거른다.
+ * 식이·맥주·검증 가격은 반드시 enrichment 이후의 전체 semantic gate에 남겨 둔다.
+ */
+export const assessPreEnrichmentSemanticFit = (
+  evidence: CandidateScoringEvidence,
+): SemanticFitAssessment => {
+  const request = normalizeText(evidence.userFit.naturalLanguageRequest);
+  const requestedIntent = inferRequestedIntent(request);
+  const positiveSignals = getPositiveSignals(evidence);
+  const mismatch = findSeedOnlyConstraintMismatch(request, evidence);
+  if (!mismatch) {
+    return {
+      status: "PASS",
+      score: 1,
+      severity: "NONE",
+      requestedIntent,
+      reason: "seed 정보에서 확정 가능한 충돌 없음",
+      positiveSignals,
+      negativeSignals: [],
+    };
+  }
+
+  return {
+    status: "REJECT",
+    score: 0,
+    severity: "STRONG",
+    requestedIntent,
+    reason: mismatch.reason,
+    positiveSignals,
+    negativeSignals: [mismatch.label],
+  };
+};
+
 export const getSemanticScoreAdjustment = ({
   severity,
   score,
@@ -455,6 +489,16 @@ const findExplicitConstraintMismatch = (
   findDietaryVerificationMismatch(request, evidence) ??
   findBeerVenueVerificationMismatch(request, evidence) ??
   findVerifiedBudgetFloorMismatch(evidence) ??
+  findSeoulLocalityMismatch(request, evidence);
+
+const findSeedOnlyConstraintMismatch = (
+  request: string,
+  evidence: CandidateScoringEvidence,
+): ExplicitConstraintMismatch | undefined =>
+  findSpecificDishMismatch(request, evidence) ??
+  findCuisineMismatch(request, evidence) ??
+  findExplicitMealVenueMismatch(request, evidence) ??
+  findVegetarianMismatch(request, evidence) ??
   findSeoulLocalityMismatch(request, evidence);
 
 const findSpecificDishMismatch = (

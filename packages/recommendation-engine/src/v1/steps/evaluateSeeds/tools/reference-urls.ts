@@ -89,6 +89,10 @@ export const resolveCandidateReferenceUrls = async (
     timeoutMs: options.timeoutMs,
     settleMs: options.settleMs,
   };
+  // Kakao의 provider entity 또는 강한 Kakao entity match 하나면 public reference
+  // hard gate는 충족한다. 이때 Naver Map을 추가로 Playwright로 확인하는 것은 결과의
+  // 동일성/영업 판정에 아무 근거도 더하지 않고, 후보 하나당 수 초~수십 초를 더한다.
+  // Kakao가 약하거나 없을 때만 Naver를 보조 근거로 조회한다.
   const kakaoMapMatch =
     !canUseExistingKakaoMap
       ? await (options.resolveKakaoMapReferenceUrl
@@ -98,18 +102,18 @@ export const resolveCandidateReferenceUrls = async (
             })
         ).catch(() => undefined)
       : undefined;
+  const kakaoMap = canUseExistingKakaoMap ? existingKakaoMap?.url : kakaoMapMatch?.url;
+  const hasStrongKakaoReference =
+    canUseExistingKakaoMap ||
+    (kakaoMapMatch !== undefined && hasReferenceEntityEvidence(kakaoMapMatch.identity));
   const naverMapMatch =
-    !canUseExistingNaverMap
+    !hasStrongKakaoReference && !canUseExistingNaverMap
       ? await (options.resolveNaverMapReferenceUrl
           ? options.resolveNaverMapReferenceUrl(evidence, naverResolverOptions)
           : resolveNaverMapReferenceUrl(evidence, naverResolverOptions)
         ).catch(() => undefined)
       : undefined;
-  const kakaoMap = canUseExistingKakaoMap ? existingKakaoMap?.url : kakaoMapMatch?.url;
   const naverMap = canUseExistingNaverMap ? existingNaverMap?.url : naverMapMatch?.url;
-  const hasStrongKakaoReference =
-    canUseExistingKakaoMap ||
-    (kakaoMapMatch !== undefined && hasReferenceEntityEvidence(kakaoMapMatch.identity));
   const hasWeakLoneNaverReference =
     naverMapMatch !== undefined && !hasReferenceEntityEvidence(naverMapMatch.identity);
 
@@ -222,6 +226,16 @@ const hasStrongExistingReference = (
 
 const isTrustedReferenceDetail = (detail: EnrichmentSourceDetail): boolean => {
   if (detail.sourceUrls.length === 0) return false;
+  // 영업시간은 Naver/다른 source에서 OPEN으로 확인될 수 있다. Kakao Local의 공식
+  // place URL은 그 경우에도 장소 동일성의 독립 근거이므로, 강한 entity match가 있으면
+  // Kakao 자체의 operation status가 UNKNOWN이어도 reference로 재사용할 수 있다.
+  if (
+    detail.source === "kakao-local" &&
+    detail.referenceIdentity !== undefined &&
+    hasReferenceEntityEvidence(detail.referenceIdentity)
+  ) {
+    return true;
+  }
   if (detail.status !== "OPEN") return false;
   if (detail.identityMatchScore === undefined) {
     return detail.source === "naver-map";

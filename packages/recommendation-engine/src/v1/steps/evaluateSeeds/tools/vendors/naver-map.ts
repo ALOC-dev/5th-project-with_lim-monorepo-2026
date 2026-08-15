@@ -41,6 +41,7 @@ export const scrapeNaverMapCandidate = async (
     operationVerifier,
     sourceName: "naver-map",
     sourceTextKind: "scraped_page",
+    allowLlmFallback: options.allowLlmFallback,
     logger: options.logger,
   });
   const operationInfo = operationParse.operationInfo;
@@ -59,7 +60,7 @@ export const scrapeNaverMapCandidate = async (
     operationInfo,
     operationVerification,
     priceRangePerPerson: inferPriceRangePerPersonFromText(searchableText, evidence.category),
-    rawTextSnippet: searchableText.slice(0, 2_000),
+    rawTextSnippet: searchableText.slice(0, 7_000),
     scrapeCache: cache,
     sourceDetails: [
       {
