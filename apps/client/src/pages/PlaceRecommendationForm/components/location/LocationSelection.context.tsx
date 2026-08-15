@@ -38,7 +38,7 @@ export const LocationSelectionProvider = ({
   readonly children: ReactNode;
   readonly isLocationSheetOpen: boolean;
 }) => {
-  const [mode, setMode] = useState<LocationSelectionMode>("search");
+  const [mode, setMode] = useState<LocationSelectionMode>("map");
   const [query, setQuery] = useState("");
   const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
   const [currentLocation, setCurrentLocation] = useState<LocationCoordinates | null>(null);

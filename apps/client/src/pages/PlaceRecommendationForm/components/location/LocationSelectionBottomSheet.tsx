@@ -15,16 +15,16 @@ const LocationSelectionBottomSheet = () => {
   const isLocationSheetOpen = isSheetOpen("location");
 
   return (
-    <LocationSelectionProvider isLocationSheetOpen={isLocationSheetOpen}>
-      <BottomSheet
-        id={"location-selector-bottomsheet"}
-        isOpen={isLocationSheetOpen}
-        close={closeSheet}
-        handleType="none"
-      >
+    <BottomSheet
+      id={"location-selector-bottomsheet"}
+      isOpen={isLocationSheetOpen}
+      close={closeSheet}
+      handleType="none"
+    >
+      <LocationSelectionProvider isLocationSheetOpen={isLocationSheetOpen}>
         <LocationSelectionBottomSheetContent />
-      </BottomSheet>
-    </LocationSelectionProvider>
+      </LocationSelectionProvider>
+    </BottomSheet>
   );
 };
 
