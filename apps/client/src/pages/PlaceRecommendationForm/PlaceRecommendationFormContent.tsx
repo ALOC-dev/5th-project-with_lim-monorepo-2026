@@ -8,6 +8,8 @@ import { useState } from "react";
 
 import { createPlaceRecommendationJob } from "../../apis/server/placeRecommendation";
 import { Button } from "../../components/Button";
+import { fromDateISO, getLocalTodayDateISO, toDateISO } from "../../components/DatePicker/calendar";
+import { DatePicker } from "../../components/DatePicker/DatePicker";
 import { Dropdown, type DropdownOption } from "../../components/Dropdown";
 import Header from "../../components/Header/Header";
 import { Input } from "../../components/Input";
@@ -51,16 +53,12 @@ const formatCurrency = (value: number) => {
   return new Intl.NumberFormat("ko-KR").format(value) + "원";
 };
 
-const getDayOfWeek = (year: number, month: number, day: number) => {
-  const days = ["일", "월", "화", "수", "목", "금", "토"];
-  return days[new Date(year, month - 1, day).getDay()];
-};
-
 const PlaceRecommendationFormContent = () => {
   const {
     locations,
     setLocations,
     date,
+    setDate,
     time24h,
     setTime24h,
     userNaturalLanguageRequest,
@@ -107,9 +105,7 @@ const PlaceRecommendationFormContent = () => {
     },
   });
 
-  const formattedDate = date
-    ? `${date.year}-${String(date.month).padStart(2, "0")}-${String(date.day).padStart(2, "0")} (${getDayOfWeek(date.year, date.month, date.day)})`
-    : "";
+  const dateISO = date ? toDateISO(date) : null;
   const [timeHour = "", timeMinute = ""] = (time24h ?? "").split(":");
   const minuteOptions = timeHour === "24" ? MINUTE_OPTIONS.slice(0, 1) : MINUTE_OPTIONS;
 
@@ -156,14 +152,16 @@ const PlaceRecommendationFormContent = () => {
           <S.FormLabel htmlFor="form-date" $required>
             날짜
           </S.FormLabel>
-          <S.DateInputWrapper onClick={() => openSheet("date")}>
-            <Input
-              id="form-date"
-              value={formattedDate}
-              placeholder="날짜를 선택해주세요"
-              readOnly
-            />
-          </S.DateInputWrapper>
+          <DatePicker
+            inputId="form-date"
+            minDate={getLocalTodayDateISO()}
+            onChange={(nextDateISO) => {
+              const nextDate = fromDateISO(nextDateISO);
+              if (nextDate) setDate(nextDate);
+            }}
+            sheetId="place-date-selection"
+            value={dateISO}
+          />
         </S.FormRow>
 
         <S.FormRow>

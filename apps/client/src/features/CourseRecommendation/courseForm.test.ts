@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { CoursePlace } from "./course.types";
 import {
   getCourseFormValidationError,
+  getCourseScheduleDateBounds,
   getDefaultCourseSchedule,
   toggleCoursePlace,
   validateCourseSchedule,
@@ -34,6 +35,19 @@ describe("getDefaultCourseSchedule", () => {
 
   it("moves to the following slot even when already aligned", () => {
     expect(getDefaultCourseSchedule(new Date("2026-08-14T09:30:00.000Z")).startTime).toBe("19:00");
+  });
+});
+
+describe("getCourseScheduleDateBounds", () => {
+  it("uses Seoul dates for today and the 365-day upper bound", () => {
+    expect(getCourseScheduleDateBounds(new Date("2026-08-14T14:59:00.000Z"))).toEqual({
+      minDate: "2026-08-14",
+      maxDate: "2027-08-14",
+    });
+    expect(getCourseScheduleDateBounds(new Date("2026-08-14T15:01:00.000Z"))).toEqual({
+      minDate: "2026-08-15",
+      maxDate: "2027-08-15",
+    });
   });
 });
 

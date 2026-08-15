@@ -82,14 +82,6 @@ export const S = {
     color: ${tokens.color.warning[500]};
     ${tokens.typography.body.xs};
   `,
-  Select: styled.select`
-    height: 48px;
-    padding: 0 12px;
-    border: 1px solid ${tokens.color.neutral[200]};
-    border-radius: 8px;
-    background: ${tokens.color.neutral[0]};
-    ${tokens.typography.body.sm};
-  `,
   Bottom: styled.div`
     padding: 16px 24px 24px;
     border-top: 1px solid ${tokens.color.neutral[200]};

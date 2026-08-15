@@ -4,7 +4,6 @@ import { useLocation } from "react-router-dom";
 
 import PageRoot from "../../components/PageRoot/PageRoot";
 import { tokens } from "../../design-system/tokens.generated";
-import DateSelectionBottomSheet from "./components/date/DateSelectionBottomSheet";
 import LocationSelectionBottomSheet from "./components/location/LocationSelectionBottomSheet";
 import {
   getPlaceRecommendationFormInitialValues,
@@ -43,16 +42,10 @@ const PlaceRecommendationFlowProvider = ({
   const [stayDurationMinutes, setStayDurationMinutes] = useState(
     () => initialValues.stayDurationMinutes,
   );
-  const [numberOfPeople, setNumberOfPeople] = useState(
-    () => initialValues.numberOfPeople,
-  );
+  const [numberOfPeople, setNumberOfPeople] = useState(() => initialValues.numberOfPeople);
   const [partyType, setPartyType] = useState(() => initialValues.partyType);
-  const [activityType, setActivityType] = useState(
-    () => initialValues.activityType,
-  );
-  const [budgetPerPerson, setBudgetPerPerson] = useState(
-    () => initialValues.budgetPerPerson,
-  );
+  const [activityType, setActivityType] = useState(() => initialValues.activityType);
+  const [budgetPerPerson, setBudgetPerPerson] = useState(() => initialValues.budgetPerPerson);
 
   // 선택 입력 활성화(체크박스) 여부를 관리하는 boolean 상태
   const [isStayDurationEnabled, setIsStayDurationEnabled] = useState(
@@ -67,9 +60,7 @@ const PlaceRecommendationFlowProvider = ({
   const [isPartyTypeEnabled, setIsPartyTypeEnabled] = useState(
     () => initialValues.isPartyTypeEnabled,
   );
-  const [isBudgetEnabled, setIsBudgetEnabled] = useState(
-    () => initialValues.isBudgetEnabled,
-  );
+  const [isBudgetEnabled, setIsBudgetEnabled] = useState(() => initialValues.isBudgetEnabled);
 
   const [activeSheet, setActiveSheet] = useState<PlaceRecommendationFormSheet | null>(null);
 
@@ -229,7 +220,6 @@ const PlaceRecommendationFormPage = () => {
       <PageRoot backgroundColor={tokens.color.neutral[50]} layout="contained">
         <PlaceRecommendationFormContent />
         <LocationSelectionBottomSheet />
-        <DateSelectionBottomSheet />
       </PageRoot>
     </PlaceRecommendationFlowProvider>
   );

@@ -25,7 +25,7 @@ const S = {
     transition: all 0.2s ease;
 
     &::placeholder {
-      color: ${theme.tokens.color.neutral[700]};
+      color: ${theme.tokens.color.neutral[200]};
     }
 
     &:focus {

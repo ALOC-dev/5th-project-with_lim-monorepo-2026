@@ -4,6 +4,8 @@ import { useLocation } from "react-router-dom";
 
 import BottomSheet from "../../components/BottomSheet/BottomSheet";
 import { Button } from "../../components/Button";
+import { DatePicker } from "../../components/DatePicker/DatePicker";
+import { Dropdown, type DropdownOption } from "../../components/Dropdown";
 import FeedbackState from "../../components/FeedbackState/FeedbackState";
 import { Icon } from "../../components/Icon";
 import { Input } from "../../components/Input";
@@ -18,6 +20,7 @@ import type {
 import {
   type CourseFormValidationField,
   getCourseFormValidationError,
+  getCourseScheduleDateBounds,
   getDefaultCourseSchedule,
   isSameCoursePlace,
   MAX_DURATION_HOURS,
@@ -30,12 +33,27 @@ import { useAppBackNavigate, useAppNavigate } from "../../routes/useAppNavigate"
 import { S } from "./CourseRecommendationFormPage.styled";
 import { getCourseRecommendationRetryDraft } from "./retryDraft";
 
+const DURATION_OPTIONS: readonly DropdownOption[] = Array.from(
+  { length: MAX_DURATION_HOURS - MIN_DURATION_HOURS + 1 },
+  (_, index) => {
+    const hours = MIN_DURATION_HOURS + index;
+    return { label: `${hours}시간`, value: String(hours) };
+  },
+);
+
+const PACE_OPTIONS: readonly DropdownOption[] = [
+  { label: "여유롭게", value: "RELAXED" },
+  { label: "적당하게", value: "NORMAL" },
+  { label: "알차게", value: "PACKED" },
+];
+
 export const CourseRecommendationFormPage = () => {
   const navigate = useAppNavigate();
   const navigateBack = useAppBackNavigate("/");
   const location = useLocation();
   const retryDraft = getCourseRecommendationRetryDraft(location.state as unknown);
   const defaultSchedule = getDefaultCourseSchedule();
+  const scheduleDateBounds = getCourseScheduleDateBounds();
   const [places, setPlaces] = useState<CoursePlace[]>(() => [...(retryDraft?.places ?? [])]);
   const [date, setDate] = useState(() => retryDraft?.date ?? defaultSchedule.date);
   const [startTime, setStartTime] = useState(
@@ -175,13 +193,15 @@ export const CourseRecommendationFormPage = () => {
           <S.FieldGrid>
             <S.Field>
               <label htmlFor="course-date">날짜</label>
-              <Input
-                aria-describedby={errorDescriptionFor("date")}
-                aria-invalid={formError?.field === "date"}
-                id="course-date"
-                onChange={(event) => setDate(event.target.value)}
-                ref={dateRef}
-                type="date"
+              <DatePicker
+                ariaDescribedBy={errorDescriptionFor("date")}
+                ariaInvalid={formError?.field === "date"}
+                inputId="course-date"
+                inputRef={dateRef}
+                maxDate={scheduleDateBounds.maxDate}
+                minDate={scheduleDateBounds.minDate}
+                onChange={setDate}
+                sheetId="course-date-selection"
                 value={date}
               />
             </S.Field>
@@ -200,20 +220,12 @@ export const CourseRecommendationFormPage = () => {
           </S.FieldGrid>
           <S.Field>
             <label htmlFor="course-duration">총 시간</label>
-            <S.Select
+            <Dropdown
               id="course-duration"
-              onChange={(event) => setDurationHours(Number(event.target.value))}
-              value={durationHours}
-            >
-              {Array.from(
-                { length: MAX_DURATION_HOURS - MIN_DURATION_HOURS + 1 },
-                (_, index) => MIN_DURATION_HOURS + index,
-              ).map((hours) => (
-                <option key={hours} value={hours}>
-                  {hours}시간
-                </option>
-              ))}
-            </S.Select>
+              onChange={(value) => setDurationHours(Number(value))}
+              options={DURATION_OPTIONS}
+              value={String(durationHours)}
+            />
           </S.Field>
           <S.FieldGrid>
             <S.Field>
@@ -232,15 +244,12 @@ export const CourseRecommendationFormPage = () => {
             </S.Field>
             <S.Field>
               <label htmlFor="course-pace">코스 페이스</label>
-              <S.Select
+              <Dropdown
                 id="course-pace"
-                onChange={(event) => setPacePreference(event.target.value as CoursePacePreference)}
+                onChange={(value) => setPacePreference(value as CoursePacePreference)}
+                options={PACE_OPTIONS}
                 value={pacePreference}
-              >
-                <option value="RELAXED">여유롭게</option>
-                <option value="NORMAL">적당하게</option>
-                <option value="PACKED">알차게</option>
-              </S.Select>
+              />
             </S.Field>
           </S.FieldGrid>
           <S.Field>

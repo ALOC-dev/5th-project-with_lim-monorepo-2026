@@ -174,7 +174,7 @@ export const S = {
 
     &::placeholder {
       font-weight: 4 00;
-      color: ${tokens.color.neutral["700"]};
+      color: ${tokens.color.neutral["200"]};
     }
   `,
 
@@ -235,13 +235,6 @@ export const S = {
     font-size: 13px;
     font-weight: 500;
   `,
-  DateInputWrapper: styled.div`
-    cursor: pointer;
-    & * {
-      cursor: pointer;
-    }
-  `,
-
   BudgetAmountText: styled.div`
     text-align: right;
     font-size: 13px;

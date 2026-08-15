@@ -1,10 +1,10 @@
 import { type UserInput, UserInputSchema } from "@monorepo/recommendation-engine/v1/contracts";
 
+import type { CalendarDate } from "../../components/DatePicker/calendar";
 import type {
   PlaceRecommendationFormInputContextType,
   PlaceRecommendationFormLocation,
 } from "./PlaceRecommendationForm.context";
-import type { CalendarDate } from "./utils/calendarDayViewModel";
 
 export const USE_PREDEFINED = true;
 

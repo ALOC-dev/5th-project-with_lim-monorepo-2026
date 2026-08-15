@@ -8,6 +8,7 @@ export interface DropdownOption {
 }
 
 interface DropdownProps {
+  readonly id?: string;
   readonly options: readonly DropdownOption[];
   readonly value?: string;
   readonly onChange: (value: string) => void;
@@ -23,7 +24,7 @@ const S = {
     padding: 0 14px;
 
     color: ${({ $isPlaceholder }) =>
-      $isPlaceholder ? theme.tokens.color.neutral[700] : theme.tokens.color.neutral[900]};
+      $isPlaceholder ? theme.tokens.color.neutral[200] : theme.tokens.color.neutral[900]};
     background-color: ${theme.tokens.color.neutral[0]};
     border: 1px solid ${theme.tokens.color.neutral[200]};
     border-radius: 8px;
@@ -46,6 +47,7 @@ const S = {
 
 /** Uses the platform's native select menu for familiar mobile and keyboard interactions. */
 export const Dropdown = ({
+  id,
   options,
   value,
   onChange,
@@ -60,6 +62,7 @@ export const Dropdown = ({
       $isPlaceholder={!selected}
       $width={width}
       disabled={disabled}
+      id={id}
       onChange={(event) => onChange(event.target.value)}
       value={selected ? value : ""}
     >

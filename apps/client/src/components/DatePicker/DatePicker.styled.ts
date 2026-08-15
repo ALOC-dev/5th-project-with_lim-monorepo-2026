@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 
-import { theme } from "../../../../design-system/theme.generated";
+import { tokens } from "../../design-system/tokens.generated";
 
 type DayButtonProps = {
   readonly $isSelected: boolean;
@@ -8,6 +8,13 @@ type DayButtonProps = {
 };
 
 export const S = {
+  InputWrapper: styled.div`
+    cursor: pointer;
+
+    input {
+      cursor: pointer;
+    }
+  `,
   Wrapper: styled.div`
     display: flex;
     min-height: 0;
@@ -18,9 +25,8 @@ export const S = {
   `,
   Title: styled.h2`
     margin: 0;
-    color: ${theme.tokens.color.neutral[900]};
-
-    ${theme.tokens.typography.title.xs}
+    color: ${tokens.color.neutral[900]};
+    ${tokens.typography.title.xs}
   `,
   MonthSelector: styled.div`
     display: grid;
@@ -38,11 +44,11 @@ export const S = {
     border: none;
     border-radius: 50%;
     background-color: transparent;
-    color: ${theme.tokens.color.secondary[700]};
+    color: ${tokens.color.secondary[700]};
     cursor: pointer;
 
     &:active {
-      background-color: ${theme.tokens.color.secondary[50]};
+      background-color: ${tokens.color.secondary[50]};
     }
 
     &:disabled {
@@ -52,12 +58,10 @@ export const S = {
   `,
   MonthLabel: styled.h3`
     margin: 0;
+    color: ${tokens.color.neutral[900]};
     text-align: center;
-    color: ${theme.tokens.color.neutral[900]};
-
     white-space: nowrap;
-
-    ${theme.tokens.typography.title.xs}
+    ${tokens.typography.title.xs}
   `,
   Calendar: styled.div`
     display: flex;
@@ -73,19 +77,17 @@ export const S = {
   `,
   WeekdayCell: styled.div`
     display: flex;
+    min-width: 0;
     align-items: center;
     justify-content: center;
-    min-width: 0;
-    color: ${theme.tokens.color.secondary[500]};
-
-    ${theme.tokens.typography.label.lg}
+    color: ${tokens.color.secondary[500]};
+    ${tokens.typography.label.lg}
   `,
   DayGrid: styled.div`
     display: grid;
     grid-template-columns: repeat(7, minmax(0, 1fr));
     place-items: center;
-    row-gap: 10px;
-    column-gap: 10px;
+    gap: 10px;
     width: 100%;
   `,
   EmptyDay: styled.div`
@@ -97,34 +99,27 @@ export const S = {
   DayButton: styled.button<DayButtonProps>`
     position: relative;
     display: flex;
-    align-items: center;
-    justify-content: center;
-
     aspect-ratio: 1;
     width: 100%;
     max-width: 48px;
-
     box-sizing: border-box;
-
+    align-items: center;
+    justify-content: center;
     border: ${({ $isSelected }) =>
       $isSelected
-        ? `2px solid ${theme.tokens.color.primary[500]}`
-        : `1px solid ${theme.tokens.color.neutral[200]}`};
+        ? `2px solid ${tokens.color.primary[500]}`
+        : `1px solid ${tokens.color.neutral[200]}`};
     border-radius: 50%;
-    background-color: ${({ $isToday }) => {
-      if ($isToday) return theme.tokens.color.neutral[200];
-      return theme.tokens.color.neutral[50];
-    }};
-
+    background-color: ${({ $isToday }) =>
+      $isToday ? tokens.color.neutral[200] : tokens.color.neutral[50]};
     color: ${({ $isSelected }) =>
-      $isSelected ? theme.tokens.color.primary[500] : theme.tokens.color.neutral[900]};
+      $isSelected ? tokens.color.primary[500] : tokens.color.neutral[900]};
     cursor: pointer;
-
-    ${theme.tokens.typography.body.lg}
+    ${tokens.typography.body.lg}
 
     &:active {
-      border-color: ${theme.tokens.color.primary[500]};
-      color: ${theme.tokens.color.primary[500]};
+      border-color: ${tokens.color.primary[500]};
+      color: ${tokens.color.primary[500]};
     }
 
     &:disabled {
@@ -137,13 +132,13 @@ export const S = {
     right: -2px;
     bottom: -2px;
     display: flex;
-    align-items: center;
-    justify-content: center;
     width: 16px;
     height: 16px;
+    align-items: center;
+    justify-content: center;
     border-radius: 50%;
-    background-color: ${theme.tokens.color.primary[500]};
-    color: ${theme.tokens.color.neutral[0]};
+    background-color: ${tokens.color.primary[500]};
+    color: ${tokens.color.neutral[0]};
     font-size: 10px;
     font-weight: 700;
   `,
@@ -156,32 +151,30 @@ export const S = {
   `,
   CancelButton: styled.button`
     display: flex;
+    min-height: 68px;
     align-items: center;
     justify-content: center;
-    min-height: 68px;
     padding: 14px 20px;
-    border: 1px solid ${theme.tokens.color.neutral[200]};
+    border: 1px solid ${tokens.color.neutral[200]};
     border-radius: 14px;
-    background-color: ${theme.tokens.color.neutral[0]};
-    color: ${theme.tokens.color.secondary[700]};
+    background-color: ${tokens.color.neutral[0]};
+    color: ${tokens.color.secondary[700]};
     cursor: pointer;
-
-    ${theme.tokens.typography.title.sm}
+    ${tokens.typography.title.sm}
   `,
   ConfirmButton: styled.button`
     display: flex;
-    align-items: center;
-    justify-content: center;
     width: 100%;
     min-height: 68px;
+    align-items: center;
+    justify-content: center;
     padding: 14px 20px;
     border: none;
     border-radius: 14px;
-    background-color: ${theme.tokens.color.primary[500]};
-    color: ${theme.tokens.color.neutral[0]};
+    background-color: ${tokens.color.primary[500]};
+    color: ${tokens.color.neutral[0]};
     cursor: pointer;
-
-    ${theme.tokens.typography.title.sm}
+    ${tokens.typography.title.sm}
 
     &:active {
       transform: scale(0.99);
@@ -189,7 +182,7 @@ export const S = {
 
     &:disabled {
       cursor: not-allowed;
-      background-color: ${theme.tokens.color.neutral[200]};
+      background-color: ${tokens.color.neutral[200]};
     }
   `,
 };

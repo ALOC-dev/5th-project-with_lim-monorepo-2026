@@ -57,6 +57,18 @@ export const getDefaultCourseSchedule = (now = new Date()) => {
   } as const;
 };
 
+export const getCourseScheduleDateBounds = (now = new Date()) => {
+  const minimum = toSeoulDateTime(now);
+  const maximum = toSeoulDateTime(
+    new Date(now.getTime() + MAX_SCHEDULE_DAYS * 24 * 60 * 60 * 1_000),
+  );
+
+  return {
+    minDate: `${minimum.year}-${pad2(minimum.month)}-${pad2(minimum.day)}`,
+    maxDate: `${maximum.year}-${pad2(maximum.month)}-${pad2(maximum.day)}`,
+  } as const;
+};
+
 const toScheduleTimestamp = (date: string, startTime: string): number | null => {
   const dateMatch = /^(\d{4})-(\d{2})-(\d{2})$/u.exec(date);
   const timeMatch = /^([01]\d|2[0-3]):([0-5]\d)$/u.exec(startTime);
