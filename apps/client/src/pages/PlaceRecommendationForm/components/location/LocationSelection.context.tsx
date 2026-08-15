@@ -23,6 +23,7 @@ type LocationSelectionContextType = {
   readonly setQuery: Dispatch<SetStateAction<string>>;
   readonly selectedLocation: Location | null;
   readonly currentLocation: LocationCoordinates | null;
+  readonly requestCurrentLocation: () => Promise<LocationCoordinates | null>;
   readonly clearSelectedLocation: () => void;
   readonly openMapMode: () => void;
   readonly openMapModeAtLocation: (location: Location) => void;
@@ -43,6 +44,50 @@ export const LocationSelectionProvider = ({
   const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
   const [currentLocation, setCurrentLocation] = useState<LocationCoordinates | null>(null);
   const currentLocationRequestOpenedRef = useRef(false);
+  const currentLocationRequestRef = useRef<Promise<LocationCoordinates | null> | null>(null);
+
+  const requestCurrentLocation = useCallback((): Promise<LocationCoordinates | null> => {
+    if (currentLocation) {
+      return Promise.resolve(currentLocation);
+    }
+
+    if (!navigator.geolocation) {
+      return Promise.resolve(null);
+    }
+
+    if (currentLocationRequestRef.current) {
+      return currentLocationRequestRef.current;
+    }
+
+    const request = new Promise<LocationCoordinates | null>((resolve) => {
+      navigator.geolocation.getCurrentPosition(
+        ({ coords }) => {
+          const location = {
+            lat: coords.latitude,
+            lng: coords.longitude,
+          };
+
+          setCurrentLocation(location);
+          resolve(location);
+        },
+        () => resolve(null),
+        {
+          enableHighAccuracy: true,
+          maximumAge: 60_000,
+          timeout: 10_000,
+        },
+      );
+    });
+
+    currentLocationRequestRef.current = request;
+    void request.finally(() => {
+      if (currentLocationRequestRef.current === request) {
+        currentLocationRequestRef.current = null;
+      }
+    });
+
+    return request;
+  }, [currentLocation]);
 
   useEffect(() => {
     if (!isLocationSheetOpen) {
@@ -50,29 +95,13 @@ export const LocationSelectionProvider = ({
       return;
     }
 
-    if (currentLocation || !navigator.geolocation || currentLocationRequestOpenedRef.current) {
+    if (currentLocation || currentLocationRequestOpenedRef.current) {
       return;
     }
 
     currentLocationRequestOpenedRef.current = true;
-
-    navigator.geolocation.getCurrentPosition(
-      ({ coords }) => {
-        setCurrentLocation({
-          lat: coords.latitude,
-          lng: coords.longitude,
-        });
-      },
-      () => {
-        // 권한 거부·조회 실패 시 지도는 기본 중심을 사용한다.
-      },
-      {
-        enableHighAccuracy: true,
-        maximumAge: 60_000,
-        timeout: 10_000,
-      },
-    );
-  }, [currentLocation, isLocationSheetOpen]);
+    void requestCurrentLocation();
+  }, [currentLocation, isLocationSheetOpen, requestCurrentLocation]);
 
   const openMapMode = useCallback(() => {
     setSelectedLocation(null);
@@ -101,6 +130,7 @@ export const LocationSelectionProvider = ({
       setQuery,
       selectedLocation,
       currentLocation,
+      requestCurrentLocation,
       clearSelectedLocation,
       openMapMode,
       openMapModeAtLocation,
@@ -114,6 +144,7 @@ export const LocationSelectionProvider = ({
       openMapModeAtLocation,
       openSearchMode,
       query,
+      requestCurrentLocation,
       selectedLocation,
     ],
   );

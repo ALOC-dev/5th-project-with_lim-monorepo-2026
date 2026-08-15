@@ -6,6 +6,7 @@ export const iconNames = [
   "link",
   "edit",
   "map-pin",
+  "my-location",
   "back-arrow",
   "circle-x",
   "chevron-left",

@@ -47,6 +47,19 @@ const iconRenderers = {
       <circle cx={12} cy={10.5} r={2.5} />
     </g>
   ),
+  "my-location": () => (
+    <g
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+    >
+      <circle cx={12} cy={12} r={5.5} />
+      <circle cx={12} cy={12} fill="currentColor" r={2} stroke="none" />
+      <path d="M12 2v3M12 19v3M2 12h3M19 12h3" />
+    </g>
+  ),
   "back-arrow": () => (
     <path
       d="M19 12H5m7 7-7-7 7-7"
