@@ -17,8 +17,12 @@ import {
   type SearchQuery,
 } from "./steps/discoverSeeds/contracts.js";
 import { discoverSeeds } from "./steps/discoverSeeds/index.js";
-import { createDiscoveryContextWithLlm } from "./steps/discoverSeeds/llm/approaches.js";
+import {
+  createDiscoveryContextWithLlm,
+  createInitialDiscoveryPlanWithLlm,
+} from "./steps/discoverSeeds/llm/approaches.js";
 import { evaluateSeeds } from "./steps/evaluateSeeds/index.js";
+import { getLocationCentroid } from "./utils/geography.js";
 
 const MAX_DISCOVERY_ATTEMPTS = 5;
 
@@ -62,12 +66,12 @@ const DEFAULT_SEARCH_RADIUS_KM = 5;
 const getDefaultSearchLocation = (
   userInput: UserInput,
 ): DiscoveryContext["queries"][number]["location"] | undefined => {
-  const [firstLocation] = userInput.location;
-  if (!firstLocation) return undefined;
+  const center = getLocationCentroid(userInput.location);
+  if (!center) return undefined;
 
   return {
-    longitude: firstLocation.lng,
-    latitude: firstLocation.lat,
+    longitude: center.lng,
+    latitude: center.lat,
     radiusKm: DEFAULT_SEARCH_RADIUS_KM,
   };
 };
@@ -143,46 +147,65 @@ const buildRecommendationOriginContext = (userInput: UserInput): RecommendationO
     label: index === 0 ? "나" : `참여자 ${index + 1}`,
     location,
   }));
+  const center = getLocationCentroid(origins.map((origin) => origin.location));
 
   return {
     mode: origins.length > 1 ? "GROUP" : "SINGLE",
     origins,
-    ...(origins.length > 0
-      ? { center: toCenterLocation(origins.map((origin) => origin.location)) }
-      : {}),
+    ...(center ? { center } : {}),
   };
 };
 
 const toOriginId = (index: number): string => (index === 0 ? "host" : `member-${index}`);
 
-const toCenterLocation = (
-  locations: UserInput["location"][number][],
-): UserInput["location"][number] => ({
-  lat: locations.reduce((sum, location) => sum + location.lat, 0) / locations.length,
-  lng: locations.reduce((sum, location) => sum + location.lng, 0) / locations.length,
-});
+type RecommendationEngineSteps = {
+  createInitialDiscoveryPlanWithLlm: typeof createInitialDiscoveryPlanWithLlm;
+  createDiscoveryContextWithLlm: typeof createDiscoveryContextWithLlm;
+  discoverSeeds: typeof discoverSeeds;
+  evaluateSeeds: typeof evaluateSeeds;
+};
+
+/**
+ * Deterministic test seams for the engine's side-effecting steps.
+ * These are not used by the public server API; production uses the default implementations.
+ */
+export type RecommendationEngineTestDependencies = Partial<RecommendationEngineSteps>;
 
 export type RecommendationEngineOptions = {
+  onProcessStart?: () => void;
   onProgress?: (step: RecommendationProgressStep) => void;
   loggingActivated?: boolean;
   logger?: Logger;
   secrets?: RecommendationEngineSecrets;
+  testDependencies?: RecommendationEngineTestDependencies;
 };
 
 
 export class RecommendationEngine {
+  private readonly onProcessStart: RecommendationEngineOptions["onProcessStart"];
   private readonly onProgress : RecommendationEngineOptions['onProgress'];
   private readonly config: EngineConfig;
   private readonly logger: Logger;
   private readonly secrets: RecommendationEngineSecrets;
   private readonly userInput: UserInput;
+  private readonly steps: RecommendationEngineSteps;
 
   constructor(input: UserInput, config: EngineConfig, options: RecommendationEngineOptions = {}) {
+    this.onProcessStart = options.onProcessStart;
     this.onProgress = options.onProgress;
     this.config = config;
     this.logger = options.logger ?? (options.loggingActivated ? consoleLogger : noopLogger);
     this.secrets = options.secrets ?? {};
     this.userInput = input;
+    this.steps = {
+      createInitialDiscoveryPlanWithLlm:
+        options.testDependencies?.createInitialDiscoveryPlanWithLlm ??
+        createInitialDiscoveryPlanWithLlm,
+      createDiscoveryContextWithLlm:
+        options.testDependencies?.createDiscoveryContextWithLlm ?? createDiscoveryContextWithLlm,
+      discoverSeeds: options.testDependencies?.discoverSeeds ?? discoverSeeds,
+      evaluateSeeds: options.testDependencies?.evaluateSeeds ?? evaluateSeeds,
+    };
   }
 
   /**
@@ -195,7 +218,7 @@ export class RecommendationEngine {
     logger: Logger,
   ): Promise<SearchQuery[]> {
     try {
-      const regenerated = await createDiscoveryContextWithLlm(this.userInput, {
+      const regenerated = await this.steps.createDiscoveryContextWithLlm(this.userInput, {
         openAiApiKey: this.secrets.openAiApiKey,
         targetSeedCount: this.config.targetCount * this.config.candidatePoolMultiplier,
         retry: {
@@ -219,6 +242,7 @@ export class RecommendationEngine {
   }
 
   async process(): Promise<EngineOutput> {
+    this.onProcessStart?.();
     // 요청 단위 retry 상태만 지역 변수로 유지한다.
     // 엔진 인스턴스에 실행 결과를 저장하지 않아 같은 인스턴스 재호출도 독립적으로 동작한다.
     let discoveryState: EngineDiscoveryState = {
@@ -235,13 +259,36 @@ export class RecommendationEngine {
     try {
       const finishDiscoveryContext = this.logger.startTimer("engine.discovery_context.success");
       this.onProgress?.('input_validated');
-      const initialQueries = await createDiscoveryContextWithLlm(this.userInput, {
+      const initialPlan = await this.steps.createInitialDiscoveryPlanWithLlm(this.userInput, {
         openAiApiKey: this.secrets.openAiApiKey,
         targetSeedCount: this.config.targetCount * this.config.candidatePoolMultiplier,
       });
+      this.logger.info("engine.intent_classified", {
+        intent: initialPlan.intent,
+        ...(initialPlan.intent === "UNSUPPORTED"
+          ? { reason: initialPlan.reason }
+          : { queryCount: initialPlan.queries.length }),
+      });
+
+      if (initialPlan.intent === "UNSUPPORTED") {
+        this.logger.warn("engine.unsupported_request", { reason: initialPlan.reason });
+        this.logger.warn("engine.process.failure", {
+          failedStep: "intentClassification",
+          errorCode: "UNSUPPORTED_RECOMMENDATION_REQUEST",
+        });
+        return {
+          status: "ERROR",
+          userInput: this.userInput,
+          error: {
+            code: "UNSUPPORTED_RECOMMENDATION_REQUEST",
+            message: "This request cannot be handled as a place recommendation request.",
+          },
+        };
+      }
+
       discoveryState = {
         ...discoveryState,
-        queries: hydrateQueriesWithLocation(initialQueries, this.userInput),
+        queries: hydrateQueriesWithLocation(initialPlan.queries, this.userInput),
       };
       finishDiscoveryContext({
         queryCount: discoveryState.queries.length,
@@ -280,7 +327,7 @@ export class RecommendationEngine {
         ...discoveryState,
         attemptNo: currAttemptNo,
       });
-      const discoverSeedsResult = await discoverSeeds(discoveryContext, attemptLogger, {
+      const discoverSeedsResult = await this.steps.discoverSeeds(discoveryContext, attemptLogger, {
         secrets: { tmapAppKey: this.secrets.tmapAppKey },
       });
       if (!discoverSeedsResult.ok) {
@@ -335,7 +382,7 @@ export class RecommendationEngine {
       const evaluateSeedsInput = toEvaluateSeedsInput(discoverySeedPool, discoverSeedsOutput);
       this.onProgress?.('evaluating');
 
-      const evaluateSeedsResult = await evaluateSeeds(
+      const evaluateSeedsResult = await this.steps.evaluateSeeds(
         this.userInput,
         evaluateSeedsInput,
         this.config,

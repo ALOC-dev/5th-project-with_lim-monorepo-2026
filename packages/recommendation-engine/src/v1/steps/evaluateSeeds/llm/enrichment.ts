@@ -1,7 +1,11 @@
 import { hasToolCall, stepCountIs } from "ai";
 
 import type { UserInput } from "../../../interfaces/input.contracts.js";
-import { generateRecommendationText, RECOMMENDATION_LLM_MODEL_ID } from "../../../llm/ai-sdk.js";
+import {
+  generateRecommendationText,
+  RECOMMENDATION_LLM_MAX_CONCURRENCY_PER_RUN,
+  RECOMMENDATION_LLM_MODEL_ID,
+} from "../../../llm/ai-sdk.js";
 import type { Logger } from "../../../observability/logger.js";
 import {
   type AgenticFinalizeCandidateEvidence,
@@ -25,7 +29,7 @@ import { parseOperationInfoWithLlmFallback } from "./operation-info.js";
 
 const DEFAULT_SCRAPER_TIMEOUT_MS = 15_000;
 const DEFAULT_SETTLE_MS = 2_000;
-const DEFAULT_MAX_CONCURRENCY = 4;
+const DEFAULT_MAX_CONCURRENCY = RECOMMENDATION_LLM_MAX_CONCURRENCY_PER_RUN;
 const DEFAULT_AGENTIC_MODEL_ID = RECOMMENDATION_LLM_MODEL_ID;
 const DEFAULT_AGENTIC_MAX_CANDIDATES = 8;
 const DEFAULT_AGENTIC_MAX_FETCHES_PER_CANDIDATE = 3;
@@ -327,14 +331,15 @@ const enrichWithAgenticWeb = async (
   const finalized = getFinalized();
 
   if (!finalized) {
-    return (
-      getBestMemoEntry(enrichmentMemo)?.enrichment ??
-      buildUnknownEnrichment(
-        evidence.candidateId,
-        operationVerifier,
-        "Agentic web enrichment did not finalize candidate evidence",
-        "agentic-web",
-      )
+    const bestMemoEntry = getBestMemoEntry(enrichmentMemo);
+    if (bestMemoEntry) {
+      return withMemoVerifiedVenueClaims(bestMemoEntry.enrichment, enrichmentMemo);
+    }
+    return buildUnknownEnrichment(
+      evidence.candidateId,
+      operationVerifier,
+      "Agentic web enrichment did not finalize candidate evidence",
+      "agentic-web",
     );
   }
 
@@ -389,6 +394,9 @@ const buildFinalEnrichmentFromAgentic = async (
     });
 
     const supportingSourceDetails = getSupportingSourceDetails(memo, finalized.selectedSource);
+    const dietaryClaims = getMemoDietaryClaims(memo);
+    const beerVenueClaims = getMemoBeerVenueClaims(memo);
+    const verifiedPriceClaims = getMemoVerifiedPriceClaims(memo);
 
     return {
       candidateId: evidence.candidateId,
@@ -406,6 +414,9 @@ const buildFinalEnrichmentFromAgentic = async (
         placeMatchScore: finalized.identityMatchScore,
       },
       rawTextSnippet: finalized.rawTextSnippet.slice(0, 2_000),
+      ...(dietaryClaims.length > 0 ? { dietaryClaims } : {}),
+      ...(beerVenueClaims.length > 0 ? { beerVenueClaims } : {}),
+      ...(verifiedPriceClaims.length > 0 ? { verifiedPriceClaims } : {}),
       sourceDetails: [
         ...supportingSourceDetails,
         {
@@ -456,6 +467,9 @@ const buildFinalEnrichmentFromAgentic = async (
     evidence.category,
   );
   const supportingSourceDetails = getSupportingSourceDetails(memo, baseSource);
+  const dietaryClaims = getMemoDietaryClaims(memo);
+  const beerVenueClaims = getMemoBeerVenueClaims(memo);
+  const verifiedPriceClaims = getMemoVerifiedPriceClaims(memo);
 
   options.onToolEvent?.({
     type: "finalize",
@@ -471,6 +485,9 @@ const buildFinalEnrichmentFromAgentic = async (
     ...base,
     priceRangePerPerson: base.priceRangePerPerson ?? finalizedPriceRange,
     trustSignals: mergedTrustSignals,
+    ...(dietaryClaims.length > 0 ? { dietaryClaims } : {}),
+    ...(beerVenueClaims.length > 0 ? { beerVenueClaims } : {}),
+    ...(verifiedPriceClaims.length > 0 ? { verifiedPriceClaims } : {}),
     sourceDetails: [
       ...(base.sourceDetails ?? []),
       ...supportingSourceDetails,
@@ -515,6 +532,93 @@ const getSupportingSourceDetails = (
   [...memo.entries()]
     .filter(([source]) => source !== selectedSource)
     .flatMap(([, enrichment]) => enrichment.sourceDetails ?? []);
+
+/**
+ * A finalized operation source can legitimately be Kakao or agentic web while
+ * the separately identity-qualified Naver lookup supplied dietary or beer-venue
+ * evidence. Keep those claims attached to the same candidate instead of
+ * discarding them when the LLM chooses a different operation-time source.
+ */
+const getMemoDietaryClaims = (
+  memo: Map<AgenticEnrichmentSource, CandidateEnrichment>,
+): NonNullable<CandidateEnrichment["dietaryClaims"]> => {
+  const seen = new Set<string>();
+  return [...memo.values()].flatMap((enrichment) =>
+    (enrichment.dietaryClaims ?? []).filter((claim) => {
+      const key = [
+        claim.constraint,
+        claim.source,
+        claim.sourceUrl,
+        claim.identityMatchScore,
+        ...claim.matchedTerms,
+      ].join("\u0000");
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    }),
+  );
+};
+
+const getMemoBeerVenueClaims = (
+  memo: Map<AgenticEnrichmentSource, CandidateEnrichment>,
+): NonNullable<CandidateEnrichment["beerVenueClaims"]> => {
+  const seen = new Set<string>();
+  return [...memo.values()].flatMap((enrichment) =>
+    (enrichment.beerVenueClaims ?? []).filter((claim) => {
+      const key = [
+        claim.source,
+        claim.sourceUrl,
+        claim.identityMatchScore,
+        claim.addressMatchScore,
+        ...claim.matchedTerms,
+      ].join("\u0000");
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    }),
+  );
+};
+
+/**
+ * Keep Naver's individual, identity/address-qualified price provenance even
+ * when the agent selects another source for operation hours. The final budget
+ * gate reads only these claims, never the selected source's aggregate text or
+ * display/fallback price range.
+ */
+const getMemoVerifiedPriceClaims = (
+  memo: Map<AgenticEnrichmentSource, CandidateEnrichment>,
+): NonNullable<CandidateEnrichment["verifiedPriceClaims"]> => {
+  const seen = new Set<string>();
+  return [...memo.values()].flatMap((enrichment) =>
+    (enrichment.verifiedPriceClaims ?? []).filter((claim) => {
+      const key = [
+        claim.source,
+        claim.sourceUrl,
+        claim.identityMatchScore,
+        claim.addressMatchScore,
+        claim.minimumPrice,
+      ].join("\u0000");
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    }),
+  );
+};
+
+const withMemoVerifiedVenueClaims = (
+  enrichment: CandidateEnrichment,
+  memo: Map<AgenticEnrichmentSource, CandidateEnrichment>,
+): CandidateEnrichment => {
+  const dietaryClaims = getMemoDietaryClaims(memo);
+  const beerVenueClaims = getMemoBeerVenueClaims(memo);
+  const verifiedPriceClaims = getMemoVerifiedPriceClaims(memo);
+  return {
+    ...enrichment,
+    ...(dietaryClaims.length > 0 ? { dietaryClaims } : {}),
+    ...(beerVenueClaims.length > 0 ? { beerVenueClaims } : {}),
+    ...(verifiedPriceClaims.length > 0 ? { verifiedPriceClaims } : {}),
+  };
+};
 
 const getBestMemoEntry = (
   memo: Map<AgenticEnrichmentSource, CandidateEnrichment>,

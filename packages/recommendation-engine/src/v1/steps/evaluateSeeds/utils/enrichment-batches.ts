@@ -29,6 +29,7 @@ type EnrichmentBatchLog = {
   operationVerifiedCount: number;
   semanticPassedCount: number;
   semanticPenalizedCount: number;
+  semanticRejectedCount: number;
   referenceVerifiedCount: number;
   referenceRejectedCount: number;
   selectedSoFar: number;
@@ -39,6 +40,7 @@ export type EnrichmentBatchCollection = {
   enrichedEvidences: CandidateScoringEvidence[];
   referenceUrlResolutions: ReferenceUrlResolution[];
   semanticPenalizedCount: number;
+  semanticRejectedCount: number;
   notSemanticallyEvaluatedDueToOperationUnknown: Array<{
     candidateId: string;
     source: CandidateEnrichment["source"];
@@ -72,6 +74,7 @@ export const collectEnrichmentBatches = async ({
   const selectedEvidences: CandidateScoringEvidence[] = [];
   const allReferenceUrlResolutions: ReferenceUrlResolution[] = [];
   let semanticPenalizedCount = 0;
+  let semanticRejectedCount = 0;
   const notSemanticallyEvaluatedDueToOperationUnknown: EnrichmentBatchCollection["notSemanticallyEvaluatedDueToOperationUnknown"] =
     [];
   const batches: EnrichmentBatchLog[] = [];
@@ -126,23 +129,30 @@ export const collectEnrichmentBatches = async ({
       evidence,
       semanticFit: assessSemanticFit(evidence),
     }));
-    // 의미 게이트는 후보를 탈락시키지 않고 감점만 한다(rejected는 항상 비어 있다).
-    // 예전에는 빈 배열을 만들어 넘기고 로그에 `rejectedCount: 0`을 찍어, 지표를
-    // 보는 사람이 "탈락이 하나도 없다"고 오해하게 만들었다.
-    const semanticPassed = semanticAssessments.map(({ evidence, semanticFit }) => ({
-      ...evidence,
-      semanticFit,
-    }));
+    // 일반적인 업종 차이는 감점으로만 다루되, 사용자가 명시한 식문화/서울 권역과
+    // 구조화된 후보 정보가 정면으로 충돌할 때는 참조 URL·LLM 점수까지 진행시키지 않는다.
+    // 정보가 없거나 복수 지역/복수 식문화를 말한 요청은 REJECT가 아니라 PASS/PENALIZE다.
+    const semanticPassed = semanticAssessments
+      .filter(({ semanticFit }) => semanticFit.status !== "REJECT")
+      .map(({ evidence, semanticFit }) => ({
+        ...evidence,
+        semanticFit,
+      }));
     const semanticPenalized = semanticAssessments.filter(
       ({ semanticFit }) => semanticFit.status === "PENALIZE",
     );
+    const semanticRejected = semanticAssessments.filter(
+      ({ semanticFit }) => semanticFit.status === "REJECT",
+    );
     semanticPenalizedCount += semanticPenalized.length;
+    semanticRejectedCount += semanticRejected.length;
 
     logger.info("evaluateSeeds.semantic_gate.filtered", {
       batchNo,
       evaluatedCount: semanticAssessments.length,
       passedCount: semanticPassed.length,
       penalizedCount: semanticPenalized.length,
+      rejectedCount: semanticRejected.length,
       penalized: semanticPenalized.map(({ evidence, semanticFit }) => ({
         candidateId: evidence.candidateId,
         name: evidence.name,
@@ -153,6 +163,16 @@ export const collectEnrichmentBatches = async ({
         reason: semanticFit.reason,
         negativeSignals: semanticFit.negativeSignals,
         ...getSemanticScoreAdjustment(semanticFit),
+      })),
+      rejected: semanticRejected.map(({ evidence, semanticFit }) => ({
+        candidateId: evidence.candidateId,
+        name: evidence.name,
+        category: evidence.category,
+        status: semanticFit.status,
+        severity: semanticFit.severity,
+        score: semanticFit.score,
+        reason: semanticFit.reason,
+        negativeSignals: semanticFit.negativeSignals,
       })),
     });
 
@@ -191,6 +211,7 @@ export const collectEnrichmentBatches = async ({
       operationVerifiedCount: operationVerifiedEvidences.length,
       semanticPassedCount: semanticPassed.length,
       semanticPenalizedCount: semanticPenalized.length,
+      semanticRejectedCount: semanticRejected.length,
       referenceVerifiedCount: verified.length,
       referenceRejectedCount: batchReferenceRejectedCount,
       selectedSoFar: selectedEvidences.length,
@@ -204,6 +225,7 @@ export const collectEnrichmentBatches = async ({
     enrichedEvidences: selectedEvidences.slice(0, scoringPoolSize),
     referenceUrlResolutions: allReferenceUrlResolutions,
     semanticPenalizedCount,
+    semanticRejectedCount,
     notSemanticallyEvaluatedDueToOperationUnknown,
     operationVerifiedCount,
     referenceRejectedCount,

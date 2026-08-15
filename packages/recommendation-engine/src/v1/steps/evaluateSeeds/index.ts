@@ -1,6 +1,7 @@
 import type { EngineConfig } from "../../configs/types.js";
 import type { UserInput } from "../../interfaces/input.contracts.js";
 import type { PlaceRecommendationItem } from "../../interfaces/output.contracts.js";
+import { RECOMMENDATION_LLM_MAX_CONCURRENCY_PER_RUN } from "../../llm/ai-sdk.js";
 import type { Logger } from "../../observability/logger.js";
 import type { DiscoverSeedsOutput } from "../discoverSeeds/contracts.js";
 import { type EvaluateSeedsEvaluation, EvaluateSeedsOutputSchema } from "./contracts.js";
@@ -56,7 +57,6 @@ const naverMapScrapeCache = createLocalFileUrlScrapeCache({
 });
 
 const LIVE_MAX_CANDIDATES = ENRICHMENT_BATCH_SIZE;
-const LIVE_MAX_CONCURRENCY = 4;
 const LIVE_MAX_FETCHES_PER_CANDIDATE = 2;
 const LIVE_MAX_TOOL_STEPS = 10;
 const LIVE_TIMEOUT_MS = 120_000;
@@ -106,7 +106,7 @@ const buildLiveEnrichmentClient = (
     clientId: options.secrets?.naverSearchClientId,
     clientSecret: options.secrets?.naverSearchClientSecret,
     maxCandidates: LIVE_MAX_CANDIDATES,
-    maxConcurrency: LIVE_MAX_CONCURRENCY,
+    maxConcurrency: RECOMMENDATION_LLM_MAX_CONCURRENCY_PER_RUN,
     maxFetchesPerCandidate: LIVE_MAX_FETCHES_PER_CANDIDATE,
     maxToolSteps: LIVE_MAX_TOOL_STEPS,
     timeoutMs: LIVE_TIMEOUT_MS,
@@ -218,6 +218,7 @@ export const evaluateSeeds = async (
   let enrichedEvidences: CandidateScoringEvidence[];
   let operationVerifiedCount = 0;
   let semanticPenalizedCount = 0;
+  let semanticRejectedCount = 0;
   let referenceRejectedCount = 0;
   // 이 실행에서 쓰는 Chromium은 하나뿐이다. enrichment와 reference URL 해결이
   // 같은 인스턴스를 나눠 쓰고, 배치를 다 돈 뒤 한 번만 닫는다.
@@ -244,6 +245,7 @@ export const evaluateSeeds = async (
     enrichedEvidences = enrichmentResult.enrichedEvidences;
     operationVerifiedCount = enrichmentResult.operationVerifiedCount;
     semanticPenalizedCount = enrichmentResult.semanticPenalizedCount;
+    semanticRejectedCount = enrichmentResult.semanticRejectedCount;
     referenceRejectedCount = enrichmentResult.referenceRejectedCount;
     finishEnrichment({
       enrichmentCount: enrichmentResult.enrichments.length,
@@ -281,6 +283,7 @@ export const evaluateSeeds = async (
           rawTextSnippet: enrichment.rawTextSnippet?.slice(0, 1_500),
         })),
       semanticPenalizedCount,
+      semanticRejectedCount,
       notSemanticallyEvaluatedDueToOperationUnknown:
         enrichmentResult.notSemanticallyEvaluatedDueToOperationUnknown,
       referenceRejected: enrichmentResult.referenceUrlResolutions
@@ -317,6 +320,7 @@ export const evaluateSeeds = async (
       rejectedSeedKeyCount: discoverSeedsOutput.seedKeys.length,
       operationVerifiedCount,
       semanticPenalizedCount,
+      semanticRejectedCount,
       referenceRejectedCount,
     });
     return {
