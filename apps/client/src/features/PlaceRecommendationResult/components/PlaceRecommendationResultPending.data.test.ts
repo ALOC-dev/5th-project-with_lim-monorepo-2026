@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import type { PlaceRecommendationProgressSseEvent } from "../../../apis/server/placeRecommendation";
 import {
   formatElapsedSeconds,
+  getPlaceRecommendationDurationLabel,
+  getPlaceRecommendationInputSummary,
   getPlaceRecommendationProgressTimeline,
 } from "./PlaceRecommendationResultPending.data";
 
@@ -64,5 +66,46 @@ describe("place recommendation progress timeline", () => {
   it("formats durations in seconds and minutes", () => {
     expect(formatElapsedSeconds(12)).toBe("12초");
     expect(formatElapsedSeconds(62)).toBe("1분 2초");
+  });
+
+  it("summarizes the form input shown while a recommendation is pending", () => {
+    expect(
+      getPlaceRecommendationInputSummary(
+        {
+          schedule: {
+            dateISO: "2026-08-15",
+            time24h: "19:30",
+            stayDurationMinutes: 120,
+          },
+          location: [{ lat: 37.5665, lng: 126.978 }],
+          numberOfPeople: 2,
+          partyType: "FRIENDS",
+          activityType: "MEAL",
+          budgetPerPerson: [20_000, 50_000],
+          userNaturalLanguageRequest: "대화하기 좋은 저녁 식사 장소",
+        },
+        [
+          {
+            lat: 37.5665,
+            lng: 126.978,
+            placeName: "서울시청",
+            roadNameAddress: "서울특별시 중구 세종대로 110",
+          },
+        ],
+      ),
+    ).toEqual([
+      { label: "출발지", value: "서울시청" },
+      { label: "일정", value: "2026-08-15 · 19:30 · 120분 체류" },
+      { label: "조건", value: "식사 · 2명 · 친구 · 20,000~50,000원/인" },
+      { label: "요청", value: "대화하기 좋은 저녁 식사 장소" },
+    ]);
+  });
+
+  it("formats a persisted request-to-completion duration", () => {
+    expect(
+      getPlaceRecommendationDurationLabel("2026-08-15T10:00:00.000Z", "2026-08-15T10:02:05.900Z"),
+    ).toBe("2분 5초");
+    expect(getPlaceRecommendationDurationLabel("invalid", "2026-08-15T10:02:05.900Z")).toBeNull();
+    expect(getPlaceRecommendationDurationLabel("2026-08-15T10:00:00.000Z", null)).toBeNull();
   });
 });

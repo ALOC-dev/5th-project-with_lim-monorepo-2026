@@ -11,7 +11,11 @@ import PlaceRecommendationResultPlaceList, {
   type PlaceRecommendationResultPlaceSelectionRequest,
 } from "./PlaceRecommendationResultPlaceList";
 
-const PlaceRecommendationResultListView = () => {
+const PlaceRecommendationResultListView = ({
+  durationLabel,
+}: {
+  readonly durationLabel: string | null;
+}) => {
   const { clearSelectedPlace, selectPlace } = usePlaceRecommendationResultUiContext();
   const navigate = useAppNavigate();
   const sheetRef = useRef<BottomSheetHandle>(null);
@@ -51,6 +55,7 @@ const PlaceRecommendationResultListView = () => {
         minimumTop={52}
       >
         <PlaceRecommendationResultPlaceList
+          durationLabel={durationLabel}
           onPlaceSelect={handlePlaceSelect}
           selectionRequest={selectionRequest}
         />

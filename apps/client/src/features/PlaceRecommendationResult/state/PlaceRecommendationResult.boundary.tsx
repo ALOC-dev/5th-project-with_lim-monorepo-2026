@@ -10,7 +10,10 @@ export type PlaceRecommendationResultBoundaryProps = {
     readonly loading: ComponentType;
     readonly empty: ComponentType;
     readonly error: ComponentType;
-    readonly success: ComponentType<{ readonly result: PlaceRecommendationResultSuccess }>;
+    readonly success: ComponentType<{
+      readonly durationLabel: string | null;
+      readonly result: PlaceRecommendationResultSuccess;
+    }>;
   };
 };
 
@@ -35,7 +38,7 @@ export const PlaceRecommendationResultBoundary = ({
     case "success": {
       const SuccessView = views.success;
 
-      return <SuccessView result={dataContext.result} />;
+      return <SuccessView durationLabel={dataContext.durationLabel} result={dataContext.result} />;
     }
   }
 };

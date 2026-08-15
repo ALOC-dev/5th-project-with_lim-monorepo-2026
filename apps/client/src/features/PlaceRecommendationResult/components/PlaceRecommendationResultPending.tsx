@@ -9,11 +9,14 @@ import { RecommendationProgress } from "../../../components/RecommendationProgre
 import { useAppNavigate } from "../../../routes/useAppNavigate";
 import {
   formatElapsedSeconds,
+  getPlaceRecommendationInputSummary,
   getPlaceRecommendationProgressTimeline,
   type PLACE_RECOMMENDATION_STEP_KEYS,
 } from "./PlaceRecommendationResultPending.data";
 
 type PlaceRecommendationResultPendingProps = {
+  readonly formLocations: unknown;
+  readonly input: unknown;
   readonly jobId: string;
   readonly onTerminal: () => void;
 };
@@ -32,6 +35,8 @@ const parseSseMessageData = (data: unknown): unknown => {
 };
 
 const PlaceRecommendationResultPending = ({
+  formLocations,
+  input,
   jobId,
   onTerminal,
 }: PlaceRecommendationResultPendingProps) => {
@@ -79,6 +84,7 @@ const PlaceRecommendationResultPending = ({
   }, [jobId, onTerminal]);
 
   const steps = getPlaceRecommendationProgressTimeline(progressEvents, now);
+  const inputSummary = getPlaceRecommendationInputSummary(input, formLocations);
   const activeStepId = steps.find((step) => step.status === "active")?.id;
 
   useEffect(() => {
@@ -97,6 +103,7 @@ const PlaceRecommendationResultPending = ({
           <>장소 후보를 수집하고 점수를 계산하는 중입니다.{"\n"}잠시만 기다려 주세요.</>
         )
       }
+      details={inputSummary}
       headerTitle="장소 추천 중"
       onBack={() => void navigate("/place/recommendation/form")}
       steps={steps.map((step) => ({

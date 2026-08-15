@@ -13,22 +13,19 @@ export type PlaceRecommendationResultPlaceSelectionRequest = {
 };
 
 type PlaceRecommendationResultPlaceListProps = {
+  readonly durationLabel: string | null;
   readonly onPlaceSelect: (placeId: string) => void;
   readonly selectionRequest: PlaceRecommendationResultPlaceSelectionRequest | null;
 };
 
 const PlaceRecommendationResultPlaceList = ({
+  durationLabel,
   onPlaceSelect,
   selectionRequest,
 }: PlaceRecommendationResultPlaceListProps) => {
   const { recommendationId } = useParams();
-  const {
-    errorMessage,
-    isBookmarkActionDisabled,
-    isSaved,
-    retry,
-    toggleBookmark,
-  } = usePlaceRecommendationResultBookmarksContext();
+  const { errorMessage, isBookmarkActionDisabled, isSaved, retry, toggleBookmark } =
+    usePlaceRecommendationResultBookmarksContext();
   const { places, selectedPlace, selectedPlaceId } = usePlaceRecommendationResultUiContext();
   const cardElementsRef = useRef(new Map<string, HTMLElement>());
 
@@ -44,7 +41,10 @@ const PlaceRecommendationResultPlaceList = ({
   return (
     <S.List aria-label="추천 장소 목록">
       <S.ResultSummary aria-live="polite">
-        <S.ResultCount>추천 장소 {places.length}개</S.ResultCount>
+        <S.SummaryHeader>
+          <S.ResultCount>추천 장소 {places.length}개</S.ResultCount>
+          {durationLabel ? <S.Duration>생성까지 {durationLabel}</S.Duration> : null}
+        </S.SummaryHeader>
         <S.SelectionStatus>
           {selectedPlace
             ? `${selectedPlace.rank}번 ${selectedPlace.name} 선택됨`

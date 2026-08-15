@@ -8,6 +8,7 @@ import Header from "../../components/Header/Header";
 import PageRoot from "../../components/PageRoot/PageRoot";
 import { tokens } from "../../design-system/tokens.generated";
 import PlaceRecommendationResultPending from "../../features/PlaceRecommendationResult/components/PlaceRecommendationResultPending";
+import { getPlaceRecommendationDurationLabel } from "../../features/PlaceRecommendationResult/components/PlaceRecommendationResultPending.data";
 import PlaceRecommendationResultContent from "../../features/PlaceRecommendationResult/PlaceRecommendationResultContent";
 import { useAppNavigate } from "../../routes/useAppNavigate";
 import {
@@ -98,7 +99,12 @@ const PlaceRecommendationResultPage = () => {
   switch (recommendation.data.status) {
     case "PENDING":
       return (
-        <PlaceRecommendationResultPending jobId={recommendationId} onTerminal={refreshStatus} />
+        <PlaceRecommendationResultPending
+          formLocations={recommendation.data.formLocations}
+          input={recommendation.data.input}
+          jobId={recommendationId}
+          onTerminal={refreshStatus}
+        />
       );
     case "FAILED":
       return (
@@ -123,7 +129,15 @@ const PlaceRecommendationResultPage = () => {
           />
         );
       }
-      return <PlaceRecommendationResultContent output={output} />;
+      return (
+        <PlaceRecommendationResultContent
+          durationLabel={getPlaceRecommendationDurationLabel(
+            recommendation.data.requestedAt,
+            recommendation.data.completedAt,
+          )}
+          output={output}
+        />
+      );
     }
   }
 };

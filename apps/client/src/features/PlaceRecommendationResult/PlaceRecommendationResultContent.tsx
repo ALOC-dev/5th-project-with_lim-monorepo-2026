@@ -83,8 +83,10 @@ const PlaceRecommendationResultError = () => {
 };
 
 const PlaceRecommendationResultSuccessView = ({
+  durationLabel,
   result,
 }: {
+  readonly durationLabel: string | null;
   readonly result: PlaceRecommendationResultSuccess;
 }) => {
   const { recommendationId } = useParams();
@@ -92,13 +94,17 @@ const PlaceRecommendationResultSuccessView = ({
   return (
     <PlaceRecommendationResultBookmarksProvider historyId={recommendationId}>
       <PlaceRecommendationResultUiProvider result={result}>
-        <PlaceRecommendationResultResolvedView />
+        <PlaceRecommendationResultResolvedView durationLabel={durationLabel} />
       </PlaceRecommendationResultUiProvider>
     </PlaceRecommendationResultBookmarksProvider>
   );
 };
 
-const PlaceRecommendationResultResolvedView = () => {
+const PlaceRecommendationResultResolvedView = ({
+  durationLabel,
+}: {
+  readonly durationLabel: string | null;
+}) => {
   const { placeId } = useParams();
 
   if (placeId !== undefined) {
@@ -111,14 +117,20 @@ const PlaceRecommendationResultResolvedView = () => {
 
   return (
     <PageRoot backgroundColor={tokens.color.neutral[50]} layout="full">
-      <PlaceRecommendationResultListView />
+      <PlaceRecommendationResultListView durationLabel={durationLabel} />
     </PageRoot>
   );
 };
 
-const PlaceRecommendationResultContent = ({ output }: { readonly output: EngineOutput }) => {
+const PlaceRecommendationResultContent = ({
+  durationLabel,
+  output,
+}: {
+  readonly durationLabel: string | null;
+  readonly output: EngineOutput;
+}) => {
   return (
-    <PlaceRecommendationResultDataProvider output={output}>
+    <PlaceRecommendationResultDataProvider durationLabel={durationLabel} output={output}>
       <PlaceRecommendationResultBoundary
         views={{
           loading: PlaceRecommendationResultLoading,

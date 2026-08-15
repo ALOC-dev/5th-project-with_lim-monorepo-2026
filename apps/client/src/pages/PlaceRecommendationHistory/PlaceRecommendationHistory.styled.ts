@@ -205,12 +205,22 @@ export const S = {
   `,
 
   SpinnerIcon: styled.div`
-    width: 20px;
-    height: 20px;
-    border: 2px solid ${tokens.color.neutral["200"]};
-    border-top: 2px solid ${tokens.color.primary["500"]};
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
+    display: flex;
+    width: 44px;
+    height: 44px;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+
+    &::before {
+      width: 18px;
+      height: 18px;
+      border: 2px solid ${tokens.color.neutral["200"]};
+      border-top-color: ${tokens.color.primary["500"]};
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      content: "";
+    }
 
     @keyframes spin {
       0% {

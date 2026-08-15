@@ -19,10 +19,21 @@ export const S = {
     gap: 2px;
     padding: 0 2px 2px;
   `,
+  SummaryHeader: styled.div`
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  `,
   ResultCount: styled.h2`
     margin: 0;
     color: ${tokens.color.neutral[900]};
     ${typography.title.xs}
+  `,
+  Duration: styled.span`
+    flex: none;
+    color: ${tokens.color.primary[700]};
+    ${typography.label.xs}
   `,
   SelectionStatus: styled.p`
     margin: 0;
@@ -127,8 +138,7 @@ export const S = {
     border: 1px solid ${tokens.color.neutral[200]};
     border-radius: 50%;
     background-color: ${tokens.color.neutral[0]};
-    color: ${({ $isSaved }) =>
-      $isSaved ? tokens.color.primary[500] : tokens.color.primary[700]};
+    color: ${({ $isSaved }) => ($isSaved ? tokens.color.primary[500] : tokens.color.primary[700])};
 
     &:disabled {
       cursor: wait;
