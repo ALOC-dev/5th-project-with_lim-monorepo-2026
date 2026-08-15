@@ -7,7 +7,7 @@ import { createContext, type ReactNode, useContext, useEffect, useState } from "
 
 import { requestLogout } from "../apis/auth";
 import { setUnauthorizedHandler } from "../apis/base";
-import { requestGetMe } from "../apis/users";
+import { requestGetMe, requestWithdraw } from "../apis/users";
 
 const meResponseSchema = createApiResponseSchema(AuthenticatedUserResponseDataSchema);
 
@@ -17,6 +17,7 @@ type AuthContextType = {
   user: AuthenticatedUser | null; // 로그인한 유저의 정보
   login: (user: AuthenticatedUser) => void;
   logout: () => Promise<void>;
+  withdraw: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -73,8 +74,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setUser(null);
   };
 
+  const withdraw = async (): Promise<void> => {
+    const response = await requestWithdraw();
+
+    if (!response.success) throw new Error(response.error);
+
+    setIsAuthenticated(false);
+    setUser(null);
+  };
+
   return (
-    <AuthContext.Provider value={{ isAuthenticated, isLoading, user, login, logout }}>
+    <AuthContext.Provider value={{ isAuthenticated, isLoading, user, login, logout, withdraw }}>
       {children}
     </AuthContext.Provider>
   );

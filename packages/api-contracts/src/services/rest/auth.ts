@@ -77,9 +77,7 @@ export const VerifyForgotPasswordCodeRequestSchema = z.object({
   code: z.string().length(6),
 });
 
-export type VerifyForgotPasswordCodeRequest = z.infer<
-  typeof VerifyForgotPasswordCodeRequestSchema
->;
+export type VerifyForgotPasswordCodeRequest = z.infer<typeof VerifyForgotPasswordCodeRequestSchema>;
 
 export const VerifyForgotPasswordCodeResponseDataSchema = z.object({
   verified: z.literal(true),
@@ -119,3 +117,15 @@ export const ResetPasswordResponseDataSchema = z.object({
 });
 
 export type ResetPasswordResponseData = z.infer<typeof ResetPasswordResponseDataSchema>;
+
+export const ChangePasswordRequestSchema = z.object({
+  newPassword: PasswordSchema,
+});
+
+export type ChangePasswordRequest = z.infer<typeof ChangePasswordRequestSchema>;
+
+export const ChangePasswordResponseDataSchema = z.object({
+  success: z.literal(true),
+});
+
+export type ChangePasswordResponseData = z.infer<typeof ChangePasswordResponseDataSchema>;

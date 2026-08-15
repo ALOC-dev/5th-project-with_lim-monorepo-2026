@@ -23,6 +23,8 @@ export const iconNames = [
   "activity-place-favorite",
   "activity-course-history",
   "activity-course-favorite",
+  "password-reset",
+  "withdraw",
 ] as const;
 
 export type IconName = (typeof iconNames)[number];
