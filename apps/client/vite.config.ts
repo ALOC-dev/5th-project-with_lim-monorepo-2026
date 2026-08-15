@@ -1,11 +1,27 @@
+import { readFileSync } from "node:fs";
+
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 import { VitePWA } from "vite-plugin-pwa";
+
+const httpsCertPath = process.env.ALOC_DEV_HTTPS_CERT;
+const httpsKeyPath = process.env.ALOC_DEV_HTTPS_KEY;
+
+if ((httpsCertPath && !httpsKeyPath) || (!httpsCertPath && httpsKeyPath)) {
+  throw new Error("ALOC_DEV_HTTPS_CERT and ALOC_DEV_HTTPS_KEY must be provided together.");
+}
 
 export default defineConfig({
   server: {
     // Allow other devices on the local network to use the development server.
     host: true,
+    https:
+      httpsCertPath && httpsKeyPath
+        ? {
+            cert: readFileSync(httpsCertPath),
+            key: readFileSync(httpsKeyPath),
+          }
+        : undefined,
     proxy: {
       "/api": {
         target: "http://127.0.0.1:3000",

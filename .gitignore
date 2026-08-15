@@ -4,6 +4,7 @@ dist
 .pnpm-store
 .cache
 .env
+apps/client/.cert/
 apps/server/src/scripts/recommendation-engine/smoke-results/
 apps/server/src/scripts/recommendation-engine/smoke-result.json
 apps/server/src/scripts/recommendation-engine/smoke-trace.jsonl
