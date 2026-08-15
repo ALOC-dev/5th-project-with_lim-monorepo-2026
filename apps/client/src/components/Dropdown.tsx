@@ -1,4 +1,5 @@
 import styled from "@emotion/styled";
+import { type FocusEventHandler, forwardRef } from "react";
 
 import { theme } from "../design-system/theme.generated";
 
@@ -8,10 +9,15 @@ export interface DropdownOption {
 }
 
 interface DropdownProps {
+  readonly ariaDescribedBy?: string;
+  readonly ariaInvalid?: boolean;
+  readonly ariaLabel?: string;
   readonly id?: string;
   readonly options: readonly DropdownOption[];
   readonly value?: string;
   readonly onChange: (value: string) => void;
+  readonly onBlur?: FocusEventHandler<HTMLSelectElement>;
+  readonly onFocus?: FocusEventHandler<HTMLSelectElement>;
   readonly placeholder?: string;
   readonly width?: string;
   readonly disabled?: boolean;
@@ -46,24 +52,41 @@ const S = {
 };
 
 /** Uses the platform's native select menu for familiar mobile and keyboard interactions. */
-export const Dropdown = ({
-  id,
-  options,
-  value,
-  onChange,
-  placeholder = "선택하세요",
-  width,
-  disabled = false,
-}: DropdownProps) => {
+export const Dropdown = forwardRef<HTMLSelectElement, DropdownProps>(function Dropdown(
+  {
+    ariaDescribedBy,
+    ariaInvalid,
+    ariaLabel,
+    id,
+    options,
+    value,
+    onChange,
+    onBlur,
+    onFocus,
+    placeholder = "선택하세요",
+    width,
+    disabled = false,
+  },
+  ref,
+) {
   const selected = options.some((option) => option.value === value);
 
   return (
     <S.Select
+      ref={ref}
       $isPlaceholder={!selected}
       $width={width}
+      aria-describedby={ariaDescribedBy}
+      aria-invalid={ariaInvalid}
+      aria-label={ariaLabel}
       disabled={disabled}
       id={id}
-      onChange={(event) => onChange(event.target.value)}
+      onBlur={onBlur}
+      onChange={(event) => {
+        onChange(event.currentTarget.value);
+        event.currentTarget.blur();
+      }}
+      onFocus={onFocus}
       value={selected ? value : ""}
     >
       <option disabled value="">
@@ -76,4 +99,4 @@ export const Dropdown = ({
       ))}
     </S.Select>
   );
-};
+});
