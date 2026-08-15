@@ -14,6 +14,7 @@ import { type OperationVerifier, stripSearchMarkup } from "../../utils/operation
 import { inferPriceRangePerPersonFromText } from "../../utils/price.js";
 import { isUsableEvidenceUrl } from "../../utils/source-url.js";
 import { DEFAULT_EXTERNAL_API_TIMEOUT_MS, NAVER_SEARCH_API_BASE_URL } from "../shared/constants.js";
+import { naverSearchQueue } from "../shared/naver-search-queue.js";
 import { buildPlaceLookupQuery, scoreTextMatch } from "../shared/place-match.js";
 import { normalizeComparableText } from "../shared/text.js";
 import type { NaverSearchCredentials } from "../types.js";
@@ -122,37 +123,66 @@ export const enrichWithNaverSearch = async (
   credentials: NaverSearchCredentials,
 ): Promise<CandidateEnrichment> => {
   const query = `${buildPlaceLookupQuery(evidence)} 영업시간`;
-  const [blog, web] = await Promise.all([
-    searchNaver("blog", query, credentials),
-    searchNaver("webkr", query, credentials),
-  ]);
-  const allItems = [...blog.items, ...web.items];
-  const matchedItems = allItems
-    .map((item) => ({
-      item,
-      identityMatchScore: scoreNaverSearchItem(item, evidence),
-    }))
-    .filter((match) => match.identityMatchScore >= 0.35)
-    .sort((a, b) => b.identityMatchScore - a.identityMatchScore);
-  const itemsForEvidence = matchedItems
-    .filter((match) => match.identityMatchScore >= MIN_NAVER_SEARCH_IDENTITY_SCORE);
-  const sourceUrls = unique(
-    itemsForEvidence
-      .map(({ item }) => item.link)
-      .filter((link): link is string => Boolean(link) && isUsableEvidenceUrl(link)),
+  // webkr는 영업시간 결정론 parser에 필요한 공개 원문을 우선 제공한다. 일반 요청에서
+  // 여기서 이미 OPEN/CLOSED가 확정되면 Blog까지 다시 조회해도 hard gate에는 이득이
+  // 없다. 단, 식이·맥주·예산은 개별 source claim이 필요하므로 기존처럼 Blog도 유지한다.
+  const web = await searchNaver("webkr", query, credentials);
+  const webMatches = getIdentityMatchedItems(web.items, evidence);
+  const webItemsForEvidence = webMatches.filter(
+    (match) => match.identityMatchScore >= MIN_NAVER_SEARCH_IDENTITY_SCORE,
   );
-  const text = itemsForEvidence
-    .map(({ item }) => [item.title, item.description].map(stripSearchMarkup).join("\n"))
-    .join("\n");
-  const operationParse = await parseOperationInfoWithLlmFallback({
-    text,
+  const webText = toSearchText(webItemsForEvidence);
+  const webOperationParse = await parseOperationInfoWithLlmFallback({
+    text: webText,
     openAiApiKey: credentials.openAiApiKey,
     evidence,
     operationVerifier,
     sourceName: "naver-search",
     sourceTextKind: "snippet",
+    allowLlmFallback: false,
     logger: credentials.logger,
   });
+  const webVerification = webOperationParse.operationInfo
+    ? operationVerifier.verify(webOperationParse.operationInfo, toSourceUrls(webItemsForEvidence))
+    : operationVerifier.unknown({
+        reason: webMatches.length
+          ? webOperationParse.reason
+          : "Naver Web search returned no identity-matching snippets",
+        sourceUrls: toSourceUrls(webItemsForEvidence),
+      });
+  const shouldQueryBlog = requiresNaverBlogEvidence(evidence) || webVerification.status === "UNKNOWN";
+  const blog = shouldQueryBlog
+    ? await searchNaver("blog", query, credentials)
+    : { total: 0, items: [] };
+  credentials.logger?.info("evaluateSeeds.naver_search.blog", {
+    candidateId: evidence.candidateId,
+    queried: shouldQueryBlog,
+    reason: shouldQueryBlog
+      ? requiresNaverBlogEvidence(evidence)
+        ? "CLAIM_EVIDENCE_REQUIRED"
+        : "OPERATION_UNRESOLVED"
+      : "WEB_OPERATION_ESTABLISHED",
+    webStatus: webVerification.status,
+  });
+
+  const allItems = [...web.items, ...blog.items];
+  const matchedItems = getIdentityMatchedItems(allItems, evidence);
+  const itemsForEvidence = matchedItems
+    .filter((match) => match.identityMatchScore >= MIN_NAVER_SEARCH_IDENTITY_SCORE);
+  const sourceUrls = toSourceUrls(itemsForEvidence);
+  const text = toSearchText(itemsForEvidence);
+  const operationParse = shouldQueryBlog
+    ? await parseOperationInfoWithLlmFallback({
+        text,
+        openAiApiKey: credentials.openAiApiKey,
+        evidence,
+        operationVerifier,
+        sourceName: "naver-search",
+        sourceTextKind: "snippet",
+        allowLlmFallback: credentials.allowLlmFallback,
+        logger: credentials.logger,
+      })
+    : webOperationParse;
   const operationInfo = operationParse.operationInfo;
   const operationVerification = operationInfo
     ? operationVerifier.verify(operationInfo, sourceUrls)
@@ -184,7 +214,7 @@ export const enrichWithNaverSearch = async (
       placeMatchScore: bestIdentityScore,
     },
     priceRangePerPerson: inferPriceRangePerPersonFromText(text, evidence.category),
-    rawTextSnippet: text.slice(0, 2_000),
+    rawTextSnippet: text.slice(0, 7_000),
     ...(dietaryClaims.length > 0 ? { dietaryClaims } : {}),
     ...(beerVenueClaims.length > 0 ? { beerVenueClaims } : {}),
     ...(verifiedPriceClaims.length > 0 ? { verifiedPriceClaims } : {}),
@@ -204,6 +234,36 @@ export const enrichWithNaverSearch = async (
     ],
   };
 };
+
+const getIdentityMatchedItems = (
+  items: readonly NaverSearchItem[],
+  evidence: CandidateScoringEvidence,
+): IdentityMatchedNaverSearchItem[] =>
+  items
+    .map((item) => ({
+      item,
+      identityMatchScore: scoreNaverSearchItem(item, evidence),
+    }))
+    .filter((match) => match.identityMatchScore >= 0.35)
+    .sort((a, b) => b.identityMatchScore - a.identityMatchScore);
+
+const toSourceUrls = (items: readonly IdentityMatchedNaverSearchItem[]): string[] =>
+  unique(
+    items
+      .map(({ item }) => item.link)
+      .filter((link): link is string => Boolean(link) && isUsableEvidenceUrl(link)),
+  );
+
+const toSearchText = (items: readonly IdentityMatchedNaverSearchItem[]): string =>
+  items
+    .map(({ item }) => [item.title, item.description].map(stripSearchMarkup).join("\n"))
+    .join("\n");
+
+const requiresNaverBlogEvidence = (evidence: CandidateScoringEvidence): boolean =>
+  evidence.userFit.budgetPerPerson !== undefined ||
+  /비건|vegan|채식|vegetarian|할랄|halal|맥주|호프|펍|브루잉|\b(?:beer|pub|brewery)\b/iu.test(
+    evidence.userFit.naturalLanguageRequest,
+  );
 
 /**
  * Extract only identity-backed dietary claims from individual Naver results.
@@ -725,7 +785,7 @@ const extractAdministrativeAddressTokens = (value: string): string[] =>
 export const searchNaver = async (
   type: "blog" | "webkr",
   query: string,
-  { clientId, clientSecret, abortSignal }: NaverSearchCredentials,
+  { clientId, clientSecret, abortSignal, retryLimit, logger }: NaverSearchCredentials,
 ): Promise<NaverSearchResponse> => {
   const searchParams: Record<string, string | number> = {
     query,
@@ -734,16 +794,22 @@ export const searchNaver = async (
   };
   if (type === "blog") searchParams.sort = "sim";
 
-  const response = await ky
-    .get(`${NAVER_SEARCH_API_BASE_URL}/${type}.json`, {
-      timeout: DEFAULT_EXTERNAL_API_TIMEOUT_MS,
-      signal: abortSignal,
-      searchParams,
-      headers: {
-        "X-Naver-Client-Id": clientId,
-        "X-Naver-Client-Secret": clientSecret,
-      },
-    })
-    .json<unknown>();
+  const response = await naverSearchQueue.schedule(
+    type,
+    () =>
+      ky
+        .get(`${NAVER_SEARCH_API_BASE_URL}/${type}.json`, {
+          timeout: DEFAULT_EXTERNAL_API_TIMEOUT_MS,
+          signal: abortSignal,
+          ...(retryLimit === undefined ? {} : { retry: { limit: retryLimit } }),
+          searchParams,
+          headers: {
+            "X-Naver-Client-Id": clientId,
+            "X-Naver-Client-Secret": clientSecret,
+          },
+        })
+        .json<unknown>(),
+    logger,
+  );
   return NaverSearchResponseSchema.parse(response);
 };

@@ -1,5 +1,6 @@
 import type { UserInput } from "../../../interfaces/input.contracts.js";
 import { generateRecommendationObject, RECOMMENDATION_LLM_MODEL_ID } from "../../../llm/ai-sdk.js";
+import type { Logger } from "../../../observability/logger.js";
 import { type SearchQuery, TMAP_SEARCH_COUNT_MAX } from "../contracts.js";
 import {
   LlmDiscoveryContextResponseSchema,
@@ -176,6 +177,7 @@ export const createInitialDiscoveryPlanWithLlm = async (
   options: {
     openAiApiKey?: string;
     targetSeedCount: number;
+    logger?: Logger;
   },
 ): Promise<InitialDiscoveryPlan> => {
   const wirePlan = await generateRecommendationObject({
@@ -185,6 +187,7 @@ export const createInitialDiscoveryPlanWithLlm = async (
     schema: LlmInitialDiscoveryPlanWireResponseSchema,
     system: DISCOVERY_INITIAL_SYSTEM_PROMPT,
     prompt: buildInitialDiscoveryPlanUserPrompt(userInput),
+    onTelemetry: (telemetry) => options.logger?.info("recommendation.llm_task", telemetry),
   });
   const plan = toInitialDiscoveryPlanResponse(wirePlan);
 
@@ -208,6 +211,7 @@ export const createDiscoveryContextWithLlm = async (
     openAiApiKey?: string;
     targetSeedCount: number;
     retry?: DiscoveryRetryContext;
+    logger?: Logger;
   },
 ): Promise<SearchQuery[]> => {
   const { queries } = await generateRecommendationObject({
@@ -220,6 +224,7 @@ export const createDiscoveryContextWithLlm = async (
       userInput,
       ...(options.retry ? { retry: options.retry } : {}),
     }),
+    onTelemetry: (telemetry) => options.logger?.info("recommendation.llm_task", telemetry),
   });
 
   return toSearchQueries(

@@ -5,6 +5,7 @@ import type {
   GenerateRecommendationObjectOptions,
   GenerateRecommendationTextOptions,
   RecommendationLlmTask,
+  RecommendationLlmTelemetry,
 } from "./ai-sdk.types.js";
 
 export const RECOMMENDATION_LLM_MODEL_ID = "gpt-5.4-nano";
@@ -28,7 +29,21 @@ export type { RecommendationLlmTask } from "./ai-sdk.types.js";
 export const createRecommendationOpenAiModel = (
   modelId = RECOMMENDATION_LLM_MODEL_ID,
   apiKey?: string,
-): LanguageModel => (apiKey ? createOpenAI({ apiKey })(modelId) : openai(modelId));
+  requestCounter?: { count: number },
+): LanguageModel =>
+  apiKey
+    ? createOpenAI({
+        apiKey,
+        ...(requestCounter
+          ? {
+              fetch: async (...args: Parameters<typeof globalThis.fetch>) => {
+                requestCounter.count += 1;
+                return globalThis.fetch(...args);
+              },
+            }
+          : {}),
+      })(modelId)
+    : openai(modelId);
 
 export const generateRecommendationObject = async <TObject>({
   modelId,
@@ -36,18 +51,35 @@ export const generateRecommendationObject = async <TObject>({
   schema,
   maxRetries,
   openAiApiKey,
+  onTelemetry,
   ...options
 }: GenerateRecommendationObjectOptions<TObject>): Promise<TObject> => {
+  const startedAt = performance.now();
+  const requestCounter = { count: 0 };
   try {
-    const { output } = await generateText({
+    const result = await generateText({
       ...options,
-      model: createRecommendationOpenAiModel(modelId, openAiApiKey),
+      model: createRecommendationOpenAiModel(modelId, openAiApiKey, requestCounter),
       output: Output.object({ schema }),
       maxRetries: maxRetries ?? RECOMMENDATION_LLM_MAX_RETRIES,
     });
-
-    return output;
+    emitTelemetry(onTelemetry, {
+      task,
+      status: "SUCCESS",
+      startedAt,
+      requestCount: requestCounter.count,
+      stepCount: result.steps.length,
+      usage: result.totalUsage,
+    });
+    return result.output;
   } catch (error) {
+    emitTelemetry(onTelemetry, {
+      task,
+      status: "FAILURE",
+      startedAt,
+      requestCount: requestCounter.count,
+      stepCount: 1,
+    });
     throw toRecommendationLlmError(task, error);
   }
 };
@@ -56,16 +88,72 @@ export const generateRecommendationText = async ({
   modelId,
   task,
   openAiApiKey,
+  onTelemetry,
   ...options
 }: GenerateRecommendationTextOptions): ReturnType<typeof generateText> => {
+  const startedAt = performance.now();
+  const requestCounter = { count: 0 };
   try {
-    return await generateText({
+    const result = await generateText({
       ...options,
-      model: createRecommendationOpenAiModel(modelId, openAiApiKey),
+      model: createRecommendationOpenAiModel(modelId, openAiApiKey, requestCounter),
       maxRetries: options.maxRetries ?? RECOMMENDATION_LLM_MAX_RETRIES,
     } as Parameters<typeof generateText>[0]);
+    emitTelemetry(onTelemetry, {
+      task,
+      status: "SUCCESS",
+      startedAt,
+      requestCount: requestCounter.count,
+      stepCount: result.steps.length,
+      usage: result.totalUsage,
+    });
+    return result;
   } catch (error) {
+    emitTelemetry(onTelemetry, {
+      task,
+      status: "FAILURE",
+      startedAt,
+      requestCount: requestCounter.count,
+      stepCount: 1,
+    });
     throw toRecommendationLlmError(task, error);
+  }
+};
+
+const emitTelemetry = (
+  onTelemetry: ((telemetry: RecommendationLlmTelemetry) => void) | undefined,
+  input: {
+    task: RecommendationLlmTask;
+    status: RecommendationLlmTelemetry["status"];
+    startedAt: number;
+    requestCount: number;
+    stepCount: number;
+    usage?: {
+      inputTokens?: number;
+      outputTokens?: number;
+      totalTokens?: number;
+    };
+  },
+): void => {
+  try {
+    onTelemetry?.({
+      task: input.task,
+      status: input.status,
+      durationMs: Math.round(performance.now() - input.startedAt),
+      requestCount: input.requestCount,
+      retryCount: Math.max(0, input.requestCount - input.stepCount),
+      ...(input.usage?.inputTokens === undefined
+        ? {}
+        : { inputTokens: input.usage.inputTokens }),
+      ...(input.usage?.outputTokens === undefined
+        ? {}
+        : { outputTokens: input.usage.outputTokens }),
+      ...(input.usage?.totalTokens === undefined
+        ? {}
+        : { totalTokens: input.usage.totalTokens }),
+    });
+  } catch {
+    // Telemetry must never change recommendation behavior.
   }
 };
 
