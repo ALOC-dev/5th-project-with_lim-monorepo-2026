@@ -10,6 +10,7 @@ import FeedbackState from "../../components/FeedbackState/FeedbackState";
 import { Icon } from "../../components/Icon";
 import { Input } from "../../components/Input";
 import { SearchInput } from "../../components/SearchInput";
+import { Skeleton } from "../../components/Skeleton";
 import { CourseIconButton } from "../../features/CourseRecommendation/components/CourseIconButton";
 import { CoursePage } from "../../features/CourseRecommendation/components/CoursePage";
 import type {
@@ -47,6 +48,32 @@ const PACE_OPTIONS: readonly DropdownOption[] = [
   { label: "알차게", value: "PACKED" },
 ];
 
+const HOUR_OPTIONS: readonly DropdownOption[] = Array.from({ length: 24 }, (_, hour) => {
+  const value = String(hour).padStart(2, "0");
+  return { label: `${value}시`, value };
+});
+
+const MINUTE_OPTIONS: readonly DropdownOption[] = ["00", "15", "30", "45"].map((value) => ({
+  label: `${value}분`,
+  value,
+}));
+
+const pickerSkeletonKeys = ["first", "second", "third"] as const;
+
+const PickerResultsSkeleton = () => (
+  <S.PickerSkeleton aria-busy="true" aria-label="장소를 불러오는 중이에요" role="status">
+    {pickerSkeletonKeys.map((key) => (
+      <S.PickerSkeletonItem key={key}>
+        <S.PickerSkeletonInfo>
+          <Skeleton height={24} width="42%" />
+          <Skeleton height={20} width="72%" />
+        </S.PickerSkeletonInfo>
+        <Skeleton borderRadius={8} height={40} width={52} />
+      </S.PickerSkeletonItem>
+    ))}
+  </S.PickerSkeleton>
+);
+
 export const CourseRecommendationFormPage = () => {
   const navigate = useAppNavigate();
   const navigateBack = useAppBackNavigate("/");
@@ -72,7 +99,7 @@ export const CourseRecommendationFormPage = () => {
   const [query, setQuery] = useState("");
   const pickerTriggerRef = useRef<HTMLButtonElement>(null);
   const dateRef = useRef<HTMLInputElement>(null);
-  const startTimeRef = useRef<HTMLInputElement>(null);
+  const startTimeRef = useRef<HTMLSelectElement>(null);
   const numberOfPeopleRef = useRef<HTMLInputElement>(null);
   const budgetRef = useRef<HTMLInputElement>(null);
   const retrySavedPlaceIds =
@@ -97,6 +124,13 @@ export const CourseRecommendationFormPage = () => {
   const displayPlaces = places.map((place) =>
     place.savedPlaceId ? (savedPlaceById.get(place.savedPlaceId) ?? place) : place,
   );
+  const [startTimeHour = "", startTimeMinute = ""] = startTime.split(":");
+  const minuteOptions =
+    startTimeMinute === "" || MINUTE_OPTIONS.some(({ value }) => value === startTimeMinute)
+      ? MINUTE_OPTIONS
+      : [...MINUTE_OPTIONS, { label: `${startTimeMinute}분`, value: startTimeMinute }].sort(
+          (left, right) => left.value.localeCompare(right.value),
+        );
   const createMutation = useMutation({
     mutationFn: () =>
       courseRepository.startRecommendation({
@@ -153,9 +187,12 @@ export const CourseRecommendationFormPage = () => {
     <CoursePage onBack={navigateBack} title="코스 추천">
       <S.Scroll>
         <S.Section>
-          <S.Heading>
-            후보 장소 {places.length} / {MAX_SELECTED_PLACES}
-          </S.Heading>
+          <S.SectionHeader>
+            <S.Heading $required>후보 장소</S.Heading>
+            <S.SectionCount>
+              후보 장소 {places.length} / {MAX_SELECTED_PLACES}
+            </S.SectionCount>
+          </S.SectionHeader>
           <S.Helper>결과에는 후보 중 2~6곳이 포함되며, 제외된 이유도 함께 보여드려요.</S.Helper>
           <S.PickerOpen
             aria-describedby={errorDescriptionFor("places")}
@@ -190,35 +227,48 @@ export const CourseRecommendationFormPage = () => {
         </S.Section>
         <S.Section>
           <S.Heading>약속 시간</S.Heading>
-          <S.FieldGrid>
-            <S.Field>
-              <label htmlFor="course-date">날짜</label>
-              <DatePicker
-                ariaDescribedBy={errorDescriptionFor("date")}
-                ariaInvalid={formError?.field === "date"}
-                inputId="course-date"
-                inputRef={dateRef}
-                maxDate={scheduleDateBounds.maxDate}
-                minDate={scheduleDateBounds.minDate}
-                onChange={setDate}
-                sheetId="course-date-selection"
-                value={date}
-              />
-            </S.Field>
-            <S.Field>
-              <label htmlFor="course-time">시작 시간</label>
-              <Input
-                aria-describedby={errorDescriptionFor("startTime")}
-                aria-invalid={formError?.field === "startTime"}
-                id="course-time"
-                onChange={(event) => setStartTime(event.target.value)}
+          <S.Field $required>
+            <label htmlFor="course-date">날짜</label>
+            <DatePicker
+              ariaDescribedBy={errorDescriptionFor("date")}
+              ariaInvalid={formError?.field === "date"}
+              inputId="course-date"
+              inputRef={dateRef}
+              maxDate={scheduleDateBounds.maxDate}
+              minDate={scheduleDateBounds.minDate}
+              onChange={setDate}
+              sheetId="course-date-selection"
+              value={date}
+            />
+          </S.Field>
+          <S.Field $required>
+            <label htmlFor="course-time-hour">시각</label>
+            <S.TimeSelection aria-label="시각 선택">
+              <Dropdown
+                ariaDescribedBy={errorDescriptionFor("startTime")}
+                ariaInvalid={formError?.field === "startTime"}
+                id="course-time-hour"
+                onChange={(hour) => setStartTime(`${hour}:${startTimeMinute || "00"}`)}
+                options={HOUR_OPTIONS}
+                placeholder="시"
                 ref={startTimeRef}
-                type="time"
-                value={startTime}
+                value={startTimeHour || undefined}
               />
-            </S.Field>
-          </S.FieldGrid>
-          <S.Field>
+              <S.TimeSeparator aria-hidden>:</S.TimeSeparator>
+              <Dropdown
+                ariaDescribedBy={errorDescriptionFor("startTime")}
+                ariaInvalid={formError?.field === "startTime"}
+                ariaLabel="분"
+                disabled={!startTimeHour}
+                id="course-time-minute"
+                onChange={(minute) => setStartTime(`${startTimeHour}:${minute}`)}
+                options={minuteOptions}
+                placeholder="분"
+                value={startTimeMinute || undefined}
+              />
+            </S.TimeSelection>
+          </S.Field>
+          <S.Field $required>
             <label htmlFor="course-duration">총 시간</label>
             <Dropdown
               id="course-duration"
@@ -228,7 +278,7 @@ export const CourseRecommendationFormPage = () => {
             />
           </S.Field>
           <S.FieldGrid>
-            <S.Field>
+            <S.Field $required>
               <label htmlFor="course-people">인원</label>
               <Input
                 aria-describedby={errorDescriptionFor("numberOfPeople")}
@@ -242,7 +292,7 @@ export const CourseRecommendationFormPage = () => {
                 value={numberOfPeople}
               />
             </S.Field>
-            <S.Field>
+            <S.Field $required>
               <label htmlFor="course-pace">코스 페이스</label>
               <Dropdown
                 id="course-pace"
@@ -345,7 +395,7 @@ export const CourseRecommendationFormPage = () => {
                 title="장소를 검색해 주세요"
               />
             ) : pickerQuery.isFetching ? (
-              <FeedbackState kind="loading" title="장소를 불러오는 중이에요" />
+              <PickerResultsSkeleton />
             ) : pickerQuery.isError ? (
               <FeedbackState
                 action={{ label: "다시 시도", onClick: () => void pickerQuery.refetch() }}

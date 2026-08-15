@@ -94,7 +94,14 @@ export const DatePicker = ({
           value={value ? formatDateLabel(value) : ""}
         />
       </S.InputWrapper>
-      <BottomSheet ariaLabel="날짜 선택" close={close} id={sheetId} isModal isOpen={isOpen}>
+      <BottomSheet
+        ariaLabel="날짜 선택"
+        close={close}
+        id={sheetId}
+        isModal
+        isOpen={isOpen}
+        handleType="none"
+      >
         <S.Wrapper>
           <S.Title>날짜 선택</S.Title>
           <S.MonthSelector>
