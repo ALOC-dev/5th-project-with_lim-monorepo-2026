@@ -198,8 +198,10 @@ export const createRecommendationRouter = (secrets: RecommendationEngineSecrets)
         const emitTerminalDelivery = (
           delivery: RecommendationTerminalDelivery,
           output: Extract<EngineOutput, { readonly status: "SUCCESS" }> | null,
-          failureEvent: Extract<PlaceRecommendationSseEvent, { readonly type: "error" }> =
-            RECOMMENDATION_FAILURE_EVENT,
+          failureEvent: Extract<
+            PlaceRecommendationSseEvent,
+            { readonly type: "error" }
+          > = RECOMMENDATION_FAILURE_EVENT,
         ): void => {
           switch (delivery) {
             case "result":
@@ -260,10 +262,12 @@ export const createRecommendationRouter = (secrets: RecommendationEngineSecrets)
               secrets,
             }).process();
           } catch (error: unknown) {
+            await runLog.flush();
             await runLog.writeResult({ status: "THROWN", error });
             await handleEngineFailure(error);
             return;
           }
+          await runLog.flush();
           await runLog.writeResult(result);
 
           switch (result.status) {

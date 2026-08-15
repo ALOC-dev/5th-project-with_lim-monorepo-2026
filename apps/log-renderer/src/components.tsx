@@ -200,7 +200,7 @@ export const RunOverview = ({
   snapshot: RunSnapshot;
   events: LogEvent[];
 }) => {
-  const candidates = useMemo(() => buildCandidates(snapshot), [snapshot]);
+  const candidates = useMemo(() => buildCandidates(snapshot, events), [events, snapshot]);
   const stats = useMemo(
     () => getRunStats(snapshot, events, candidates),
     [candidates, events, snapshot],
@@ -533,7 +533,7 @@ const CandidateDetail = ({
 };
 
 export const PlacesView = ({ snapshot, events }: { snapshot: RunSnapshot; events: LogEvent[] }) => {
-  const candidates = useMemo(() => buildCandidates(snapshot), [snapshot]);
+  const candidates = useMemo(() => buildCandidates(snapshot, events), [events, snapshot]);
   const [selectedId, setSelectedId] = useState<string | undefined>();
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("all");

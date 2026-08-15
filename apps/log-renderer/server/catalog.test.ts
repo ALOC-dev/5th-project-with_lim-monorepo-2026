@@ -68,6 +68,88 @@ void test("groups complete, failed, and running artifacts", async () => {
   assert.equal(summaries.find((run) => run.name.startsWith("running"))?.status, "RUNNING");
 });
 
+void test("discovers development-server input, log JSONL, and result artifacts", async () => {
+  const root = await mkdtemp(join(tmpdir(), "log-renderer-runtime-"));
+  await writeFile(
+    join(root, "success.input.json"),
+    JSON.stringify({
+      jobId: "success-job",
+      userInput: { userNaturalLanguageRequest: "성수 파스타 추천" },
+    }),
+  );
+  await writeFile(
+    join(root, "success.log.jsonl"),
+    '{"phase":"engine.process.start","level":"info"}\n',
+  );
+  await writeFile(
+    join(root, "success.result.json"),
+    JSON.stringify({
+      jobId: "success-job",
+      finishedAt: "2026-08-15T05:00:00.000Z",
+      status: "SUCCESS",
+    }),
+  );
+  await writeFile(
+    join(root, "running.input.json"),
+    JSON.stringify({
+      jobId: "running-job",
+      userInput: { userNaturalLanguageRequest: "을지로 카페 추천" },
+    }),
+  );
+  await writeFile(
+    join(root, "running.log.jsonl"),
+    '{"phase":"engine.attempt.start","level":"info"}\n',
+  );
+  await writeFile(
+    join(root, "failed.result.json"),
+    JSON.stringify({ jobId: "failed-job", status: "THROWN" }),
+  );
+
+  const catalog = new LogCatalog([{ label: "dev-server", path: root }]);
+  const summaries = await catalog.listRuns();
+  assert.equal(summaries.length, 3);
+  const success = summaries.find((run) => run.runId === "success-job");
+  assert.equal(success?.name, "성수 파스타 추천");
+  assert.equal(success?.status, "PASS");
+  assert.equal(success?.relativeDirectory, "dev-server/.");
+  assert.deepEqual(
+    { log: success?.hasLog, result: success?.hasResult, events: success?.hasEvents },
+    { log: true, result: true, events: true },
+  );
+  assert.equal(summaries.find((run) => run.runId === "running-job")?.status, "RUNNING");
+  assert.equal(summaries.find((run) => run.runId === "failed-job")?.status, "FAIL");
+
+  assert.ok(success);
+  const snapshot = await catalog.getRun(success.id);
+  assert.equal(snapshot?.artifactNames.log, "success.input.json");
+  assert.equal(snapshot?.artifactNames.events, "success.log.jsonl");
+  assert.equal(
+    (snapshot?.log as { userInput?: { userNaturalLanguageRequest?: string } }).userInput
+      ?.userNaturalLanguageRequest,
+    "성수 파스타 추천",
+  );
+  const events = await catalog.readEvents(success.id, 0, 1);
+  assert.equal(events?.events[0]?.phase, "engine.process.start");
+});
+
+void test("keeps identical artifact stems from separate roots distinct", async () => {
+  const firstRoot = await mkdtemp(join(tmpdir(), "log-renderer-root-a-"));
+  const secondRoot = await mkdtemp(join(tmpdir(), "log-renderer-root-b-"));
+  await writeFile(join(firstRoot, "same.events.jsonl"), '{"phase":"first","level":"info"}\n');
+  await writeFile(join(secondRoot, "same.events.jsonl"), '{"phase":"second","level":"info"}\n');
+
+  const summaries = await new LogCatalog([
+    { label: "first", path: firstRoot },
+    { label: "second", path: secondRoot },
+  ]).listRuns();
+  assert.equal(summaries.length, 2);
+  assert.notEqual(summaries[0]?.id, summaries[1]?.id);
+  assert.deepEqual(
+    new Set(summaries.map((run) => run.relativeDirectory)),
+    new Set(["first/.", "second/."]),
+  );
+});
+
 void test("rejects artifact references outside the root and symbolic artifacts", async () => {
   const root = await mkdtemp(join(tmpdir(), "log-renderer-security-"));
   const outside = await mkdtemp(join(tmpdir(), "log-renderer-outside-"));

@@ -51,6 +51,17 @@ export const getCandidateIdsForEvent = (event: LogEvent): string[] => {
   const context = isRecord(event.context) ? event.context : {};
   const data = isRecord(event.data) ? event.data : {};
   const values: unknown[] = [context.candidateId, data.candidateId];
+  const collectNestedCandidateIds = (value: unknown): void => {
+    if (Array.isArray(value)) {
+      value.forEach(collectNestedCandidateIds);
+      return;
+    }
+    if (!isRecord(value)) return;
+    values.push(value.candidateId);
+    Object.values(value).forEach(collectNestedCandidateIds);
+  };
+  collectNestedCandidateIds(context);
+  collectNestedCandidateIds(data);
   for (const key of [
     "candidateIds",
     "selectedCandidateIds",
@@ -73,6 +84,7 @@ export const getUserInput = (snapshot: RunSnapshot): JsonRecord | undefined => {
   const result = getResultRecord(snapshot);
   if (isRecord(result.userInput)) return result.userInput;
   const log = getLogRecord(snapshot);
+  if (isRecord(log.userInput)) return log.userInput;
   const detail = isRecord(log.log) ? log.log : {};
   return isRecord(detail.input) ? detail.input : undefined;
 };
@@ -125,9 +137,12 @@ const candidateAddress = (record: JsonRecord): string | undefined => {
   );
 };
 
-export const buildCandidates = (snapshot: RunSnapshot): CandidateView[] => {
+export const buildCandidates = (
+  snapshot: RunSnapshot,
+  events: LogEvent[] = [],
+): CandidateView[] => {
   const trace = getTrace(snapshot);
-  const generated = asRecordArray(trace.generatedCandidates);
+  const generated = [...asRecordArray(trace.generatedCandidates)];
   const selectedIds = new Set(
     Array.isArray(trace.selectedCandidateIds)
       ? trace.selectedCandidateIds.filter((value): value is string => typeof value === "string")
@@ -137,6 +152,19 @@ export const buildCandidates = (snapshot: RunSnapshot): CandidateView[] => {
   const verificationsById = new Map<string, unknown[]>();
   collectTraceItemsByCandidateId(trace.rejectedCandidates, rejectedById);
   collectTraceItemsByCandidateId(trace.enrichmentVerifications, verificationsById);
+  for (const event of events) {
+    const data = isRecord(event.data) ? event.data : {};
+    const output = isRecord(data.output) ? data.output : {};
+    for (const seed of asRecordArray(output.seeds)) generated.push(seed);
+    collectTraceItemsByCandidateId(data.verifications, verificationsById);
+    collectTraceItemsByCandidateId(data.rejected, rejectedById);
+    collectTraceItemsByCandidateId(data.referenceRejected, rejectedById);
+    if (event.phase.includes("reference_urls")) {
+      for (const result of asRecordArray(data.results)) {
+        if (result.status === "REJECTED") collectTraceItemsByCandidateId(result, rejectedById);
+      }
+    }
+  }
   const recommendations = getRecommendations(snapshot);
 
   const views = new Map<string, CandidateView>();
@@ -165,7 +193,7 @@ export const buildCandidates = (snapshot: RunSnapshot): CandidateView[] => {
   };
 
   generated.forEach((record) => {
-    const id = asString(record.candidateId) ?? asString(record.id);
+    const id = asString(record.candidateId) ?? asString(record.seedKey) ?? asString(record.id);
     if (id) upsert(id, record, "generated");
   });
   recommendations.forEach((record) => {
@@ -174,6 +202,11 @@ export const buildCandidates = (snapshot: RunSnapshot): CandidateView[] => {
   });
   for (const id of new Set([...rejectedById.keys(), ...verificationsById.keys(), ...selectedIds])) {
     if (!views.has(id)) upsert(id, { candidateId: id }, "generated");
+  }
+  for (const event of events) {
+    for (const id of getCandidateIdsForEvent(event)) {
+      if (!views.has(id)) upsert(id, { candidateId: id }, "generated");
+    }
   }
 
   const order: Record<CandidateStatus, number> = { SELECTED: 0, REJECTED: 1, CANDIDATE: 2 };

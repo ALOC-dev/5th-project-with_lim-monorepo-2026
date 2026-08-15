@@ -13,16 +13,30 @@ import type {
 } from "../src/types";
 
 const LOG_SUFFIX = ".log.json";
+const INPUT_SUFFIX = ".input.json";
 const RESULT_SUFFIX = ".result.json";
 const EVENTS_SUFFIX = ".events.jsonl";
+const RUNTIME_EVENTS_SUFFIX = ".log.jsonl";
 const METADATA_PREFIX_BYTES = 128 * 1024;
 
-type ArtifactKind = "log" | "result" | "events";
+type ArtifactKind = "log" | "input" | "result" | "events";
+
+export type LogCatalogRoot = {
+  label: string;
+  path: string;
+};
+
+type ResolvedLogCatalogRoot = LogCatalogRoot & {
+  path: string;
+  realPath?: string;
+};
 
 type RunFiles = {
   id: string;
   key: string;
+  root: ResolvedLogCatalogRoot;
   log?: string;
+  input?: string;
   result?: string;
   events?: string;
   modifiedAtMs: number;
@@ -39,14 +53,21 @@ const isRecord = (value: unknown): value is JsonRecord =>
   typeof value === "object" && value !== null && !Array.isArray(value);
 
 const artifactKind = (filePath: string): ArtifactKind | undefined => {
-  if (filePath.endsWith(EVENTS_SUFFIX)) return "events";
+  if (filePath.endsWith(EVENTS_SUFFIX) || filePath.endsWith(RUNTIME_EVENTS_SUFFIX)) return "events";
+  if (filePath.endsWith(INPUT_SUFFIX)) return "input";
   if (filePath.endsWith(LOG_SUFFIX)) return "log";
   if (filePath.endsWith(RESULT_SUFFIX)) return "result";
   return undefined;
 };
 
 const stripArtifactSuffix = (filePath: string): string => {
-  for (const suffix of [EVENTS_SUFFIX, RESULT_SUFFIX, LOG_SUFFIX]) {
+  for (const suffix of [
+    RUNTIME_EVENTS_SUFFIX,
+    EVENTS_SUFFIX,
+    INPUT_SUFFIX,
+    RESULT_SUFFIX,
+    LOG_SUFFIX,
+  ]) {
     if (filePath.endsWith(suffix)) return filePath.slice(0, -suffix.length);
   }
   return filePath;
@@ -109,7 +130,7 @@ const readPrefix = async (filePath: string, size: number): Promise<string> => {
 };
 
 const readRunMetadata = async (files: RunFiles): Promise<Partial<RunSummary>> => {
-  const metadataPath = files.log ?? files.result ?? files.events;
+  const metadataPath = files.log ?? files.result ?? files.input ?? files.events;
   if (!metadataPath) return {};
   const fileStat = await stat(metadataPath);
   const signature = `${fileStat.size}:${fileStat.mtimeMs}`;
@@ -133,9 +154,34 @@ const readRunMetadata = async (files: RunFiles): Promise<Partial<RunSummary>> =>
   } else if (files.result) {
     const text = await readPrefix(files.result, fileStat.size);
     const engineStatus = extractString(text, "status");
+    const inputText = files.input
+      ? await readPrefix(files.input, (await stat(files.input)).size)
+      : text;
+    const request = extractString(inputText, "userNaturalLanguageRequest");
+    const jobId = extractString(inputText, "jobId") ?? extractString(text, "jobId");
     metadata = {
-      status: engineStatus === "SUCCESS" ? "PASS" : engineStatus === "ERROR" ? "FAIL" : "UNKNOWN",
+      name: request ?? jobId,
+      scenario: request,
+      runId: jobId,
+      status:
+        engineStatus === "SUCCESS"
+          ? "PASS"
+          : engineStatus === "ERROR" || engineStatus === "THROWN"
+            ? "FAIL"
+            : "UNKNOWN",
       engineStatus,
+      generatedAt: extractString(text, "finishedAt"),
+    };
+  } else if (files.input) {
+    const text = await readPrefix(files.input, fileStat.size);
+    const request = extractString(text, "userNaturalLanguageRequest");
+    const jobId = extractString(text, "jobId");
+    metadata = {
+      name: request ?? jobId,
+      scenario: request,
+      runId: jobId,
+      status: "RUNNING",
+      engineStatus: "RUNNING",
     };
   } else {
     metadata = { status: "RUNNING" };
@@ -151,34 +197,39 @@ const toRunStatus = (status: string | undefined): RunStatus => {
 };
 
 export class LogCatalog {
-  private readonly root: string;
-  private rootRealPath: string | undefined;
+  private readonly roots: ResolvedLogCatalogRoot[];
 
-  constructor(root: string) {
-    this.root = resolve(root);
+  constructor(rootOrRoots: string | LogCatalogRoot[]) {
+    const roots =
+      typeof rootOrRoots === "string" ? [{ label: "logs", path: rootOrRoots }] : rootOrRoots;
+    this.roots = roots.map((root) => ({ ...root, path: resolve(root.path) }));
   }
 
-  private async getRootRealPath(): Promise<string> {
-    this.rootRealPath ??= await realpath(this.root);
-    return this.rootRealPath;
+  private async getRootRealPath(root: ResolvedLogCatalogRoot): Promise<string> {
+    root.realPath ??= await realpath(root.path);
+    return root.realPath;
   }
 
   private async discover(): Promise<RunFiles[]> {
-    const files = await listArtifactFiles(this.root);
     const grouped = new Map<string, RunFiles>();
-    for (const filePath of files) {
-      const kind = artifactKind(filePath);
-      if (!kind) continue;
-      const key = stripArtifactSuffix(filePath);
-      const fileStat = await stat(filePath);
-      const current = grouped.get(key) ?? {
-        id: toId(relative(this.root, key)),
-        key,
-        modifiedAtMs: 0,
-      };
-      current[kind] = filePath;
-      current.modifiedAtMs = Math.max(current.modifiedAtMs, fileStat.mtimeMs);
-      grouped.set(key, current);
+    for (const root of this.roots) {
+      const files = await listArtifactFiles(root.path);
+      for (const filePath of files) {
+        const kind = artifactKind(filePath);
+        if (!kind) continue;
+        const key = stripArtifactSuffix(filePath);
+        const groupedKey = `${root.path}\0${key}`;
+        const fileStat = await stat(filePath);
+        const current = grouped.get(groupedKey) ?? {
+          id: toId(groupedKey),
+          key,
+          root,
+          modifiedAtMs: 0,
+        };
+        current[kind] = filePath;
+        current.modifiedAtMs = Math.max(current.modifiedAtMs, fileStat.mtimeMs);
+        grouped.set(groupedKey, current);
+      }
     }
     return [...grouped.values()];
   }
@@ -200,8 +251,8 @@ export class LogCatalog {
           recommendationCount: metadata.recommendationCount,
           generatedAt: metadata.generatedAt,
           modifiedAt: new Date(files.modifiedAtMs).toISOString(),
-          relativeDirectory: relative(this.root, dirname(files.key)) || ".",
-          hasLog: Boolean(files.log),
+          relativeDirectory: `${files.root.label}/${relative(files.root.path, dirname(files.key)) || "."}`,
+          hasLog: Boolean(files.log ?? files.input),
           hasResult: Boolean(files.result),
           hasEvents: Boolean(files.events),
         };
@@ -214,10 +265,13 @@ export class LogCatalog {
     return (await this.discover()).find((run) => run.id === id);
   }
 
-  private async safeFile(candidate: string | undefined): Promise<string | undefined> {
+  private async safeFile(
+    root: ResolvedLogCatalogRoot,
+    candidate: string | undefined,
+  ): Promise<string | undefined> {
     if (!candidate) return undefined;
-    const requested = isAbsolute(candidate) ? resolve(candidate) : resolve(this.root, candidate);
-    const rootRealPath = await this.getRootRealPath();
+    const requested = isAbsolute(candidate) ? resolve(candidate) : resolve(root.path, candidate);
+    const rootRealPath = await this.getRootRealPath(root);
     const requestedStat = await lstat(requested);
     if (!requestedStat.isFile() || requestedStat.isSymbolicLink()) {
       throw new Error("Artifact reference must point to a regular non-symbolic file");
@@ -231,12 +285,13 @@ export class LogCatalog {
   }
 
   private async readJsonArtifact(
+    root: ResolvedLogCatalogRoot,
     kind: "log" | "result",
     filePath: string | undefined,
   ): Promise<{ value: unknown; issue?: ArtifactIssue }> {
     if (!filePath) return { value: null };
     try {
-      const safePath = await this.safeFile(filePath);
+      const safePath = await this.safeFile(root, filePath);
       if (!safePath) return { value: null };
       return { value: JSON.parse(await readFile(safePath, "utf8")) as unknown };
     } catch (error) {
@@ -258,7 +313,7 @@ export class LogCatalog {
     const summary = summaries.find((item) => item.id === id);
     if (!summary) return undefined;
 
-    const initialLog = await this.readJsonArtifact("log", files.log);
+    const initialLog = await this.readJsonArtifact(files.root, "log", files.log ?? files.input);
     const logRecord = isRecord(initialLog.value) ? initialLog.value : undefined;
     const referencedResult =
       typeof logRecord?.resultFile === "string" ? logRecord.resultFile : undefined;
@@ -269,7 +324,7 @@ export class LogCatalog {
     let resultPath = files.result;
     if (referencedResult) {
       try {
-        resultPath = await this.safeFile(referencedResult);
+        resultPath = await this.safeFile(files.root, referencedResult);
       } catch (error) {
         issues.push({
           artifact: "result",
@@ -282,7 +337,7 @@ export class LogCatalog {
     let eventsPath = files.events;
     if (referencedEvents) {
       try {
-        eventsPath = await this.safeFile(referencedEvents);
+        eventsPath = await this.safeFile(files.root, referencedEvents);
       } catch (error) {
         issues.push({
           artifact: "events",
@@ -292,14 +347,14 @@ export class LogCatalog {
       }
     }
 
-    const result = await this.readJsonArtifact("result", resultPath);
+    const result = await this.readJsonArtifact(files.root, "result", resultPath);
     if (result.issue) issues.push(result.issue);
     return {
       summary: { ...summary, hasEvents: Boolean(eventsPath) },
       log: initialLog.value,
       result: result.value,
       artifactNames: {
-        log: files.log ? basename(files.log) : undefined,
+        log: files.log ? basename(files.log) : files.input ? basename(files.input) : undefined,
         result: resultPath ? basename(resultPath) : undefined,
         events: eventsPath ? basename(eventsPath) : undefined,
       },
@@ -317,18 +372,18 @@ export class LogCatalog {
     if (!files) return undefined;
     let eventsPath = files.events;
     if (files.log) {
-      const log = await this.readJsonArtifact("log", files.log);
+      const log = await this.readJsonArtifact(files.root, "log", files.log);
       const logRecord = isRecord(log.value) ? log.value : undefined;
       if (typeof logRecord?.eventsFile === "string") {
         try {
-          eventsPath = await this.safeFile(logRecord.eventsFile);
+          eventsPath = await this.safeFile(files.root, logRecord.eventsFile);
         } catch {
           // 오래된 절대 경로가 깨졌다면 같은 stem으로 발견한 안전한 파일을 사용한다.
         }
       }
     }
     if (!eventsPath) return undefined;
-    const safePath = await this.safeFile(eventsPath);
+    const safePath = await this.safeFile(files.root, eventsPath);
     if (!safePath) return undefined;
     const fileStat = await stat(safePath);
     const fileToken = `${fileStat.dev}:${fileStat.ino}`;

@@ -7,6 +7,7 @@ import {
   eventMatches,
   getCandidateIdsForEvent,
   getRunStats,
+  getUserInput,
   inferImportedSummary,
 } from "./model";
 
@@ -41,14 +42,23 @@ const snapshot = (overrides: Partial<RunSnapshot> = {}): RunSnapshot => ({
   ...overrides,
 });
 
-void test("extracts candidate ids from context, scalar data, and known arrays", () => {
+void test("extracts candidate ids from context, scalar data, and nested arrays", () => {
   const event: LogEvent = {
     level: "info",
     phase: "evaluateSeeds.ranking.selected",
     context: { candidateId: "context-id" },
-    data: { candidateId: "data-id", selectedCandidateIds: ["selected", 1] },
+    data: {
+      candidateId: "data-id",
+      selectedCandidateIds: ["selected", 1],
+      results: [{ candidateId: "array-id" }],
+    },
   };
-  assert.deepEqual(getCandidateIdsForEvent(event), ["context-id", "data-id", "selected"]);
+  assert.deepEqual(getCandidateIdsForEvent(event), [
+    "context-id",
+    "data-id",
+    "array-id",
+    "selected",
+  ]);
 });
 
 void test("builds selected and rejected candidate views from result and trace", () => {
@@ -78,6 +88,40 @@ void test("derives stats and filters events without depending on UI rendering", 
     true,
   );
   assert.equal(eventMatches(events[0]!, { candidateId: "b" }), false);
+});
+
+void test("adapts development-server input and event candidates", () => {
+  const runtimeSnapshot = snapshot({
+    log: {
+      jobId: "job",
+      userInput: { userNaturalLanguageRequest: "노원 마라탕" },
+    },
+    result: null,
+  });
+  const events: LogEvent[] = [
+    {
+      level: "info",
+      phase: "discoverSeeds.discover.result",
+      data: {
+        output: {
+          seeds: [{ seedKey: "tmap:1", name: "마라 식당", roadAddress: "노원로" }],
+        },
+      },
+    },
+    {
+      level: "info",
+      phase: "evaluateSeeds.reference_urls.success",
+      data: {
+        results: [{ candidateId: "tmap:1", status: "REJECTED", rejectedReason: "closed" }],
+      },
+    },
+  ];
+
+  assert.equal(getUserInput(runtimeSnapshot)?.userNaturalLanguageRequest, "노원 마라탕");
+  const candidates = buildCandidates(runtimeSnapshot, events);
+  assert.equal(candidates[0]?.name, "마라 식당");
+  assert.equal(candidates[0]?.status, "REJECTED");
+  assert.equal(candidates[0]?.rejected.length, 1);
 });
 
 void test("infers old result-only artifacts", () => {

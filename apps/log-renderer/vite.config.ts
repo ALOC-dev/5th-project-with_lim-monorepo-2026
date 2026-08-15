@@ -5,7 +5,16 @@ import { defineConfig } from "vite";
 
 import { createLogRendererApiPlugin } from "./server/api-plugin";
 
-const logRoot = resolve(import.meta.dirname, "../server/src/scripts/recommendation-engine/.log");
+const logRoots = [
+  {
+    label: "dev-server",
+    path: resolve(import.meta.dirname, "../server/.log/recommendation"),
+  },
+  {
+    label: "qa",
+    path: resolve(import.meta.dirname, "../server/src/scripts/recommendation-engine/.log"),
+  },
+];
 
 export default defineConfig({
   server: {
@@ -13,5 +22,5 @@ export default defineConfig({
     port: 4317,
     strictPort: true,
   },
-  plugins: [createLogRendererApiPlugin({ logRoot }), react()],
+  plugins: [createLogRendererApiPlugin({ logRoots }), react()],
 });

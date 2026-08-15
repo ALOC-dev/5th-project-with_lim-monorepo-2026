@@ -132,7 +132,10 @@ const App = () => {
     }
   }, []);
 
-  const candidates = useMemo(() => (snapshot ? buildCandidates(snapshot) : []), [snapshot]);
+  const candidates = useMemo(
+    () => (snapshot ? buildCandidates(snapshot, events) : []),
+    [events, snapshot],
+  );
   const issues = useMemo(
     () => [...(snapshot?.issues ?? []), ...eventIssues],
     [eventIssues, snapshot?.issues],

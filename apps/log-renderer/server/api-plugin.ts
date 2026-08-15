@@ -2,7 +2,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 
 import type { Plugin } from "vite";
 
-import { LogCatalog } from "./catalog";
+import { LogCatalog, type LogCatalogRoot } from "./catalog";
 
 const API_PREFIX = "/__log-renderer/api";
 
@@ -65,8 +65,12 @@ const handleRequest = async (
   }
 };
 
-export const createLogRendererApiPlugin = ({ logRoot }: { logRoot: string }): Plugin => {
-  const catalog = new LogCatalog(logRoot);
+export const createLogRendererApiPlugin = ({
+  logRoots,
+}: {
+  logRoots: LogCatalogRoot[];
+}): Plugin => {
+  const catalog = new LogCatalog(logRoots);
   return {
     name: "aloc-log-renderer-api",
     apply: "serve",
