@@ -44,12 +44,22 @@ export const persistRecommendationTerminalState = async (
       state.kind === "COMPLETED"
         ? await db
             .update(placeRecommendationHistories)
-            .set({ output: state.output, errorCode: null, errorMessage: null })
+            .set({
+              output: state.output,
+              errorCode: null,
+              errorMessage: null,
+              completedAt: new Date(),
+            })
             .where(eq(placeRecommendationHistories.id, jobId))
             .returning({ id: placeRecommendationHistories.id })
         : await db
             .update(placeRecommendationHistories)
-            .set({ output: null, errorCode: state.code, errorMessage: state.message })
+            .set({
+              output: null,
+              errorCode: state.code,
+              errorMessage: state.message,
+              completedAt: new Date(),
+            })
             .where(eq(placeRecommendationHistories.id, jobId))
             .returning({ id: placeRecommendationHistories.id });
 

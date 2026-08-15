@@ -84,6 +84,7 @@ router.get(
         ? {
             ...base,
             status,
+            completedAt: history.completedAt?.toISOString() ?? null,
             input: history.input,
             output: history.output,
           }
@@ -91,6 +92,7 @@ router.get(
           ? {
               ...base,
               status,
+              completedAt: history.completedAt?.toISOString() ?? null,
               input: history.input,
               formLocations: [...history.formLocations],
               errorMessage: presentStoredRecommendationFailure(history.errorCode).message,
@@ -98,6 +100,8 @@ router.get(
           : {
               ...base,
               status: "PENDING",
+              input: history.input,
+              formLocations: [...history.formLocations],
             };
 
     res.status(200).json(createApiResponse(data));

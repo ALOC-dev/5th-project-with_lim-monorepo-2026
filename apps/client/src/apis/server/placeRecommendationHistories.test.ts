@@ -71,12 +71,26 @@ describe("place recommendation histories server API", () => {
 
   it.each([
     {
+      formLocations: [
+        {
+          lat: 37.5665,
+          lng: 126.978,
+          placeName: "서울시청",
+          roadNameAddress: "서울특별시 중구 세종대로 110",
+        },
+      ],
       id: historyId,
+      input: {
+        schedule: { dateISO: "2026-08-10", time24h: "18:30" },
+        location: [{ lat: 37.5665, lng: 126.978 }],
+        userNaturalLanguageRequest: "저녁 식사 장소를 추천해 주세요.",
+      },
       requestedAt: "2026-08-10T10:00:00.000Z",
       status: "PENDING",
       title: "생성 중인 추천",
     },
     {
+      completedAt: "2026-08-10T10:02:05.000Z",
       id: historyId,
       input: { request: "저녁 식사" },
       output: { recommendations: [] },
@@ -85,6 +99,7 @@ describe("place recommendation histories server API", () => {
       title: "완료된 추천",
     },
     {
+      completedAt: "2026-08-10T10:02:05.000Z",
       errorMessage: "추천을 생성하지 못했습니다.",
       formLocations: [
         {
