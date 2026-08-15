@@ -13,6 +13,7 @@ type PageRootProps = {
   backgroundColor?: PageRootBackgroundColor;
   children: React.ReactNode;
   layout?: PageRootLayout;
+  withBottomSafeArea?: boolean;
 };
 
 /**
@@ -23,13 +24,19 @@ const PageRoot = ({
   backgroundColor = tokens.color.primary[50],
   children,
   layout = "full",
+  withBottomSafeArea = true,
 }: PageRootProps) => {
   useLayoutEffect(() => {
     document.documentElement.style.setProperty("--page-background", backgroundColor);
   }, [backgroundColor]);
 
   return (
-    <S.Wrapper $backgroundColor={backgroundColor} $layout={layout} data-layout={layout}>
+    <S.Wrapper
+      $backgroundColor={backgroundColor}
+      $layout={layout}
+      $withBottomSafeArea={withBottomSafeArea}
+      data-layout={layout}
+    >
       {children}
     </S.Wrapper>
   );
@@ -38,7 +45,11 @@ const PageRoot = ({
 export default PageRoot;
 
 const S = {
-  Wrapper: styled.main<{ $backgroundColor: PageRootBackgroundColor; $layout: PageRootLayout }>`
+  Wrapper: styled.main<{
+    $backgroundColor: PageRootBackgroundColor;
+    $layout: PageRootLayout;
+    $withBottomSafeArea: boolean;
+  }>`
     display: flex;
     flex: 1;
     flex-direction: column;
@@ -46,9 +57,9 @@ const S = {
     max-width: ${({ $layout }) => ($layout === "contained" ? "390px" : "none")};
     margin-inline: ${({ $layout }) => ($layout === "contained" ? "auto" : "0")};
     min-height: 100dvh;
-    padding-top: ${({ $layout }) =>
-      $layout === "contained" ? "env(safe-area-inset-top)" : "0"};
-    padding-bottom: env(safe-area-inset-bottom);
+    padding-top: ${({ $layout }) => ($layout === "contained" ? "env(safe-area-inset-top)" : "0")};
+    padding-bottom: ${({ $withBottomSafeArea }) =>
+      $withBottomSafeArea ? "env(safe-area-inset-bottom)" : "0"};
     background-color: var(--page-background);
     overflow-x: hidden;
   `,

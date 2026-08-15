@@ -7,7 +7,11 @@ import { tokens } from "../design-system/tokens.generated";
 /** Keeps the primary navigation mounted while switching between its tabs. */
 export const MainNavigationLayout = () => {
   return (
-    <PageRoot backgroundColor={tokens.color.neutral[50]} layout="contained">
+    <PageRoot
+      backgroundColor={tokens.color.neutral[50]}
+      layout="contained"
+      withBottomSafeArea={false}
+    >
       <Outlet />
       <BottomBar />
     </PageRoot>

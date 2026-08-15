@@ -57,7 +57,7 @@ const BottomSheet = forwardRef<BottomSheetHandle, BottomSheetProps>(function Bot
     close,
     backdropTone = "dimmed",
     closeOnBackdropClick = false,
-    handleType = "resizable",
+    handleType = "none",
     initialHeight = "auto",
     minHeight = "0",
     minimumTop,
