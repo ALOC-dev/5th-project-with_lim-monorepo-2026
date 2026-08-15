@@ -2,7 +2,7 @@ import { useCallback, useRef, useState } from "react";
 
 import BottomSheet, { type BottomSheetHandle } from "../../../components/BottomSheet/BottomSheet";
 import Header from "../../../components/Header/Header";
-import { useAppNavigate } from "../../../routes/useAppNavigate";
+import { useAppBackNavigate } from "../../../routes/useAppNavigate";
 import { usePlaceRecommendationResultUiContext } from "../state/PlaceRecommendationResult.ui.context";
 import { S } from "./PlaceRecommendationResultListView.styled";
 import PlaceRecommendationResultMap from "./PlaceRecommendationResultMap";
@@ -17,7 +17,7 @@ const PlaceRecommendationResultListView = ({
   readonly durationLabel: string | null;
 }) => {
   const { clearSelectedPlace, selectPlace } = usePlaceRecommendationResultUiContext();
-  const navigate = useAppNavigate();
+  const navigateBack = useAppBackNavigate("/");
   const sheetRef = useRef<BottomSheetHandle>(null);
   const [selectionRequest, setSelectionRequest] =
     useState<PlaceRecommendationResultPlaceSelectionRequest | null>(null);
@@ -37,7 +37,7 @@ const PlaceRecommendationResultListView = ({
   return (
     <S.Root>
       <S.HeaderLayer>
-        <Header onBack={() => navigate("/place/recommendation/history")} title="장소 결과" />
+        <Header onBack={navigateBack} title="장소 결과" />
       </S.HeaderLayer>
       <PlaceRecommendationResultMap
         focusRequest={selectionRequest}

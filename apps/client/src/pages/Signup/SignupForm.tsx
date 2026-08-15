@@ -6,7 +6,7 @@ import { toApiClientErrorMessage } from "../../apis/errors";
 import Header from "../../components/Header/Header";
 import { Input } from "../../components/Input";
 import Modal from "../../components/Modal/Modal";
-import { useAppNavigate } from "../../routes/useAppNavigate";
+import { useAppBackNavigate, useAppNavigate } from "../../routes/useAppNavigate";
 import { useSignupFormInput } from "./Signup.context";
 import { S } from "./Signup.styled";
 
@@ -37,6 +37,7 @@ export default function SignupFormContent() {
   } = useSignupFormInput();
 
   const navigate = useAppNavigate();
+  const navigateBack = useAppBackNavigate("/login");
 
   const isPasswordValid =
     /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d!@#$%^&*()_+~`\-={}[\]:;"'<>,.?/]{8,20}$/.test(password);
@@ -123,7 +124,7 @@ export default function SignupFormContent() {
 
   return (
     <S.Container>
-      <Header onBack={() => navigate("/login")} title="회원가입" />
+      <Header onBack={navigateBack} title="회원가입" />
 
       <S.Form onSubmit={handleSubmit}>
         <S.InputGroup>

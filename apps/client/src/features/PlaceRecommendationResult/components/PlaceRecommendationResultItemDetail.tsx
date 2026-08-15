@@ -3,24 +3,19 @@ import { useParams } from "react-router-dom";
 
 import Header from "../../../components/Header/Header";
 import { Icon } from "../../../components/Icon/Icon";
-import { useAppNavigate } from "../../../routes/useAppNavigate";
+import { useAppBackNavigate } from "../../../routes/useAppNavigate";
 import { usePlaceRecommendationResultBookmarksContext } from "../state/PlaceRecommendationResult.bookmarks.context";
 import { usePlaceRecommendationResultUiContext } from "../state/PlaceRecommendationResult.ui.context";
 import { S } from "./PlaceRecommendationResultItemDetail.styled";
 
 const PlaceRecommendationResultItemDetail = () => {
   const { placeId, recommendationId } = useParams();
-  const navigate = useAppNavigate();
-  const {
-    errorMessage,
-    isBookmarkActionDisabled,
-    isSaved,
-    retry,
-    toggleBookmark,
-  } = usePlaceRecommendationResultBookmarksContext();
+  const { errorMessage, isBookmarkActionDisabled, isSaved, retry, toggleBookmark } =
+    usePlaceRecommendationResultBookmarksContext();
   const { places, selectedPlaceId, selectPlace } = usePlaceRecommendationResultUiContext();
   const place = places.find((candidate) => candidate.id === placeId) ?? null;
   const backPath = `/place/recommendation/${recommendationId ?? ""}`;
+  const navigateBack = useAppBackNavigate(backPath);
 
   useEffect(() => {
     if (place !== null && selectedPlaceId !== place.id) {
@@ -31,7 +26,7 @@ const PlaceRecommendationResultItemDetail = () => {
   if (place === null) {
     return (
       <S.Root>
-        <Header title="장소 상세" onBack={() => navigate(backPath)} />
+        <Header title="장소 상세" onBack={navigateBack} />
         <S.Body>
           <S.InfoCard>추천 결과에서 해당 장소를 찾을 수 없습니다.</S.InfoCard>
         </S.Body>
@@ -43,7 +38,7 @@ const PlaceRecommendationResultItemDetail = () => {
 
   return (
     <S.Root>
-      <Header title="상세 정보" onBack={() => navigate(backPath)} />
+      <Header title="상세 정보" onBack={navigateBack} />
       <S.Body>
         <S.TopCard>
           <S.TopCardHeader>

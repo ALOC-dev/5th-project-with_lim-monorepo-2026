@@ -21,8 +21,9 @@ import { S } from "./CourseRecommendationResultItemDetailPage.styled";
 
 export const CourseRecommendationResultItemDetailPage = () => {
   const navigate = useAppNavigate();
-  const navigateBack = useAppBackNavigate("/course/recommendation/history");
   const { courseId, optionId } = useParams();
+  const resultPath = `/course/recommendation/${encodeURIComponent(courseId ?? "")}`;
+  const navigateBack = useAppBackNavigate(resultPath);
   const location = useLocation();
   const favoriteRoute = (location.state as { readonly favorite?: CourseFavorite } | null)?.favorite;
   const favoriteSnapshot: CourseOption | undefined = favoriteRoute?.option;
@@ -60,7 +61,7 @@ export const CourseRecommendationResultItemDetailPage = () => {
   const option = optionQuery.data ?? favoriteSnapshot;
   if (!option)
     return (
-      <CoursePage onBack={() => navigate("/course/recommendation/history")} title="코스 상세">
+      <CoursePage onBack={navigateBack} title="코스 상세">
         <FeedbackState kind="error" title="코스 상세를 찾을 수 없어요" />
       </CoursePage>
     );
@@ -70,11 +71,7 @@ export const CourseRecommendationResultItemDetailPage = () => {
 
   return (
     <CoursePage
-      onBack={() =>
-        favoriteSnapshot
-          ? navigate("/course/favorite")
-          : navigate(`/course/recommendation/${encodeURIComponent(courseId ?? "")}`)
-      }
+      onBack={navigateBack}
       right={
         <CourseIconButton
           aria-label={option.isFavorite ? "코스 찜 해제" : "코스 찜하기"}

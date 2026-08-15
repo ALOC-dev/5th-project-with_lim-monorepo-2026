@@ -10,6 +10,9 @@ describe("canNavigateBack", () => {
 
   it("uses a safe fallback for an initial, malformed, or external history entry", () => {
     expect(canNavigateBack({ idx: 0 })).toBe(false);
+    expect(canNavigateBack({ idx: -1 })).toBe(false);
+    expect(canNavigateBack({ idx: 1.5 })).toBe(false);
+    expect(canNavigateBack({ idx: "1" })).toBe(false);
     expect(canNavigateBack({})).toBe(false);
     expect(canNavigateBack(null)).toBe(false);
   });

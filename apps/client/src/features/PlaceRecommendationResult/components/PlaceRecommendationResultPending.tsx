@@ -6,7 +6,7 @@ import {
   PlaceRecommendationProgressSseEventSchema,
 } from "../../../apis/server/placeRecommendation";
 import { RecommendationProgress } from "../../../components/RecommendationProgress";
-import { useAppNavigate } from "../../../routes/useAppNavigate";
+import { useAppBackNavigate } from "../../../routes/useAppNavigate";
 import {
   formatElapsedSeconds,
   getPlaceRecommendationInputSummary,
@@ -40,7 +40,7 @@ const PlaceRecommendationResultPending = ({
   jobId,
   onTerminal,
 }: PlaceRecommendationResultPendingProps) => {
-  const navigate = useAppNavigate();
+  const navigateBack = useAppBackNavigate("/");
   const [progressEvents, setProgressEvents] = useState<
     readonly PlaceRecommendationProgressSseEvent[]
   >([]);
@@ -105,7 +105,7 @@ const PlaceRecommendationResultPending = ({
       }
       details={inputSummary}
       headerTitle="장소 추천 중"
-      onBack={() => void navigate("/place/recommendation/form")}
+      onBack={navigateBack}
       steps={steps.map((step) => ({
         id: step.id,
         label: STEP_LABELS[step.id],

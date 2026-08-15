@@ -10,7 +10,7 @@ import { tokens } from "../../design-system/tokens.generated";
 import PlaceRecommendationResultPending from "../../features/PlaceRecommendationResult/components/PlaceRecommendationResultPending";
 import { getPlaceRecommendationDurationLabel } from "../../features/PlaceRecommendationResult/components/PlaceRecommendationResultPending.data";
 import PlaceRecommendationResultContent from "../../features/PlaceRecommendationResult/PlaceRecommendationResultContent";
-import { useAppNavigate } from "../../routes/useAppNavigate";
+import { useAppBackNavigate, useAppNavigate } from "../../routes/useAppNavigate";
 import {
   createPlaceRecommendationRetryRouteState,
   type PlaceRecommendationRetryRouteState,
@@ -32,10 +32,11 @@ const PlaceRecommendationResultStatusFeedback = ({
   readonly retryState?: PlaceRecommendationRetryRouteState;
 }) => {
   const navigate = useAppNavigate();
+  const navigateBack = useAppBackNavigate("/");
 
   return (
     <PageRoot backgroundColor={tokens.color.neutral[50]} layout="contained">
-      <Header onBack={() => navigate("/place/recommendation/history")} title="장소 결과" />
+      <Header onBack={navigateBack} title="장소 결과" />
       <FeedbackState
         action={
           kind === "error"

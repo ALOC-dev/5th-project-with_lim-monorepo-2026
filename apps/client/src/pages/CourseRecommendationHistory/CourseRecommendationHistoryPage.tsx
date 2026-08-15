@@ -16,7 +16,7 @@ import {
   historySummary,
 } from "../../features/CourseRecommendation/courseRecommendation.utils";
 import { courseRepository } from "../../features/CourseRecommendation/courseRepository";
-import { useAppNavigate } from "../../routes/useAppNavigate";
+import { useAppBackNavigate, useAppNavigate } from "../../routes/useAppNavigate";
 import { S } from "./CourseRecommendationHistoryPage.styled";
 
 const skeletonCardKeys = ["first", "second", "third"] as const;
@@ -46,6 +46,7 @@ const CourseRecommendationHistorySkeleton = () => (
 
 export const CourseRecommendationHistoryPage = () => {
   const navigate = useAppNavigate();
+  const navigateBack = useAppBackNavigate("/my");
   const queryClient = useQueryClient();
   const histories = useQuery({
     queryKey: ["course-history"],
@@ -80,7 +81,7 @@ export const CourseRecommendationHistoryPage = () => {
   });
 
   return (
-    <CoursePage onBack={() => navigate("/my")} title="코스 추천 기록">
+    <CoursePage onBack={navigateBack} title="코스 추천 기록">
       <S.HistoryContent>
         {histories.isPending ? (
           <CourseRecommendationHistorySkeleton />

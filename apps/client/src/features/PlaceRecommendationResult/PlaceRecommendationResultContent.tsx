@@ -6,7 +6,7 @@ import FeedbackState from "../../components/FeedbackState/FeedbackState";
 import Header from "../../components/Header/Header";
 import PageRoot from "../../components/PageRoot/PageRoot";
 import { tokens } from "../../design-system/tokens.generated";
-import { useAppNavigate } from "../../routes/useAppNavigate";
+import { useAppBackNavigate, useAppNavigate } from "../../routes/useAppNavigate";
 import PlaceRecommendationResultItemDetail from "./components/PlaceRecommendationResultItemDetail";
 import PlaceRecommendationResultListView from "./components/PlaceRecommendationResultListView";
 import { PlaceRecommendationResultBookmarksProvider } from "./state/PlaceRecommendationResult.bookmarks.provider";
@@ -23,11 +23,11 @@ const PlaceRecommendationResultFeedbackShell = ({
 }: {
   readonly children: React.ReactNode;
 }) => {
-  const navigate = useAppNavigate();
+  const navigateBack = useAppBackNavigate("/");
 
   return (
     <PageRoot backgroundColor={tokens.color.neutral[50]} layout="contained">
-      <Header onBack={() => navigate("/place/recommendation/history")} title="장소 결과" />
+      <Header onBack={navigateBack} title="장소 결과" />
       <S.StateBody>{children}</S.StateBody>
     </PageRoot>
   );

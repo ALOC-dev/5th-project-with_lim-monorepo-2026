@@ -5,7 +5,7 @@ import Header from "../../components/Header/Header";
 import { Icon } from "../../components/Icon/Icon";
 import Modal from "../../components/Modal/Modal";
 import { Skeleton } from "../../components/Skeleton";
-import { useAppNavigate } from "../../routes/useAppNavigate";
+import { useAppBackNavigate, useAppNavigate } from "../../routes/useAppNavigate";
 import {
   type PlaceRecommendationHistoryItem,
   usePlaceRecommendationHistory,
@@ -48,6 +48,7 @@ export default function PlaceRecommendationHistoryContent() {
     retry,
   } = usePlaceRecommendationHistory();
   const navigate = useAppNavigate();
+  const navigateBack = useAppBackNavigate("/my");
 
   const [editingItem, setEditingItem] = useState<PlaceRecommendationHistoryItem | null>(null);
   const [editTitle, setEditTitle] = useState("");
@@ -124,7 +125,7 @@ export default function PlaceRecommendationHistoryContent() {
   return (
     <>
       <S.Container>
-        <Header title="장소 추천 기록" onBack={() => navigate("/my")} />
+        <Header title="장소 추천 기록" onBack={navigateBack} />
 
         <S.Main>
           {isLoading ? (

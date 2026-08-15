@@ -6,7 +6,7 @@ export const canNavigateBack = (historyState: unknown): boolean => {
   if (typeof historyState !== "object" || historyState === null) return false;
 
   const historyIndex = (historyState as { readonly idx?: unknown }).idx;
-  return typeof historyIndex === "number" && historyIndex > 0;
+  return typeof historyIndex === "number" && Number.isInteger(historyIndex) && historyIndex > 0;
 };
 
 /**

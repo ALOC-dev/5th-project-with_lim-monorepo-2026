@@ -2,7 +2,7 @@ import { toast } from "sonner";
 
 import Header from "../../components/Header/Header";
 import { Input } from "../../components/Input";
-import { useAppNavigate } from "../../routes/useAppNavigate";
+import { useAppBackNavigate, useAppNavigate } from "../../routes/useAppNavigate";
 import { useForgotPasswordInput } from "./ForgotPassword.context";
 import { S } from "./ForgotPassword.styled";
 
@@ -11,6 +11,7 @@ export default function ResetPasswordForm() {
     useForgotPasswordInput();
 
   const navigate = useAppNavigate();
+  const navigateBack = useAppBackNavigate("/login/forgotpassword");
 
   const isPasswordValid =
     /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d!@#$%^&*()_+~`\-={}[\]:;"'<>,.?/]{8,20}$/.test(password);
@@ -40,7 +41,7 @@ export default function ResetPasswordForm() {
 
   return (
     <S.Container>
-      <Header onBack={() => navigate("/login")} title="새 비밀번호 설정" />
+      <Header onBack={navigateBack} title="새 비밀번호 설정" />
 
       <S.Form onSubmit={handleSubmit}>
         <S.IntroSection>

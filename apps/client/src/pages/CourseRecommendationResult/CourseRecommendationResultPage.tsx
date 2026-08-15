@@ -19,7 +19,7 @@ import { S } from "./CourseRecommendationResultPage.styled";
 
 export const CourseRecommendationResultPage = () => {
   const navigate = useAppNavigate();
-  const navigateBack = useAppBackNavigate("/my");
+  const navigateBack = useAppBackNavigate("/");
   const { courseId } = useParams();
   const queryClient = useQueryClient();
   const cancelledHandled = useRef(false);
@@ -59,7 +59,7 @@ export const CourseRecommendationResultPage = () => {
   const recommendation = result.data;
   if (!recommendation || !courseId)
     return (
-      <CoursePage onBack={() => navigate("/course/recommendation/form")} title="코스 결과">
+      <CoursePage onBack={navigateBack} title="코스 결과">
         <FeedbackState
           action={{
             label: "다시 추천받기",
@@ -73,7 +73,7 @@ export const CourseRecommendationResultPage = () => {
     );
   if (recommendation.status === "EMPTY")
     return (
-      <CoursePage onBack={() => navigate("/course/recommendation/history")} title="코스 결과">
+      <CoursePage onBack={navigateBack} title="코스 결과">
         <FeedbackState
           action={{
             label: "다시 추천받기",
@@ -107,14 +107,14 @@ export const CourseRecommendationResultPage = () => {
   }
   if (recommendation.status === "CANCELLED") {
     return (
-      <CoursePage onBack={() => navigate("/course/recommendation/history")} title="코스 결과">
+      <CoursePage onBack={navigateBack} title="코스 결과">
         <FeedbackState kind="loading" title="추천 기록을 정리하는 중이에요" />
       </CoursePage>
     );
   }
   if (recommendation.status !== "SUCCESS")
     return (
-      <CoursePage onBack={() => navigate("/course/recommendation/history")} title="코스 결과">
+      <CoursePage onBack={navigateBack} title="코스 결과">
         <FeedbackState
           action={{
             label: "다시 추천받기",
@@ -138,7 +138,7 @@ export const CourseRecommendationResultPage = () => {
   );
 
   return (
-    <CoursePage onBack={() => navigate("/course/recommendation/history")} title="코스 결과">
+    <CoursePage onBack={navigateBack} title="코스 결과">
       <S.ResultMap>
         <S.MapLabel aria-live="polite">
           {selectedIndex + 1}번 코스 · {selected.courseType.label}

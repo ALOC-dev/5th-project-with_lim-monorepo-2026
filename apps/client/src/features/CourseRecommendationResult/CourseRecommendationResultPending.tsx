@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 
 import { getCourseStreamUrl } from "../../apis/server/courses";
 import { RecommendationProgress } from "../../components/RecommendationProgress";
-import { useAppNavigate } from "../../routes/useAppNavigate";
+import { useAppBackNavigate } from "../../routes/useAppNavigate";
 import {
   advanceCourseProgressStep,
   COURSE_PROGRESS_LABELS,
@@ -22,7 +22,7 @@ export const CourseRecommendationResultPending = ({
   onCancelled,
   onTerminal,
 }: CourseRecommendationResultPendingProps) => {
-  const navigate = useAppNavigate();
+  const navigateBack = useAppBackNavigate("/");
   const [progressStep, setProgressStep] = useState<CourseProgressStep>("resolving_candidates");
   const [isTakingLong, setTakingLong] = useState(false);
 
@@ -86,7 +86,7 @@ export const CourseRecommendationResultPending = ({
           : COURSE_PROGRESS_LABELS[progressStep]
       }
       headerTitle="코스 추천 중"
-      onBack={() => void navigate("/course/recommendation/history")}
+      onBack={navigateBack}
       steps={toCourseProgressSteps(progressStep)}
       title="코스 추천을 만드는 중이에요"
     />

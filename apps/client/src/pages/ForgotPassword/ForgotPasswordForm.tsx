@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 
 import Header from "../../components/Header/Header";
 import { Input } from "../../components/Input";
-import { useAppNavigate } from "../../routes/useAppNavigate";
+import { useAppBackNavigate, useAppNavigate } from "../../routes/useAppNavigate";
 import { useForgotPasswordInput } from "./ForgotPassword.context";
 import { S } from "./ForgotPassword.styled";
 
@@ -19,6 +19,7 @@ export default function ForgotPasswordForm() {
   } = useForgotPasswordInput();
 
   const navigate = useAppNavigate();
+  const navigateBack = useAppBackNavigate("/login");
 
   // ⏱️ 타이머 상태 관리 추가
   const [timeLeft, setTimeLeft] = useState(300);
@@ -60,7 +61,7 @@ export default function ForgotPasswordForm() {
 
   return (
     <S.Container>
-      <Header onBack={() => navigate("/login")} title="비밀번호 재설정" />
+      <Header onBack={navigateBack} title="비밀번호 재설정" />
 
       <S.Form onSubmit={handleSubmit}>
         <S.IntroSection>
