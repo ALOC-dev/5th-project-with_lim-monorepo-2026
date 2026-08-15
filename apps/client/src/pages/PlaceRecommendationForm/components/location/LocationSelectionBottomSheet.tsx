@@ -15,23 +15,29 @@ const LocationSelectionBottomSheet = () => {
   const isLocationSheetOpen = isSheetOpen("location");
 
   return (
-    <BottomSheet
-      id={"location-selector-bottomsheet"}
-      isOpen={isLocationSheetOpen}
-      close={closeSheet}
-      handleType="none"
-    >
-      <LocationSelectionProvider isLocationSheetOpen={isLocationSheetOpen}>
+    <LocationSelectionProvider isLocationSheetOpen={isLocationSheetOpen}>
+      <BottomSheet
+        id={"location-selector-bottomsheet"}
+        isOpen={isLocationSheetOpen}
+        close={closeSheet}
+        handleType="none"
+      >
         <LocationSelectionBottomSheetContent />
-      </LocationSelectionProvider>
-    </BottomSheet>
+      </BottomSheet>
+    </LocationSelectionProvider>
   );
 };
 
 const LocationSelectionBottomSheetContent = () => {
-  const { currentLocation, mode } = useLocationSelection();
+  const { currentLocation, mode, openMapMode, setQuery } = useLocationSelection();
   const { locations } = usePlaceRecommendationFormInput();
   const { closeSheet } = usePlaceRecommendationFormUi();
+
+  const closeSearchMode = () => {
+    openMapMode();
+    setQuery("");
+    closeSheet();
+  };
 
   return (
     <S.Wrapper>
@@ -51,7 +57,7 @@ const LocationSelectionBottomSheetContent = () => {
       )}
       {mode === "search" ? (
         <S.Footer>
-          <Button onClick={closeSheet} tone="secondary" type="button" width="100%">
+          <Button onClick={closeSearchMode} tone="secondary" type="button" width="100%">
             취소
           </Button>
         </S.Footer>
