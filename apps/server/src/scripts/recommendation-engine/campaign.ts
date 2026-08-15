@@ -184,10 +184,10 @@ export const getFinalValidationScenarios = (
 
 export const getNextCampaignConcurrency = (
   currentConcurrency: number,
-  infrastructureFailureCount: number,
+  infrastructureAffectedRunCount: number,
 ): number => {
   const current = normalizeConcurrency(currentConcurrency);
-  return infrastructureFailureCount > 0
+  return infrastructureAffectedRunCount > 0
     ? Math.max(1, Math.floor(current / 2))
     : Math.min(CAMPAIGN_MAX_CONCURRENCY, current + 1);
 };
@@ -384,6 +384,7 @@ export const evaluateCircuitBreaker = (
   runs: readonly ClassifiedCampaignRun[],
 ): CircuitBreakerDecision => {
   const failureCounts = new Map<string, number>();
+  const seenRunProviders = new Set<string>();
   for (const run of runs) {
     if (!run.engineStarted) continue;
     const providers = new Set<string>();
@@ -408,6 +409,12 @@ export const evaluateCircuitBreaker = (
       }
     }
     for (const provider of providers) {
+      const runIdentity =
+        run.report.runId ??
+        `${run.scenarioId}:${run.report.resultFile ?? run.report.lifecycleFile ?? "unknown"}`;
+      const runProviderKey = `${runIdentity}\0${provider}`;
+      if (seenRunProviders.has(runProviderKey)) continue;
+      seenRunProviders.add(runProviderKey);
       const nextCount = (failureCounts.get(provider) ?? 0) + 1;
       if (nextCount < 2) {
         failureCounts.set(provider, nextCount);
@@ -512,15 +519,14 @@ const detectInfrastructureProvider = (
   if (/DISCOVER_SEEDS_PROVIDER_ERROR/.test(normalized)) return "TMAP";
 
   const productDefect =
-    /NO\s*OBJECT\s*GENERATED|NOOBJECTGENERATED|INVALID\s+(?:SCHEMA|INPUT)|VALIDATION|\bZOD\b|\bPARSE(?:R|D|\s|_)|CONTENT\s*FILTER|SCORING\s+PRODUCED\s+NO\s+USABLE\s+EVALUATION/.test(
+    /NO\s*OBJECT\s*GENERATED|NOOBJECTGENERATED|INVALID\s+(?:SCHEMA|INPUT)|VALIDATION|\bZOD\b|\bPARS(?:E|ER|ED|ING)\b|CONTENT\s*FILTER|SCORING\s+PRODUCED\s+NO\s+USABLE\s+EVALUATION/.test(
       normalized,
     );
-  if (productDefect) return undefined;
-
   const transportOrAuth =
-    /\b429\b|QUOTA|RATE.?LIMIT|\b408\b|TIMEOUT|ETIMEDOUT|ECONN|ENOTFOUND|FETCH FAILED|\b401\b|\b403\b|\b5\d\d\b|SERVICE UNAVAILABLE|UNAUTHORIZED|AUTHENTICATION|API KEY/.test(
+    /\b429\b|QUOTA|RATE.?LIMIT|\b408\b|TIMEOUT|ETIMEDOUT|ECONN|ENOTFOUND|FETCH FAILED|\b401\b|\b403\b|\b5\d\d\b|SERVICE UNAVAILABLE|UNAUTHORIZED|AUTHENTICATION|API KEY\s+(?:IS\s+)?(?:MISSING|INVALID|REQUIRED|NOT CONFIGURED|UNSET)|(?:MISSING|INVALID|REQUIRED)\s+API KEY/.test(
       normalized,
     );
+  if (productDefect && !transportOrAuth) return undefined;
   if (/(?:OPENAI|LLM|MODEL_PROVIDER|DISCOVER_SEEDS_(?:PLAN|INTENT))/.test(normalized)) {
     if (transportOrAuth) return "OPENAI";
     return undefined;
@@ -546,12 +552,29 @@ const hasExplicitQuotaSignal = (evidence: string): boolean =>
 const getReportInfrastructureSignals = (
   report: SingleRunPublicReport,
 ): CampaignInfrastructureSignal[] => {
-  const candidates = report.infrastructureSignals ?? report.trace?.infrastructureSignals ?? [];
+  const candidates = [
+    ...(report.trace?.infrastructureSignals ?? []),
+    ...(report.infrastructureSignals ?? []),
+  ];
   const unique = new Map<string, CampaignInfrastructureSignal>();
   for (const signal of candidates) {
     if (!isCampaignInfrastructureSignal(signal)) continue;
     const key = `${signal.provider}\0${signal.category}\0${signal.dedupKey}`;
-    if (!unique.has(key)) unique.set(key, signal);
+    const existing = unique.get(key);
+    unique.set(
+      key,
+      existing
+        ? {
+            ...existing,
+            explicitQuotaFailure:
+              existing.explicitQuotaFailure || signal.explicitQuotaFailure,
+            occurrenceCount: Math.max(
+              existing.occurrenceCount,
+              signal.occurrenceCount,
+            ),
+          }
+        : signal,
+    );
   }
   return [...unique.values()];
 };
@@ -616,11 +639,48 @@ const isString = (value: unknown): value is string => typeof value === "string";
 const isStatus = (value: unknown): value is "PASS" | "FAIL" =>
   value === "PASS" || value === "FAIL";
 
-const isSingleRunPublicReport = (value: Record<string, unknown>): value is SingleRunPublicReport =>
+const publicReportRequiredKeys = ["status", "scenario", "processStarted"] as const;
+const publicReportOptionalKeys = [
+  "name",
+  "campaignId",
+  "roundId",
+  "runId",
+  "engineStatus",
+  "errorCode",
+  "unsupportedReason",
+  "engineErrorMessage",
+  "recommendationCount",
+  "selectedItemIds",
+  "infrastructureProvider",
+  "explicitQuotaFailure",
+  "infrastructureSignals",
+  "durationMs",
+  "expectedErrorCode",
+  "trace",
+  "error",
+  "resultFile",
+  "logFile",
+  "eventsFile",
+  "lifecycleFile",
+] as const;
+
+const isSingleRunPublicReport = (value: Record<string, unknown>): value is SingleRunPublicReport => {
+  const allowedKeys = new Set<string>([
+    ...publicReportRequiredKeys,
+    ...publicReportOptionalKeys,
+  ]);
+  return publicReportRequiredKeys.every((key) =>
+    Object.prototype.hasOwnProperty.call(value, key),
+  ) &&
+  Object.keys(value).every((key) => allowedKeys.has(key)) &&
   isStatus(value.status) &&
   typeof value.scenario === "string" &&
   Object.prototype.hasOwnProperty.call(campaignScenarioDefinitions, value.scenario) &&
   typeof value.processStarted === "boolean" &&
+  (value.name === undefined || typeof value.name === "string") &&
+  (value.campaignId === undefined || typeof value.campaignId === "string") &&
+  (value.roundId === undefined || typeof value.roundId === "string") &&
+  (value.runId === undefined || typeof value.runId === "string") &&
   (value.engineStatus === undefined ||
     value.engineStatus === "SUCCESS" ||
     value.engineStatus === "ERROR") &&
@@ -631,13 +691,26 @@ const isSingleRunPublicReport = (value: Record<string, unknown>): value is Singl
     value.unsupportedReason === "CONTRADICTORY_REQUEST") &&
   (value.engineErrorMessage === undefined ||
     typeof value.engineErrorMessage === "string") &&
-  (value.recommendationCount === undefined || typeof value.recommendationCount === "number") &&
+  (value.recommendationCount === undefined ||
+    (Number.isInteger(value.recommendationCount) &&
+      (value.recommendationCount as number) >= 0)) &&
   (value.selectedItemIds === undefined ||
     (Array.isArray(value.selectedItemIds) && value.selectedItemIds.every(isString))) &&
   (value.infrastructureProvider === undefined ||
     typeof value.infrastructureProvider === "string") &&
   (value.explicitQuotaFailure === undefined ||
     typeof value.explicitQuotaFailure === "boolean") &&
+  (value.durationMs === undefined ||
+    (typeof value.durationMs === "number" &&
+      Number.isFinite(value.durationMs) &&
+      value.durationMs >= 0)) &&
+  (value.expectedErrorCode === undefined ||
+    typeof value.expectedErrorCode === "string") &&
+  (value.error === undefined || typeof value.error === "string") &&
+  (value.resultFile === undefined || typeof value.resultFile === "string") &&
+  (value.logFile === undefined || typeof value.logFile === "string") &&
+  (value.eventsFile === undefined || typeof value.eventsFile === "string") &&
+  (value.lifecycleFile === undefined || typeof value.lifecycleFile === "string") &&
   (value.infrastructureSignals === undefined ||
     (Array.isArray(value.infrastructureSignals) &&
       value.infrastructureSignals.every(isCampaignInfrastructureSignal))) &&
@@ -646,6 +719,7 @@ const isSingleRunPublicReport = (value: Record<string, unknown>): value is Singl
       (value.trace.infrastructureSignals === undefined ||
         (Array.isArray(value.trace.infrastructureSignals) &&
           value.trace.infrastructureSignals.every(isCampaignInfrastructureSignal)))));
+};
 
 export const assertCampaignFixturesValid = (): void => {
   for (const [name, definition] of Object.entries(campaignScenarioDefinitions)) {

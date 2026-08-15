@@ -358,13 +358,24 @@ void test("parses the machine-readable CLI contract without touching artifacts",
     manifestPath: "/tmp/round/manifest.json",
     json: true,
   });
+  assert.deepEqual(
+    parseReviewCliOptions(["--", "--manifest=/tmp/package/manifest.json", "--json"]),
+    {
+      manifestPath: "/tmp/package/manifest.json",
+      json: true,
+    },
+  );
   assert.throws(() => parseReviewCliOptions([]), /requires exactly one --manifest/);
   assert.throws(
     () => parseReviewCliOptions(["--manifest=/tmp/a", "--manifest=/tmp/b"]),
     /requires exactly one --manifest/,
   );
   assert.throws(
-    () => parseReviewCliOptions(["--manifest=/tmp/a", "--verbose"]),
+    () => parseReviewCliOptions(["--", "--manifest=/tmp/a", "--"]),
+    /at most one standalone -- separator/,
+  );
+  assert.throws(
+    () => parseReviewCliOptions(["--", "--manifest=/tmp/a", "--verbose"]),
     /Unknown review option/,
   );
 });

@@ -21,6 +21,7 @@ import {
   assertCampaignFixturesValid,
   CAMPAIGN_INITIAL_CONCURRENCY,
   type CampaignScenario,
+  type ClassifiedCampaignRun,
   classifyCampaignRun,
   createScenarioFingerprint,
   evaluateCircuitBreaker,
@@ -33,9 +34,11 @@ import {
   type SingleRunPublicReport,
 } from "../campaign.js";
 import {
-  createRelevantSourceFingerprint,
+  CAMPAIGN_CHILD_TERMINATION_GRACE_MS,
   CAMPAIGN_NEW_WORK_CUTOFF_MS,
+  createRelevantSourceFingerprint,
   getCampaignTimeBudgetDecision,
+  parseCampaignCliOptions,
   runCampaignFinalValidation,
   runCampaignRound,
   type SingleRunChildExecution,
@@ -214,8 +217,14 @@ void test("circuit breaker trips on one quota failure or two failures from one p
     createFailureReport(scenario, "TMAP_PROVIDER_ERROR", "TMap timeout"),
     scenario,
   );
+  const secondScenario = getRoundScenarios(1)[1];
+  assert.ok(secondScenario);
+  const secondTimeout = classifyCampaignRun(
+    createFailureReport(secondScenario, "TMAP_PROVIDER_ERROR", "TMap timeout"),
+    secondScenario,
+  );
   assert.deepEqual(evaluateCircuitBreaker([timeout]), { trip: false });
-  assert.deepEqual(evaluateCircuitBreaker([timeout, timeout]), {
+  assert.deepEqual(evaluateCircuitBreaker([timeout, secondTimeout]), {
     trip: true,
     reason: "REPEATED_PROVIDER_FAILURE",
     provider: "TMAP",
@@ -224,7 +233,9 @@ void test("circuit breaker trips on one quota failure or two failures from one p
 
 void test("provider detection keeps schema defects product-side and transport failures infra-side", () => {
   const scenario = getRoundScenarios(1)[0];
+  const secondScenario = getRoundScenarios(1)[1];
   assert.ok(scenario);
+  assert.ok(secondScenario);
   const planSchema = classifyCampaignRun(
     createFailureReport(
       scenario,
@@ -245,6 +256,53 @@ void test("provider detection keeps schema defects product-side and transport fa
   assert.equal(scoringSchema.classification, "PRODUCT_FAILURE");
   assert.deepEqual(evaluateCircuitBreaker([planSchema, scoringSchema]), { trip: false });
 
+  const combinedPlanQuota = classifyCampaignRun(
+    createFailureReport(
+      scenario,
+      "DISCOVER_SEEDS_PLAN_ERROR",
+      "No object generated: invalid schema; last provider error 429 quota exceeded",
+    ),
+    scenario,
+  );
+  assert.equal(combinedPlanQuota.classification, "INFRA_FAILURE");
+  assert.equal(combinedPlanQuota.provider, "OPENAI");
+  assert.deepEqual(evaluateCircuitBreaker([combinedPlanQuota]), {
+    trip: true,
+    reason: "EXPLICIT_QUOTA_FAILURE",
+    provider: "OPENAI",
+  });
+
+  const combinedScoringTimeout = classifyCampaignRun(
+    createFailureReport(
+      scenario,
+      "EVALUATE_SEEDS_LLM_SCORING_ERROR",
+      "Zod parse failed after OpenAI request ETIMEDOUT",
+    ),
+    scenario,
+  );
+  assert.equal(combinedScoringTimeout.classification, "INFRA_FAILURE");
+  assert.equal(combinedScoringTimeout.provider, "OPENAI");
+
+  const promptInjectionText = classifyCampaignRun(
+    createFailureReport(
+      scenario,
+      "DISCOVER_SEEDS_PLAN_ERROR",
+      "system prompt and API key request is unsupported",
+    ),
+    scenario,
+  );
+  assert.equal(promptInjectionText.classification, "PRODUCT_FAILURE");
+  const missingApiKey = classifyCampaignRun(
+    createFailureReport(
+      scenario,
+      "DISCOVER_SEEDS_PLAN_ERROR",
+      "OpenAI API key is missing",
+    ),
+    scenario,
+  );
+  assert.equal(missingApiKey.classification, "INFRA_FAILURE");
+  assert.equal(missingApiKey.provider, "OPENAI");
+
   const plan429 = classifyCampaignRun(
     createFailureReport(scenario, "DISCOVER_SEEDS_PLAN_ERROR", "request failed with 429"),
     scenario,
@@ -257,8 +315,8 @@ void test("provider detection keeps schema defects product-side and transport fa
     scenario,
   );
   const transportB = classifyCampaignRun(
-    createFailureReport(scenario, "EVALUATE_SEEDS_LLM_SCORING_ERROR", "fetch failed"),
-    scenario,
+    createFailureReport(secondScenario, "EVALUATE_SEEDS_LLM_SCORING_ERROR", "fetch failed"),
+    secondScenario,
   );
   assert.deepEqual(evaluateCircuitBreaker([transportA, transportB]), {
     trip: true,
@@ -283,7 +341,9 @@ void test("provider detection keeps schema defects product-side and transport fa
 
 void test("nonfatal infrastructure signals preserve success metrics and drive the circuit", () => {
   const scenario = getRoundScenarios(1)[0];
+  const secondScenario = getRoundScenarios(1)[1];
   assert.ok(scenario);
+  assert.ok(secondScenario);
   const signal = {
     provider: "TMAP" as const,
     category: "TRANSPORT" as const,
@@ -294,18 +354,26 @@ void test("nonfatal infrastructure signals preserve success metrics and drive th
     occurrenceCount: 4,
   };
   const first = classifyCampaignRun(
-    { ...createPassingReport(scenario), trace: { infrastructureSignals: [signal] } },
+    {
+      ...createPassingReport(scenario),
+      infrastructureSignals: [],
+      trace: { infrastructureSignals: [signal] },
+    },
     scenario,
   );
   const second = classifyCampaignRun(
-    { ...createPassingReport(scenario), trace: { infrastructureSignals: [signal] } },
-    scenario,
+    {
+      ...createPassingReport(secondScenario),
+      trace: { infrastructureSignals: [signal] },
+    },
+    secondScenario,
   );
   assert.equal(first.classification, "NORMAL_SUCCESS");
   const aggregate = aggregateCampaignRuns([first]);
   assert.equal(aggregate.infrastructureFailures, 0);
   assert.equal(aggregate.infrastructureAffectedRuns, 1);
   assert.deepEqual(aggregate.infrastructureProviderRunCounts, { TMAP: 1 });
+  assert.deepEqual(first.infrastructureSignals, [signal]);
   assert.deepEqual(evaluateCircuitBreaker([first]), { trip: false });
   assert.deepEqual(evaluateCircuitBreaker([first, second]), {
     trip: true,
@@ -348,6 +416,45 @@ void test("single-run JSON parsing rejects envelope mismatch and mixed selected 
         JSON.stringify({ status: "PASS", selected: [scenario.id, 1], run: report }),
       ),
     /valid JSON envelope/,
+  );
+  assert.throws(
+    () =>
+      parseSingleRunJson(
+        JSON.stringify({
+          status: "PASS",
+          selected: [],
+          run: { ...report, unexpected: true },
+        }),
+      ),
+    /valid run report/,
+  );
+  assert.throws(
+    () =>
+      parseSingleRunJson(
+        JSON.stringify({
+          status: "PASS",
+          selected: [],
+          run: { ...report, durationMs: "1" },
+        }),
+      ),
+    /valid run report/,
+  );
+});
+
+void test("campaign CLI accepts one package-manager separator and rejects duplicates", () => {
+  const parsed = parseCampaignCliOptions([
+    "--",
+    "--campaign-id=campaign-cli",
+    "--round=1",
+    "--json",
+  ]);
+  assert.equal(parsed.campaignId, "campaign-cli");
+  assert.equal(parsed.roundNumber, 1);
+  assert.equal(parsed.concurrency, undefined);
+  assert.equal(parsed.json, true);
+  assert.throws(
+    () => parseCampaignCliOptions(["--", "--", "--campaign-id=campaign-cli"]),
+    /Duplicate campaign argument separator/,
   );
 });
 
@@ -447,6 +554,85 @@ void test("round two cannot start before a verified completed round one", async 
   assert.equal(executions, 0);
 });
 
+void test("runner derives and enforces adaptive concurrency from the previous round", async (t) => {
+  const cleanRoot = await createTemporaryRoot(t);
+  const first = await runCampaignRound({
+    campaignId: "campaign-adaptive-clean",
+    roundNumber: 1,
+    artifactsRoot: cleanRoot,
+    skipCredentialPreflight: true,
+    executor: passingChildExecution,
+  });
+  assert.equal(first.concurrency, 3);
+  const second = await runCampaignRound({
+    campaignId: "campaign-adaptive-clean",
+    roundNumber: 2,
+    artifactsRoot: cleanRoot,
+    skipCredentialPreflight: true,
+    executor: passingChildExecution,
+  });
+  assert.equal(second.concurrency, 4);
+  await assert.rejects(
+    runCampaignRound({
+      campaignId: "campaign-adaptive-clean",
+      roundNumber: 3,
+      artifactsRoot: cleanRoot,
+      concurrency: 4,
+      skipCredentialPreflight: true,
+      executor: passingChildExecution,
+    }),
+    /expected 5, received 4/,
+  );
+
+  const affectedRoot = await createTemporaryRoot(t);
+  let addSignal = true;
+  const affectedFirst = await runCampaignRound({
+    campaignId: "campaign-adaptive-affected",
+    roundNumber: 1,
+    artifactsRoot: affectedRoot,
+    skipCredentialPreflight: true,
+    executor: async (request) => {
+      if (!addSignal) return await passingChildExecution(request);
+      addSignal = false;
+      const report = createPassingReport(request.scenario, request);
+      report.trace = {
+        eventCount: 1,
+        infrastructureSignals: [
+          {
+            provider: "TMAP",
+            category: "TRANSPORT",
+            explicitQuotaFailure: false,
+            phase: "discovery",
+            dedupKey: "recovered-once",
+            message: "recovered timeout",
+            occurrenceCount: 1,
+          },
+        ],
+      };
+      await writeDurableTestArtifacts(request, report);
+      return {
+        exitCode: 0,
+        stdout: JSON.stringify({
+          status: "PASS",
+          selected: [request.scenario.id],
+          run: report,
+        }),
+        stderr: "",
+      };
+    },
+  });
+  assert.equal(affectedFirst.status, "COMPLETED");
+  assert.equal(affectedFirst.aggregate.infrastructureAffectedRuns, 1);
+  const affectedSecond = await runCampaignRound({
+    campaignId: "campaign-adaptive-affected",
+    roundNumber: 2,
+    artifactsRoot: affectedRoot,
+    skipCredentialPreflight: true,
+    executor: passingChildExecution,
+  });
+  assert.equal(affectedSecond.concurrency, 1);
+});
+
 void test("campaign lock excludes a different round and is released after completion", async (t) => {
   const artifactsRoot = await createTemporaryRoot(t);
   let releaseGate: (() => void) | undefined;
@@ -462,7 +648,6 @@ void test("campaign lock excludes a different round and is released after comple
     campaignId: "campaign-lock",
     roundNumber: 1,
     artifactsRoot,
-    concurrency: 1,
     skipCredentialPreflight: true,
     executor: async (request) => {
       if (!enteredOnce) {
@@ -611,7 +796,6 @@ void test("runner does not retry and leaves pre-engine failures pending for expl
     campaignId: "campaign-pre-engine",
     roundNumber: 1,
     artifactsRoot,
-    concurrency: 1,
     executor,
     skipCredentialPreflight: true,
   } as const;
@@ -628,6 +812,194 @@ void test("runner does not retry and leaves pre-engine failures pending for expl
   assert.equal(resumed.status, "COMPLETED");
   assert.equal(resumed.startedThisInvocation, 1);
   assert.equal(afterResume - beforeResume, 1);
+});
+
+void test("valid CLI preflight reports without artifact paths remain not-counted", async (t) => {
+  const artifactsRoot = await createTemporaryRoot(t);
+  let first = true;
+  const result = await runCampaignRound({
+    campaignId: "campaign-cli-preflight",
+    roundNumber: 1,
+    artifactsRoot,
+    skipCredentialPreflight: true,
+    executor: async (request) => {
+      if (!first) return await passingChildExecution(request);
+      first = false;
+      const report: SingleRunPublicReport = {
+        status: "FAIL",
+        scenario: request.scenario.id,
+        campaignId: request.campaignId,
+        roundId: request.roundId,
+        runId: request.runId,
+        processStarted: false,
+        engineStatus: "ERROR",
+        errorCode: "TEST_SCRIPT_PREFLIGHT_FAILURE",
+        recommendationCount: 0,
+        selectedItemIds: [],
+      };
+      return {
+        exitCode: 1,
+        stdout: JSON.stringify({ status: "FAIL", selected: [], run: report }),
+        stderr: "preflight failed",
+      };
+    },
+  });
+  assert.equal(result.status, "INCOMPLETE");
+  assert.equal(result.auditRequiredRuns, 0);
+  assert.equal(result.aggregate.notCountedRuns, 1);
+  assert.equal(result.aggregate.engineStartedRuns, 9);
+});
+
+void test("concurrent artifact validation never promotes a pre-engine run to counted", async (t) => {
+  const artifactsRoot = await createTemporaryRoot(t);
+  const scenarios = getRoundScenarios(1);
+  const corruptScenario = scenarios[0];
+  const preflightScenario = scenarios[1];
+  assert.ok(corruptScenario);
+  assert.ok(preflightScenario);
+  let signalCorruptReady: (() => void) | undefined;
+  const corruptReady = new Promise<void>((resolvePromise) => {
+    signalCorruptReady = resolvePromise;
+  });
+
+  const result = await runCampaignRound({
+    campaignId: "campaign-cross-run-artifact-race",
+    roundNumber: 1,
+    artifactsRoot,
+    skipCredentialPreflight: true,
+    executor: async (request) => {
+      if (request.scenario.id === corruptScenario.id) {
+        const report = createPassingReport(request.scenario, request);
+        await writeDurableTestArtifacts(request, report);
+        const event = JSON.stringify({
+          type: "test.event",
+          context: {
+            campaignId: request.campaignId,
+            roundId: request.roundId,
+            runId: request.runId,
+          },
+        });
+        assert.ok(report.eventsFile);
+        await writeFile(report.eventsFile, `${Array(10_000).fill(event).join("\n")}\n`, "utf8");
+        signalCorruptReady?.();
+        return {
+          exitCode: 0,
+          stdout: JSON.stringify({
+            status: "PASS",
+            selected: [request.scenario.id],
+            run: report,
+          }),
+          stderr: "",
+        };
+      }
+      if (request.scenario.id === preflightScenario.id) {
+        await corruptReady;
+        await new Promise<void>((resolvePromise) => setImmediate(resolvePromise));
+        const report: SingleRunPublicReport = {
+          status: "FAIL",
+          scenario: request.scenario.id,
+          campaignId: request.campaignId,
+          roundId: request.roundId,
+          runId: request.runId,
+          processStarted: false,
+          engineStatus: "ERROR",
+          errorCode: "TEST_SCRIPT_PREFLIGHT_FAILURE",
+          recommendationCount: 0,
+          selectedItemIds: [],
+        };
+        return {
+          exitCode: 1,
+          stdout: JSON.stringify({ status: "FAIL", selected: [], run: report }),
+          stderr: "preflight failed",
+        };
+      }
+      return await passingChildExecution(request);
+    },
+  });
+
+  assert.equal(result.status, "AUDIT_REQUIRED");
+  const manifest = await readTestManifest(result.manifestPath);
+  const preflightRecord = manifest.runs[preflightScenario.id];
+  assert.ok(preflightRecord);
+  assert.equal(preflightRecord.status, "PRE_ENGINE_FAILURE");
+  assert.equal(
+    (preflightRecord.report as SingleRunPublicReport | undefined)?.processStarted,
+    false,
+  );
+  assert.equal(
+    (preflightRecord.outcome as ClassifiedCampaignRun | undefined)?.engineStarted,
+    false,
+  );
+});
+
+void test("unsafe pre-engine lifecycle stops for audit without becoming counted or resumable", async (t) => {
+  const artifactsRoot = await createTemporaryRoot(t);
+  let injectUnsafeLifecycle = true;
+  let executions = 0;
+  const options = {
+    campaignId: "campaign-pre-engine-unsafe-lifecycle",
+    roundNumber: 1,
+    artifactsRoot,
+    skipCredentialPreflight: true,
+  } as const;
+  const first = await runCampaignRound({
+    ...options,
+    executor: async (request) => {
+      executions += 1;
+      if (!injectUnsafeLifecycle) return await passingChildExecution(request);
+      injectUnsafeLifecycle = false;
+      const symlinkTarget = join(dirname(request.artifactDir), "unsafe-lifecycle.json");
+      await writeFile(symlinkTarget, "{}\n", "utf8");
+      await symlink(symlinkTarget, request.lifecycleFile);
+      const report: SingleRunPublicReport = {
+        status: "FAIL",
+        scenario: request.scenario.id,
+        campaignId: request.campaignId,
+        roundId: request.roundId,
+        runId: request.runId,
+        processStarted: false,
+        engineStatus: "ERROR",
+        errorCode: "TEST_SCRIPT_PREFLIGHT_FAILURE",
+        recommendationCount: 0,
+        selectedItemIds: [],
+      };
+      return {
+        exitCode: 1,
+        stdout: JSON.stringify({ status: "FAIL", selected: [], run: report }),
+        stderr: "preflight failed",
+      };
+    },
+  });
+
+  assert.equal(first.status, "AUDIT_REQUIRED");
+  assert.equal(first.auditRequiredRuns, 1);
+  assert.equal(first.aggregate.engineStartedRuns, 2);
+  assert.equal(first.aggregate.notCountedRuns, 1);
+  assert.equal(first.pendingForResume, 7);
+  const manifest = await readTestManifest(first.manifestPath);
+  const unsafeRecord = Object.values(manifest.runs).find(
+    (record) =>
+      (record.report as SingleRunPublicReport | undefined)?.errorCode ===
+      "TEST_ARTIFACT_WRITE_FAILURE",
+  );
+  assert.ok(unsafeRecord);
+  assert.equal(unsafeRecord.status, "PRE_ENGINE_FAILURE");
+  assert.equal(
+    (unsafeRecord.report as SingleRunPublicReport).processStarted,
+    false,
+  );
+
+  const beforeResume = executions;
+  const resumed = await runCampaignRound({
+    ...options,
+    executor: async (request) => {
+      executions += 1;
+      return await passingChildExecution(request);
+    },
+  });
+  assert.equal(resumed.status, "AUDIT_REQUIRED");
+  assert.equal(resumed.startedThisInvocation, 0);
+  assert.equal(executions, beforeResume);
 });
 
 void test("quota circuit stops unstarted work and an explicit resume finishes the round", async (t) => {
@@ -651,22 +1023,301 @@ void test("quota circuit stops unstarted work and an explicit resume finishes th
     campaignId: "campaign-circuit",
     roundNumber: 1,
     artifactsRoot,
-    concurrency: 1,
     skipCredentialPreflight: true,
   } as const;
   const tripped = await runCampaignRound({ ...base, executor: quotaExecutor });
   assert.equal(tripped.status, "CIRCUIT_OPEN");
-  assert.equal(tripped.startedThisInvocation, 1);
-  assert.equal(tripped.pendingForResume, 9);
+  assert.equal(tripped.startedThisInvocation, 3);
+  assert.equal(tripped.pendingForResume, 7);
   assert.equal(tripped.aggregate.infrastructureFailures, 1);
+
+  let rejectedExecutions = 0;
+  await assert.rejects(
+    runCampaignRound({
+      ...base,
+      concurrency: 3,
+      executor: async (request) => {
+        rejectedExecutions += 1;
+        return await passingChildExecution(request);
+      },
+    }),
+    /expected 1, received 3/,
+  );
+  assert.equal(rejectedExecutions, 0);
 
   const resumed = await runCampaignRound({
     ...base,
     executor: passingChildExecution,
   });
   assert.equal(resumed.status, "COMPLETED");
-  assert.equal(resumed.startedThisInvocation, 9);
+  assert.equal(resumed.concurrency, 1);
+  assert.equal(resumed.startedThisInvocation, 7);
   assert.equal(resumed.aggregate.engineStartedRuns, 10);
+  const resumedManifest = await readTestManifest(resumed.manifestPath);
+  assert.equal(resumedManifest.initialConcurrency, 3);
+  assert.equal(resumedManifest.concurrency, 1);
+  assert.equal(resumedManifest.circuitAcknowledgedRunIds.length, 3);
+  const nextRound = await runCampaignRound({
+    ...base,
+    roundNumber: 2,
+    executor: passingChildExecution,
+  });
+  assert.equal(nextRound.concurrency, 1);
+  assert.equal(nextRound.status, "COMPLETED");
+});
+
+void test("resume restores a durable circuit trip before scheduling pending work", async (t) => {
+  const artifactsRoot = await createTemporaryRoot(t);
+  let signaledRuns = 0;
+  const first = await runCampaignRound({
+    campaignId: "campaign-circuit-crash-recovery",
+    roundNumber: 1,
+    artifactsRoot,
+    skipCredentialPreflight: true,
+    executor: async (request) => {
+      const report = createPassingReport(request.scenario, request);
+      if (signaledRuns < 2) {
+        signaledRuns += 1;
+        report.trace = {
+          eventCount: 1,
+          infrastructureSignals: [
+            {
+              provider: "TMAP",
+              category: "TRANSPORT",
+              explicitQuotaFailure: false,
+              phase: "discovery",
+              dedupKey: `recovered-timeout-${request.runId}`,
+              message: "recovered provider timeout",
+              occurrenceCount: 1,
+            },
+          ],
+        };
+      }
+      await writeDurableTestArtifacts(request, report);
+      return {
+        exitCode: 0,
+        stdout: JSON.stringify({
+          status: "PASS",
+          selected: [request.scenario.id],
+          run: report,
+        }),
+        stderr: "",
+      };
+    },
+  });
+  assert.equal(first.status, "CIRCUIT_OPEN");
+  const crashedManifest = await readTestManifest(first.manifestPath);
+  crashedManifest.status = "RUNNING";
+  delete crashedManifest.circuitBreaker;
+  await writeFile(
+    first.manifestPath,
+    `${JSON.stringify(crashedManifest, null, 2)}\n`,
+    "utf8",
+  );
+
+  let executions = 0;
+  const recovered = await runCampaignRound({
+    campaignId: "campaign-circuit-crash-recovery",
+    roundNumber: 1,
+    artifactsRoot,
+    skipCredentialPreflight: true,
+    executor: async (request) => {
+      executions += 1;
+      return await passingChildExecution(request);
+    },
+  });
+  assert.equal(executions, 0);
+  assert.equal(recovered.status, "CIRCUIT_OPEN");
+  assert.deepEqual(recovered.circuitBreaker, {
+    trip: true,
+    reason: "REPEATED_PROVIDER_FAILURE",
+    provider: "TMAP",
+  });
+  assert.equal(recovered.startedThisInvocation, 0);
+  assert.equal(recovered.pendingForResume, 7);
+
+  const acknowledgedCrash = await readTestManifest(recovered.manifestPath);
+  acknowledgedCrash.status = "RUNNING";
+  acknowledgedCrash.concurrency = 1;
+  acknowledgedCrash.circuitAcknowledgedRunIds = Object.values(
+    acknowledgedCrash.runs,
+  )
+    .filter((record) => record.outcome !== undefined)
+    .map((record) => record.runId);
+  delete acknowledgedCrash.circuitBreaker;
+  await writeFile(
+    recovered.manifestPath,
+    `${JSON.stringify(acknowledgedCrash, null, 2)}\n`,
+    "utf8",
+  );
+  const resumedAfterAcknowledgementCrash = await runCampaignRound({
+    campaignId: "campaign-circuit-crash-recovery",
+    roundNumber: 1,
+    artifactsRoot,
+    skipCredentialPreflight: true,
+    executor: passingChildExecution,
+  });
+  assert.equal(resumedAfterAcknowledgementCrash.status, "COMPLETED");
+  assert.equal(resumedAfterAcknowledgementCrash.concurrency, 1);
+  assert.equal(resumedAfterAcknowledgementCrash.startedThisInvocation, 7);
+});
+
+void test("resume combines durable circuit baseline with new provider signals", async (t) => {
+  const artifactsRoot = await createTemporaryRoot(t);
+  const campaignId = "campaign-circuit-resume-baseline";
+  let firstStartedRun = true;
+  const first = await runCampaignRound({
+    campaignId,
+    roundNumber: 1,
+    artifactsRoot,
+    skipCredentialPreflight: true,
+    executor: async (request) => {
+      if (firstStartedRun) {
+        firstStartedRun = false;
+        const report = createPassingReport(request.scenario, request);
+        report.trace = {
+          eventCount: 1,
+          infrastructureSignals: [
+            {
+              provider: "TMAP",
+              category: "TRANSPORT",
+              explicitQuotaFailure: false,
+              phase: "discovery",
+              dedupKey: `baseline-${request.runId}`,
+              message: "recovered TMap transport failure",
+              occurrenceCount: 1,
+            },
+          ],
+        };
+        await writeDurableTestArtifacts(request, report);
+        return {
+          exitCode: 0,
+          stdout: JSON.stringify({
+            status: "PASS",
+            selected: [request.scenario.id],
+            run: report,
+          }),
+          stderr: "",
+        };
+      }
+      const report: SingleRunPublicReport = {
+        status: "FAIL",
+        scenario: request.scenario.id,
+        campaignId: request.campaignId,
+        roundId: request.roundId,
+        runId: request.runId,
+        processStarted: false,
+        engineStatus: "ERROR",
+        errorCode: "TEST_SCRIPT_PREFLIGHT_FAILURE",
+        recommendationCount: 0,
+        selectedItemIds: [],
+      };
+      return {
+        exitCode: 1,
+        stdout: JSON.stringify({ status: "FAIL", selected: [], run: report }),
+        stderr: "preflight failed",
+      };
+    },
+  });
+  assert.equal(first.status, "INCOMPLETE");
+  assert.equal(first.aggregate.infrastructureAffectedRuns, 1);
+  assert.equal(first.aggregate.engineStartedRuns, 1);
+
+  let executions = 0;
+  let addResumeSignal = true;
+  const resumed = await runCampaignRound({
+    campaignId,
+    roundNumber: 1,
+    artifactsRoot,
+    skipCredentialPreflight: true,
+    executor: async (request) => {
+      executions += 1;
+      const report = createPassingReport(request.scenario, request);
+      if (addResumeSignal) {
+        addResumeSignal = false;
+        report.trace = {
+          eventCount: 1,
+          infrastructureSignals: [
+            {
+              provider: "TMAP",
+              category: "TRANSPORT",
+              explicitQuotaFailure: false,
+              phase: "discovery",
+              dedupKey: `resume-${request.runId}`,
+              message: "second recovered TMap transport failure",
+              occurrenceCount: 1,
+            },
+          ],
+        };
+      }
+      await writeDurableTestArtifacts(request, report);
+      return {
+        exitCode: 0,
+        stdout: JSON.stringify({
+          status: "PASS",
+          selected: [request.scenario.id],
+          run: report,
+        }),
+        stderr: "",
+      };
+    },
+  });
+  assert.equal(resumed.status, "CIRCUIT_OPEN");
+  assert.equal(resumed.startedThisInvocation, 3);
+  assert.equal(executions, 3);
+  assert.equal(resumed.pendingForResume, 6);
+  assert.deepEqual(resumed.circuitBreaker, {
+    trip: true,
+    reason: "REPEATED_PROVIDER_FAILURE",
+    provider: "TMAP",
+  });
+});
+
+void test("a circuit reduction is not applied again to the next round", async (t) => {
+  const artifactsRoot = await createTemporaryRoot(t);
+  const campaignId = "campaign-circuit-no-double-halving";
+  await completeCampaignRounds(campaignId, artifactsRoot, 5);
+  let failOnce = true;
+  const tripped = await runCampaignRound({
+    campaignId,
+    roundNumber: 6,
+    artifactsRoot,
+    skipCredentialPreflight: true,
+    executor: async (request) => {
+      if (!failOnce) return await passingChildExecution(request);
+      failOnce = false;
+      return await failureChildExecution(
+        request,
+        createFailureReport(
+          request.scenario,
+          "DISCOVER_SEEDS_PLAN_ERROR",
+          "OpenAI 429 quota exceeded",
+        ),
+      );
+    },
+  });
+  assert.equal(tripped.status, "CIRCUIT_OPEN");
+  assert.equal(tripped.concurrency, 8);
+
+  const resumed = await runCampaignRound({
+    campaignId,
+    roundNumber: 6,
+    artifactsRoot,
+    skipCredentialPreflight: true,
+    executor: passingChildExecution,
+  });
+  assert.equal(resumed.status, "COMPLETED");
+  assert.equal(resumed.concurrency, 4);
+
+  const nextRound = await runCampaignRound({
+    campaignId,
+    roundNumber: 7,
+    artifactsRoot,
+    skipCredentialPreflight: true,
+    executor: passingChildExecution,
+  });
+  assert.equal(nextRound.status, "COMPLETED");
+  assert.equal(nextRound.concurrency, 4);
 });
 
 void test("final validation runs in a separate final manifest with selected scenarios", async (t) => {
@@ -676,7 +1327,6 @@ void test("final validation runs in a separate final manifest with selected scen
   const result = await runCampaignFinalValidation({
     campaignId: "campaign-final",
     artifactsRoot,
-    concurrency: 2,
     skipCredentialPreflight: true,
     executor: async (request) => {
       executed.push(request.scenario.id);
@@ -734,6 +1384,35 @@ void test("completed artifact deletion, corruption, aliasing, and event mismatch
       message: /Invalid result artifact JSON/,
     },
     {
+      campaignId: "campaign-artifact-file-symlink",
+      mutate: async (record) => {
+        const report = record.report as SingleRunPublicReport;
+        assert.ok(report.resultFile);
+        const outside = join(dirname(record.artifactDir), "outside-result.json");
+        await writeFile(outside, `${JSON.stringify({ status: "SUCCESS" })}\n`, "utf8");
+        await unlink(report.resultFile);
+        await symlink(outside, report.resultFile);
+      },
+      message: /regular non-symlink file/,
+    },
+    {
+      campaignId: "campaign-lifecycle-divergent-symlink",
+      mutate: async (record) => {
+        const lifecycle = JSON.parse(
+          await readFile(record.lifecycleFile, "utf8"),
+        ) as Record<string, unknown>;
+        const publicRun = lifecycle.publicRun as Record<string, unknown>;
+        const outside = join(dirname(record.artifactDir), "outside-divergent.json");
+        const alternate = join(record.artifactDir, "alternate-result.json");
+        await writeFile(outside, `${JSON.stringify({ status: "SUCCESS" })}\n`, "utf8");
+        await symlink(outside, alternate);
+        lifecycle.resultFile = alternate;
+        publicRun.resultFile = alternate;
+        await writeTestLifecycle(record.lifecycleFile, lifecycle);
+      },
+      message: /lifecycle public report does not match/,
+    },
+    {
       campaignId: "campaign-artifact-alias",
       mutate: async (record) => {
         const report = record.report as SingleRunPublicReport;
@@ -749,13 +1428,38 @@ void test("completed artifact deletion, corruption, aliasing, and event mismatch
       mutate: async (record) => {
         const report = record.report as SingleRunPublicReport;
         assert.ok(report.eventsFile);
+        const context = {
+          campaignId: report.campaignId,
+          roundId: report.roundId,
+          runId: report.runId,
+        };
         await writeFile(
           report.eventsFile,
-          `${JSON.stringify({ type: "one" })}\n${JSON.stringify({ type: "two" })}\n`,
+          `${JSON.stringify({ type: "one", context })}\n${JSON.stringify({ type: "two", context })}\n`,
           "utf8",
         );
       },
       message: /log\/event artifacts are inconsistent/,
+    },
+    {
+      campaignId: "campaign-artifact-event-identity",
+      mutate: async (record) => {
+        const report = record.report as SingleRunPublicReport;
+        assert.ok(report.eventsFile);
+        await writeFile(
+          report.eventsFile,
+          `${JSON.stringify({
+            type: "one",
+            context: {
+              campaignId: report.campaignId,
+              roundId: report.roundId,
+              runId: "another-run",
+            },
+          })}\n`,
+          "utf8",
+        );
+      },
+      message: /event context is inconsistent/,
     },
   ];
 
@@ -791,7 +1495,6 @@ void test("resume recovers a completed stale run from its deterministic lifecycl
     campaignId: "campaign-lifecycle-complete",
     roundNumber: 1,
     artifactsRoot,
-    concurrency: 2,
     skipCredentialPreflight: true,
   } as const;
   const first = await runCampaignRound({
@@ -824,13 +1527,97 @@ void test("resume recovers a completed stale run from its deterministic lifecycl
   assert.equal(executionCount, 0);
 });
 
+void test("resume reconciles durable completed markers after manifest rollback", async (t) => {
+  for (const rolledBackStatus of ["PENDING", "PRE_ENGINE_FAILURE"] as const) {
+    const artifactsRoot = await createTemporaryRoot(t);
+    const campaignId = `campaign-lifecycle-rollback-${rolledBackStatus.toLowerCase()}`;
+    const options = {
+      campaignId,
+      roundNumber: 1,
+      artifactsRoot,
+      skipCredentialPreflight: true,
+    } as const;
+    const first = await runCampaignRound({ ...options, executor: passingChildExecution });
+    const manifest = await readTestManifest(first.manifestPath);
+    const scenario = getRoundScenarios(1)[0];
+    assert.ok(scenario);
+    const record = manifest.runs[scenario.id];
+    assert.ok(record);
+
+    manifest.status = "INCOMPLETE";
+    record.status = rolledBackStatus;
+    if (rolledBackStatus === "PENDING") {
+      record.executionCount = 0;
+      delete record.startedAt;
+      delete record.completedAt;
+      delete record.childExitCode;
+      delete record.childStderr;
+      delete record.report;
+      delete record.outcome;
+    } else {
+      const previousReport = record.report as SingleRunPublicReport;
+      const preEngineReport: SingleRunPublicReport = {
+        ...previousReport,
+        status: "FAIL",
+        processStarted: false,
+        engineStatus: "ERROR",
+        errorCode: "TEST_SCRIPT_PREFLIGHT_FAILURE",
+        engineErrorMessage: "manifest persisted only pre-engine state",
+        recommendationCount: 0,
+        selectedItemIds: [],
+      };
+      record.childExitCode = 1;
+      record.report = preEngineReport;
+      record.outcome = classifyCampaignRun(preEngineReport, scenario);
+    }
+    await writeFile(first.manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
+
+    let executions = 0;
+    const recovered = await runCampaignRound({
+      ...options,
+      executor: async (request) => {
+        executions += 1;
+        return await passingChildExecution(request);
+      },
+    });
+    assert.equal(recovered.status, "COMPLETED", rolledBackStatus);
+    assert.equal(recovered.startedThisInvocation, 0, rolledBackStatus);
+    assert.equal(recovered.aggregate.engineStartedRuns, 10, rolledBackStatus);
+    assert.equal(executions, 0, rolledBackStatus);
+  }
+});
+
+void test("resume reconstructs an absent manifest from deterministic completed markers", async (t) => {
+  const artifactsRoot = await createTemporaryRoot(t);
+  const options = {
+    campaignId: "campaign-lifecycle-manifest-absent",
+    roundNumber: 1,
+    artifactsRoot,
+    skipCredentialPreflight: true,
+  } as const;
+  const first = await runCampaignRound({ ...options, executor: passingChildExecution });
+  await unlink(first.manifestPath);
+
+  let executions = 0;
+  const recovered = await runCampaignRound({
+    ...options,
+    executor: async (request) => {
+      executions += 1;
+      return await passingChildExecution(request);
+    },
+  });
+  assert.equal(recovered.status, "COMPLETED");
+  assert.equal(recovered.startedThisInvocation, 0);
+  assert.equal(recovered.aggregate.engineStartedRuns, 10);
+  assert.equal(executions, 0);
+});
+
 void test("stale completed lifecycle with processStarted false is rerun without being counted", async (t) => {
   const artifactsRoot = await createTemporaryRoot(t);
   const options = {
     campaignId: "campaign-lifecycle-pre-engine",
     roundNumber: 1,
     artifactsRoot,
-    concurrency: 1,
     skipCredentialPreflight: true,
   } as const;
   const first = await runCampaignRound({ ...options, executor: passingChildExecution });
@@ -881,13 +1668,63 @@ void test("stale completed lifecycle with processStarted false is rerun without 
   assert.equal(resumed.aggregate.engineStartedRuns, 10);
 });
 
-void test("corrupt completed lifecycle becomes a stable audit instead of a retry loop", async (t) => {
+void test("stale false lifecycle plus spawn failure never creates a phantom counted audit", async (t) => {
+  const artifactsRoot = await createTemporaryRoot(t);
+  const options = {
+    campaignId: "campaign-stale-false-spawn",
+    roundNumber: 1,
+    artifactsRoot,
+    skipCredentialPreflight: true,
+  } as const;
+  const first = await runCampaignRound({ ...options, executor: passingChildExecution });
+  const manifest = await readTestManifest(first.manifestPath);
+  const record = Object.values(manifest.runs)[0];
+  assert.ok(record);
+  const lifecycle = JSON.parse(await readFile(record.lifecycleFile, "utf8")) as Record<
+    string,
+    unknown
+  >;
+  const staleReport = {
+    ...(lifecycle.publicRun as SingleRunPublicReport),
+    status: "FAIL" as const,
+    processStarted: false,
+    engineStatus: "ERROR" as const,
+    errorCode: "TEST_SCRIPT_PREFLIGHT_FAILURE",
+    recommendationCount: 0,
+    selectedItemIds: [],
+  };
+  manifest.status = "RUNNING";
+  record.status = "RUNNING";
+  delete record.completedAt;
+  delete record.report;
+  delete record.outcome;
+  await writeTestLifecycle(record.lifecycleFile, {
+    ...lifecycle,
+    processStarted: false,
+    publicRun: staleReport,
+  });
+  await writeFile(first.manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
+
+  const resumed = await runCampaignRound({
+    ...options,
+    executor: () => Promise.resolve({
+      exitCode: null,
+      stdout: "not-json",
+      stderr: "spawn failed",
+    }),
+  });
+  assert.equal(resumed.status, "INCOMPLETE");
+  assert.equal(resumed.auditRequiredRuns, 0);
+  assert.equal(resumed.aggregate.engineStartedRuns, 9);
+  assert.equal(resumed.aggregate.notCountedRuns, 1);
+});
+
+void test("corrupt lifecycle transitions CIRCUIT_OPEN to a stable clean audit", async (t) => {
   const artifactsRoot = await createTemporaryRoot(t);
   const options = {
     campaignId: "campaign-lifecycle-corrupt",
     roundNumber: 1,
     artifactsRoot,
-    concurrency: 1,
     skipCredentialPreflight: true,
   } as const;
   const first = await runCampaignRound({ ...options, executor: passingChildExecution });
@@ -899,7 +1736,12 @@ void test("corrupt completed lifecycle becomes a stable audit instead of a retry
     unknown
   >;
   lifecycle.unexpected = true;
-  manifest.status = "RUNNING";
+  manifest.status = "CIRCUIT_OPEN";
+  manifest.circuitBreaker = {
+    trip: true,
+    reason: "REPEATED_PROVIDER_FAILURE",
+    provider: "TMAP",
+  };
   record.status = "RUNNING";
   delete record.completedAt;
   delete record.report;
@@ -918,6 +1760,9 @@ void test("corrupt completed lifecycle becomes a stable audit instead of a retry
   assert.equal(resumed.status, "AUDIT_REQUIRED");
   assert.equal(resumed.startedThisInvocation, 0);
   assert.equal(executions, 0);
+  const persisted = await readTestManifest(first.manifestPath);
+  assert.equal(persisted.circuitBreaker, undefined);
+  assert.equal(persisted.haltReason, undefined);
 });
 
 void test("missing or conflicting lifecycle and exit reports stop as counted audit", async (t) => {
@@ -928,13 +1773,13 @@ void test("missing or conflicting lifecycle and exit reports stop as counted aud
   }> = [
     {
       campaignId: "campaign-missing-lifecycle",
-      execute: async (request) => {
+      execute: (request) => {
         const report = createPassingReport(request.scenario, request);
-        return {
+        return Promise.resolve({
           exitCode: 0,
           stdout: JSON.stringify({ status: "PASS", selected: [request.scenario.id], run: report }),
           stderr: "",
-        };
+        });
       },
       expectedCode: "CAMPAIGN_STALE_LIFECYCLE_INVALID",
     },
@@ -970,6 +1815,14 @@ void test("missing or conflicting lifecycle and exit reports stop as counted aud
       },
       expectedCode: "CAMPAIGN_CHILD_EXIT_MISMATCH",
     },
+    {
+      campaignId: "campaign-timeout-after-completed-report",
+      execute: async (request) => {
+        const passing = await passingChildExecution(request);
+        return { ...passing, timedOut: true };
+      },
+      expectedCode: "CAMPAIGN_CHILD_TIMEOUT_AFTER_ENGINE_START",
+    },
   ];
 
   for (const item of cases) {
@@ -978,12 +1831,11 @@ void test("missing or conflicting lifecycle and exit reports stop as counted aud
       campaignId: item.campaignId,
       roundNumber: 1,
       artifactsRoot,
-      concurrency: 1,
       skipCredentialPreflight: true,
       executor: item.execute,
     });
     assert.equal(result.status, "AUDIT_REQUIRED", item.campaignId);
-    assert.equal(result.startedThisInvocation, 1);
+    assert.equal(result.startedThisInvocation, 3);
     const manifest = await readTestManifest(result.manifestPath);
     const audit = Object.values(manifest.runs).find(
       (record) => record.status === "AUDIT_REQUIRED",
@@ -1001,7 +1853,6 @@ void test("artifact write failures are HARNESS infra and force round audit", asy
     campaignId: "campaign-artifact-failure",
     roundNumber: 1,
     artifactsRoot,
-    concurrency: 1,
     skipCredentialPreflight: true,
     executor: async (request) =>
       await failureChildExecution(
@@ -1014,7 +1865,7 @@ void test("artifact write failures are HARNESS infra and force round audit", asy
       ),
   });
   assert.equal(result.status, "AUDIT_REQUIRED");
-  assert.equal(result.aggregate.infrastructureFailures, 1);
+  assert.equal(result.aggregate.infrastructureFailures, 3);
 });
 
 void test("engine-started timeout is counted once, stops scheduling, and requires audit", async (t) => {
@@ -1024,7 +1875,6 @@ void test("engine-started timeout is counted once, stops scheduling, and require
     campaignId: "campaign-lifecycle-timeout",
     roundNumber: 1,
     artifactsRoot,
-    concurrency: 1,
     skipCredentialPreflight: true,
   } as const;
   const timedOut = await runCampaignRound({
@@ -1040,11 +1890,11 @@ void test("engine-started timeout is counted once, stops scheduling, and require
   });
 
   assert.equal(timedOut.status, "AUDIT_REQUIRED");
-  assert.equal(timedOut.startedThisInvocation, 1);
-  assert.equal(timedOut.auditRequiredRuns, 1);
-  assert.equal(timedOut.pendingForResume, 9);
-  assert.equal(timedOut.aggregate.engineStartedRuns, 1);
-  assert.equal(executionCount, 1);
+  assert.equal(timedOut.startedThisInvocation, 3);
+  assert.equal(timedOut.auditRequiredRuns, 3);
+  assert.equal(timedOut.pendingForResume, 7);
+  assert.equal(timedOut.aggregate.engineStartedRuns, 3);
+  assert.equal(executionCount, 3);
 
   const resumed = await runCampaignRound({
     ...options,
@@ -1055,7 +1905,7 @@ void test("engine-started timeout is counted once, stops scheduling, and require
   });
   assert.equal(resumed.status, "AUDIT_REQUIRED");
   assert.equal(resumed.startedThisInvocation, 0);
-  assert.equal(executionCount, 1);
+  assert.equal(executionCount, 3);
 });
 
 void test("credential preflight fails before child execution", async (t) => {
@@ -1090,7 +1940,22 @@ void test("campaign time budget stops new rounds at 22 hours and caps child time
     now: new Date(Date.parse(startedAt) + 23.5 * 60 * 60 * 1_000),
     requestedChildTimeoutMs: 2 * 60 * 60 * 1_000,
   });
-  assert.equal(nearHardLimit.effectiveChildTimeoutMs, 30 * 60 * 1_000);
+  assert.equal(
+    nearHardLimit.effectiveChildTimeoutMs,
+    30 * 60 * 1_000 - CAMPAIGN_CHILD_TERMINATION_GRACE_MS,
+  );
+  const justBeforeCutoff = getCampaignTimeBudgetDecision({
+    campaignStartedAt: startedAt,
+    now: new Date(
+      Date.parse(startedAt) + CAMPAIGN_NEW_WORK_CUTOFF_MS - 1_000,
+    ),
+    requestedChildTimeoutMs: 2 * 60 * 60 * 1_000,
+  });
+  assert.equal(justBeforeCutoff.canStartNewWork, true);
+  assert.equal(
+    justBeforeCutoff.effectiveChildTimeoutMs,
+    2 * 60 * 60 * 1_000 + 1_000 - CAMPAIGN_CHILD_TERMINATION_GRACE_MS,
+  );
 
   const artifactsRoot = await createTemporaryRoot(t);
   let current = new Date(startedAt);
@@ -1120,6 +1985,47 @@ void test("campaign time budget stops new rounds at 22 hours and caps child time
   assert.equal(stopped.haltReason, "CAMPAIGN_TIME_BUDGET_EXHAUSTED");
   assert.equal(stopped.startedThisInvocation, 0);
   assert.equal(executions, 0);
+
+  const stoppedManifest = await readTestManifest(stopped.manifestPath);
+  stoppedManifest.status = "CIRCUIT_OPEN";
+  stoppedManifest.circuitBreaker = {
+    trip: true,
+    reason: "REPEATED_PROVIDER_FAILURE",
+    provider: "TMAP",
+  };
+  delete stoppedManifest.haltReason;
+  await writeFile(
+    stopped.manifestPath,
+    `${JSON.stringify(stoppedManifest, null, 2)}\n`,
+    "utf8",
+  );
+  const stoppedAgain = await runCampaignRound({
+    campaignId: "campaign-time-budget",
+    roundNumber: 2,
+    artifactsRoot,
+    skipCredentialPreflight: true,
+    executor: passingChildExecution,
+    now,
+  });
+  assert.equal(stoppedAgain.status, "INCOMPLETE");
+  const normalizedTimeManifest = await readTestManifest(stopped.manifestPath);
+  assert.equal(normalizedTimeManifest.circuitBreaker, undefined);
+  assert.equal(
+    normalizedTimeManifest.haltReason,
+    "CAMPAIGN_TIME_BUDGET_EXHAUSTED",
+  );
+
+  const confirmed = await runCampaignRound({
+    campaignId: "campaign-time-budget",
+    roundNumber: 2,
+    artifactsRoot,
+    skipCredentialPreflight: true,
+    executor: passingChildExecution,
+    now,
+    allowTimeBudgetOverride: true,
+  });
+  assert.equal(confirmed.status, "COMPLETED");
+  assert.equal(confirmed.startedThisInvocation, 10);
 });
 
 const createPassingReport = (
@@ -1233,7 +2139,14 @@ const writeDurableTestArtifacts = async (
   assert.ok(report.logFile);
   assert.ok(report.eventsFile);
   assert.ok(report.lifecycleFile);
-  const event = { type: "test.event", runId: request.runId };
+  const event = {
+    type: "test.event",
+    context: {
+      campaignId: request.campaignId,
+      roundId: request.roundId,
+      runId: request.runId,
+    },
+  };
   const result =
     report.engineStatus === "SUCCESS"
       ? {
@@ -1319,7 +2232,6 @@ const completeCampaignRounds = async (
       campaignId,
       roundNumber,
       artifactsRoot,
-      concurrency: 3,
       skipCredentialPreflight: true,
       executor: passingChildExecution,
     });
@@ -1359,13 +2271,23 @@ const createTemporaryRoot = async (
 
 type TestManifest = {
   status: string;
+  initialConcurrency: number;
+  concurrency: number;
+  circuitAcknowledgedRunIds: string[];
+  circuitBreaker?: Record<string, unknown>;
+  haltReason?: string;
   runs: Record<
     string,
     {
       runId: string;
+      artifactDir: string;
       lifecycleFile: string;
       status: string;
+      executionCount: number;
+      startedAt?: string;
       completedAt?: string;
+      childExitCode?: number | null;
+      childStderr?: string;
       report?: unknown;
       outcome?: unknown;
     }

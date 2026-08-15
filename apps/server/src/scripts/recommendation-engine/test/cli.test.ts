@@ -4,13 +4,17 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
 
-import type { EngineOutput } from "@monorepo/recommendation-engine/v1/contracts";
+import {
+  type EngineOutput,
+  UserInputSchema,
+} from "@monorepo/recommendation-engine/v1/contracts";
 
 import {
   createArtifactPaths,
   createCliPreflightFailureEnvelope,
   createCompletedLifecycleMarker,
   createEngineProcessStartedLifecycleMarker,
+  createEngineProcessStartHook,
   finalizeEventArtifact,
   getEngineReportFields,
   parseTestCliOptions,
@@ -18,7 +22,7 @@ import {
   toArtifactFailureRun,
   toCliJsonEnvelope,
   verifyEventsArtifact,
-  writeLifecycleMarkerAtomic,
+  writeLifecycleMarkerAtomicSync,
 } from "../test.js";
 import { createTestMonitor } from "./monitoring.js";
 
@@ -174,7 +178,7 @@ void test("keeps selected IDs and the engine error message in JSON stdout report
   assert.equal(artifactFailure.error, "events file missing");
 });
 
-void test("atomically writes a deterministic process-started lifecycle marker", async () => {
+void test("synchronously and atomically writes a durable process-started marker", async () => {
   const directory = await fileSystem.mkdtemp(path.join(tmpdir(), "reco-lifecycle-"));
   const paths = createArtifactPaths({
     artifactDir: directory,
@@ -198,7 +202,7 @@ void test("atomically writes a deterministic process-started lifecycle marker", 
       },
       "2026-08-14T03:00:00.000Z",
     );
-    await writeLifecycleMarkerAtomic(paths.lifecycleFile, marker);
+    writeLifecycleMarkerAtomicSync(paths.lifecycleFile, marker);
 
     const persisted = JSON.parse(await fileSystem.readFile(paths.lifecycleFile, "utf8")) as {
       state?: string;
@@ -218,6 +222,58 @@ void test("atomically writes a deterministic process-started lifecycle marker", 
   } finally {
     await fileSystem.rm(directory, { recursive: true, force: true });
   }
+});
+
+void test("keeps marker hook failures counted and typed as harness artifact failures", () => {
+  const input = UserInputSchema.parse({
+    schedule: {
+      dateISO: "2026-08-17",
+      time24h: "19:00",
+      stayDurationMinutes: 90,
+    },
+    location: [{ lat: 37.4979, lng: 127.0276 }],
+    activityType: "CAFE",
+    userNaturalLanguageRequest: "강남 카페 추천",
+  });
+  const invocationState = { processStarted: false };
+  const paths = createArtifactPaths({
+    artifactDir: "/tmp/recommendation-campaign",
+    runName: "test-gangnam_cafe",
+    campaignId: "campaign-1",
+    roundId: "round-01",
+    runId: "run-1",
+  });
+  const hook = createEngineProcessStartHook({
+    input,
+    invocationState,
+    lifecycle: {
+      options: {
+        json: true,
+        verbose: false,
+        scenario: "gangnam_cafe",
+        campaignId: "campaign-1",
+        roundId: "round-01",
+        runId: "run-1",
+        artifactDir: "/tmp/recommendation-campaign",
+      },
+      paths,
+    },
+    writeStartedLifecycleMarker: () => {
+      throw new Error("disk full");
+    },
+  });
+
+  assert.throws(hook, (error: unknown) => {
+    assert.equal(invocationState.processStarted, true);
+    assert.ok(error instanceof Error);
+    assert.match(error.message, /Failed to persist process-start lifecycle marker: disk full/);
+    const testResult = (error as Error & { testResult?: EngineOutput }).testResult;
+    assert.equal(testResult?.status, "ERROR");
+    if (testResult?.status === "ERROR") {
+      assert.equal(testResult.error.code, "TEST_ARTIFACT_WRITE_FAILURE");
+    }
+    return true;
+  });
 });
 
 void test("extracts only supported reasons from the dedicated engine event", () => {

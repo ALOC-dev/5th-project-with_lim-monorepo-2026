@@ -12,7 +12,6 @@ import {
   rename,
   stat,
   unlink,
-  writeFile,
 } from "node:fs/promises";
 import { dirname, extname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -33,6 +32,7 @@ import {
   createScenarioFingerprint,
   evaluateCircuitBreaker,
   getFinalValidationScenarios,
+  getNextCampaignConcurrency,
   getRoundScenarios,
   parseSingleRunJson,
   type ScenarioCampaignStats,
@@ -60,6 +60,7 @@ export const DEFAULT_CAMPAIGN_ARTIFACTS_ROOT = join(moduleDir, ".log", "campaign
 export const DEFAULT_CHILD_TIMEOUT_MS = 2 * 60 * 60 * 1_000;
 export const CAMPAIGN_MAX_DURATION_MS = 24 * 60 * 60 * 1_000;
 export const CAMPAIGN_NEW_WORK_CUTOFF_MS = 22 * 60 * 60 * 1_000;
+export const CAMPAIGN_CHILD_TERMINATION_GRACE_MS = 10_000;
 
 const manifestFileName = "manifest.json";
 const maximumCapturedOutputCharacters = 1_000_000;
@@ -102,7 +103,9 @@ export type CampaignRoundManifest = {
   roundNumber: number;
   scenarioFingerprint: string;
   sourceFingerprint: string;
+  initialConcurrency: number;
   concurrency: number;
+  circuitAcknowledgedRunIds: string[];
   childTimeoutMs: number;
   status: CampaignRoundStatus;
   createdAt: string;
@@ -244,7 +247,8 @@ export const runCampaignRound = async (
   const campaignId = parseCampaignIdentifier(options.campaignId, "campaignId");
   const roundNumber = parseRoundNumber(options.roundNumber);
   const roundId = formatRoundId(roundNumber);
-  const concurrency = parseConcurrency(options.concurrency ?? CAMPAIGN_INITIAL_CONCURRENCY);
+  const requestedConcurrency =
+    options.concurrency === undefined ? undefined : parseConcurrency(options.concurrency);
   const childTimeoutMs = parsePositiveDuration(
     options.childTimeoutMs ?? DEFAULT_CHILD_TIMEOUT_MS,
     "childTimeoutMs",
@@ -275,6 +279,8 @@ export const runCampaignRound = async (
           suppliedStats: roundNumber === 11 ? options.finalStats : undefined,
         })
       : undefined;
+  const initialConcurrency =
+    preflightHistory?.nextRoundConcurrency ?? CAMPAIGN_INITIAL_CONCURRENCY;
   const verifiedFinalStats =
     roundNumber === 11 ? preflightHistory?.stats : options.finalStats;
   const scenarios = resolveRoundScenarios(
@@ -284,15 +290,20 @@ export const runCampaignRound = async (
   assertRoundScenarios(scenarios);
   const scenarioIds = scenarios.map((scenario) => scenario.id);
   const scenarioFingerprint = createScenarioFingerprint(scenarioIds);
-  await validateExistingRoundBeforeMutation({
+  const preflightManifest = await validateExistingRoundBeforeMutation({
     paths,
     campaignId,
     roundId,
     roundNumber,
     scenarioFingerprint,
     sourceFingerprint,
+    initialConcurrency,
+    childTimeoutMs,
+    minimumCreatedAt: preflightHistory?.lastRoundCreatedAt,
     scenarios,
   });
+  let concurrency = getInvocationConcurrency(preflightManifest, initialConcurrency);
+  assertRequestedConcurrency(requestedConcurrency, concurrency);
 
   await preflightCampaignInputs({
     singleRunScript,
@@ -322,15 +333,20 @@ export const runCampaignRound = async (
     }
   }
 
-  await validateExistingRoundBeforeMutation({
+  const lockedManifest = await validateExistingRoundBeforeMutation({
     paths,
     campaignId,
     roundId,
     roundNumber,
     scenarioFingerprint,
     sourceFingerprint,
+    initialConcurrency,
+    childTimeoutMs,
+    minimumCreatedAt: preflightHistory?.lastRoundCreatedAt,
     scenarios,
   });
+  concurrency = getInvocationConcurrency(lockedManifest, initialConcurrency);
+  assertRequestedConcurrency(requestedConcurrency, concurrency);
   await prepareCampaignRoundDirectories(paths);
 
   const manifest = await loadOrCreateManifest({
@@ -340,14 +356,23 @@ export const runCampaignRound = async (
     roundNumber,
     scenarioFingerprint,
     sourceFingerprint,
-    concurrency,
+    initialConcurrency,
     childTimeoutMs,
+    minimumCreatedAt: preflightHistory?.lastRoundCreatedAt,
     scenarios,
     now,
   });
   const scenarioById = new Map(scenarios.map((scenario) => [scenario.id, scenario]));
   await prepareRunArtifactDirectories(manifest, paths);
-  manifest.concurrency = concurrency;
+  if (getInvocationConcurrency(manifest, initialConcurrency) !== concurrency) {
+    throw new Error(
+      `Existing round concurrency violates the adaptive policy: expected ${concurrency}, received ${manifest.concurrency}`,
+    );
+  }
+  if (manifest.status === "CIRCUIT_OPEN") {
+    manifest.concurrency = concurrency;
+    manifest.circuitAcknowledgedRunIds = getManifestOutcomeRunIds(manifest);
+  }
   manifest.childTimeoutMs = childTimeoutMs;
   await reconcileStaleRunRecords(manifest, scenarioById, now);
   await assertManifestPhysicalPathsSafe(manifest, paths);
@@ -356,10 +381,14 @@ export const runCampaignRound = async (
   const completedBeforeInvocation = Object.values(manifest.runs).filter(
     (run) => run.status === "COMPLETED",
   ).length;
-  const existingAuditRequiredRuns = countRunsWithStatus(manifest, "AUDIT_REQUIRED");
+  const existingAuditRequiredRuns = countAuditBlockingRuns(manifest);
   if (existingAuditRequiredRuns > 0) {
     manifest.status = "AUDIT_REQUIRED";
+    delete manifest.circuitBreaker;
+    delete manifest.haltReason;
     manifest.updatedAt = now().toISOString();
+    validateManifestStatusInvariants(manifest);
+    await assertManifestPhysicalPathsSafe(manifest, paths);
     await writeJsonAtomic(paths.manifestPath, manifest);
     const outcomes = getManifestOutcomes(manifest);
     return {
@@ -382,6 +411,38 @@ export const runCampaignRound = async (
   const hasUnfinishedRuns = Object.values(manifest.runs).some(
     (run) => run.status !== "COMPLETED",
   );
+  const circuitBaselineOutcomes = getUnacknowledgedManifestOutcomes(manifest);
+  const recoveredCircuitBreaker = hasUnfinishedRuns
+    ? evaluateCircuitBreaker(circuitBaselineOutcomes)
+    : { trip: false as const };
+  if (recoveredCircuitBreaker.trip) {
+    manifest.status = "CIRCUIT_OPEN";
+    manifest.circuitBreaker = recoveredCircuitBreaker;
+    delete manifest.haltReason;
+    manifest.updatedAt = now().toISOString();
+    validateManifestStatusInvariants(manifest);
+    await assertManifestPhysicalPathsSafe(manifest, paths);
+    await writeJsonAtomic(paths.manifestPath, manifest);
+    await options.onCircuitBreaker?.(recoveredCircuitBreaker);
+    const outcomes = getManifestOutcomes(manifest);
+    return {
+      campaignId,
+      roundId,
+      roundNumber,
+      manifestPath: paths.manifestPath,
+      status: manifest.status,
+      concurrency,
+      childTimeoutMs,
+      scenarioCount: scenarios.length,
+      startedThisInvocation: 0,
+      skippedCompleted: completedBeforeInvocation,
+      pendingForResume: countSafelyResumableRuns(manifest),
+      auditRequiredRuns: 0,
+      aggregate: aggregateCampaignRuns(outcomes),
+      circuitBreaker: manifest.circuitBreaker,
+    };
+  }
+
   const initialTimeBudget = getCampaignTimeBudgetDecision({
     campaignStartedAt,
     now: now(),
@@ -394,7 +455,10 @@ export const runCampaignRound = async (
   ) {
     manifest.status = "INCOMPLETE";
     manifest.haltReason = "CAMPAIGN_TIME_BUDGET_EXHAUSTED";
+    delete manifest.circuitBreaker;
     manifest.updatedAt = now().toISOString();
+    validateManifestStatusInvariants(manifest);
+    await assertManifestPhysicalPathsSafe(manifest, paths);
     await writeJsonAtomic(paths.manifestPath, manifest);
     const outcomes = getManifestOutcomes(manifest);
     return {
@@ -452,7 +516,9 @@ export const runCampaignRound = async (
           singleRunScript,
           serverRoot,
           env: runtimeEnv,
-          childTimeoutMs: budget.effectiveChildTimeoutMs,
+          childTimeoutMs: options.allowTimeBudgetOverride
+            ? childTimeoutMs
+            : budget.effectiveChildTimeoutMs,
         })(request);
       };
   const invocationOutcomes: ClassifiedCampaignRun[] = [];
@@ -517,14 +583,35 @@ export const runCampaignRound = async (
       } else {
         record.status = outcome.engineStarted ? "COMPLETED" : "PRE_ENGINE_FAILURE";
       }
-      await assertManifestPhysicalPathsSafe(manifest, paths);
+      try {
+        await assertCurrentRunPhysicalPathsSafe(manifest, paths, record);
+      } catch (error) {
+        const artifactReport = createLifecycleAuditReport({
+          scenarioId: record.scenarioId,
+          lifecycleFile: record.lifecycleFile,
+          errorCode: "TEST_ARTIFACT_WRITE_FAILURE",
+          message: "Child artifacts failed campaign durability validation",
+          detail: toErrorMessage(error),
+          processStarted: report.processStarted,
+        });
+        const artifactOutcome = classifyCampaignRun(artifactReport, scenario);
+        invocationOutcomes.pop();
+        invocationOutcomes.push(artifactOutcome);
+        record.report = artifactReport;
+        record.outcome = artifactOutcome;
+        record.status = report.processStarted
+          ? "AUDIT_REQUIRED"
+          : "PRE_ENGINE_FAILURE";
+        auditRequired = true;
+      }
       await persistManifest();
     },
-    getCircuitBreakerDecision: () => evaluateCircuitBreaker(invocationOutcomes),
+    getCircuitBreakerDecision: () =>
+      evaluateCircuitBreaker([...circuitBaselineOutcomes, ...invocationOutcomes]),
     shouldStop: () => auditRequired || shouldStopForTimeBudget(),
   });
 
-  if (auditRequired || countRunsWithStatus(manifest, "AUDIT_REQUIRED") > 0) {
+  if (auditRequired || countAuditBlockingRuns(manifest) > 0) {
     manifest.status = "AUDIT_REQUIRED";
   } else if (circuitBreaker?.trip) {
     manifest.status = "CIRCUIT_OPEN";
@@ -545,7 +632,7 @@ export const runCampaignRound = async (
 
   const outcomes = getManifestOutcomes(manifest);
   const pendingForResume = countSafelyResumableRuns(manifest);
-  const auditRequiredRuns = countRunsWithStatus(manifest, "AUDIT_REQUIRED");
+  const auditRequiredRuns = countAuditBlockingRuns(manifest);
 
   return {
     campaignId,
@@ -591,8 +678,7 @@ export const preflightCampaignRound = async ({
     credentialRequirements,
     skipCredentialPreflight,
   });
-  await prepareCampaignDirectoryForLock(paths);
-  await prepareCampaignRoundDirectories(paths);
+  await assertExistingManagedPathsSafe(paths);
 };
 
 const preflightCampaignInputs = async ({
@@ -677,11 +763,15 @@ export const getCampaignTimeBudgetDecision = ({
   const requested = parsePositiveDuration(requestedChildTimeoutMs, "requestedChildTimeoutMs");
   const elapsedMs = Math.max(0, now.getTime() - Date.parse(campaignStartedAt));
   const remainingMs = Math.max(0, CAMPAIGN_MAX_DURATION_MS - elapsedMs);
+  const timeoutBudgetMs = Math.max(
+    1,
+    remainingMs - CAMPAIGN_CHILD_TERMINATION_GRACE_MS,
+  );
   return {
     canStartNewWork: elapsedMs < CAMPAIGN_NEW_WORK_CUTOFF_MS && remainingMs > 0,
     elapsedMs,
     remainingMs,
-    effectiveChildTimeoutMs: Math.max(1, Math.min(requested, remainingMs || 1)),
+    effectiveChildTimeoutMs: Math.max(1, Math.min(requested, timeoutBudgetMs)),
   };
 };
 
@@ -743,6 +833,8 @@ const verifyCompletedCampaignHistory = async ({
   stats: ScenarioCampaignStats[];
   outcomes: ClassifiedCampaignRun[];
   campaignStartedAt: string;
+  nextRoundConcurrency: number;
+  lastRoundCreatedAt: string;
 }> => {
   if (
     !Number.isInteger(throughRoundNumber) ||
@@ -754,6 +846,7 @@ const verifyCompletedCampaignHistory = async ({
   const outcomes: ClassifiedCampaignRun[] = [];
   let previousCreatedAt: string | undefined;
   let campaignStartedAt: string | undefined;
+  let expectedRoundConcurrency = CAMPAIGN_INITIAL_CONCURRENCY;
 
   for (let roundNumber = 1; roundNumber <= throughRoundNumber; roundNumber += 1) {
     const roundId = formatRoundId(roundNumber);
@@ -775,6 +868,11 @@ const verifyCompletedCampaignHistory = async ({
     if (manifest.status !== "COMPLETED") {
       throw new Error(`Campaign round requires ${roundId} to be COMPLETED`);
     }
+    if (manifest.initialConcurrency !== expectedRoundConcurrency) {
+      throw new Error(
+        `Campaign history initial concurrency is invalid in ${roundId}: expected ${expectedRoundConcurrency}, received ${manifest.initialConcurrency}`,
+      );
+    }
     if (previousCreatedAt && manifest.createdAt < previousCreatedAt) {
       throw new Error("Campaign round creation timestamps are not monotonic");
     }
@@ -790,6 +888,7 @@ const verifyCompletedCampaignHistory = async ({
         `Campaign history requires exactly 10 process-started outcomes in ${roundId}`,
       );
     }
+    expectedRoundConcurrency = getNextRoundInitialConcurrency(manifest);
     outcomes.push(...roundOutcomes);
   }
 
@@ -799,9 +898,17 @@ const verifyCompletedCampaignHistory = async ({
     );
   }
   const derived = aggregateScenarioCampaignStats(outcomes);
-  if (!campaignStartedAt) throw new Error("Campaign history has no start timestamp");
+  if (!campaignStartedAt || !previousCreatedAt) {
+    throw new Error("Campaign history has no start timestamp");
+  }
   if (!suppliedStats) {
-    return { stats: derived, outcomes, campaignStartedAt };
+    return {
+      stats: derived,
+      outcomes,
+      campaignStartedAt,
+      nextRoundConcurrency: expectedRoundConcurrency,
+      lastRoundCreatedAt: previousCreatedAt,
+    };
   }
 
   assertScenarioCampaignStats(suppliedStats);
@@ -839,6 +946,8 @@ const verifyCompletedCampaignHistory = async ({
     })),
     outcomes,
     campaignStartedAt,
+    nextRoundConcurrency: expectedRoundConcurrency,
+    lastRoundCreatedAt: previousCreatedAt,
   };
 };
 
@@ -868,8 +977,9 @@ const loadOrCreateManifest = async ({
   roundNumber,
   scenarioFingerprint,
   sourceFingerprint,
-  concurrency,
+  initialConcurrency,
   childTimeoutMs,
+  minimumCreatedAt,
   scenarios,
   now,
 }: {
@@ -879,8 +989,9 @@ const loadOrCreateManifest = async ({
   roundNumber: number;
   scenarioFingerprint: string;
   sourceFingerprint: string;
-  concurrency: number;
+  initialConcurrency: number;
   childTimeoutMs: number;
+  minimumCreatedAt?: string;
   scenarios: CampaignScenario[];
   now: () => Date;
 }): Promise<CampaignRoundManifest> => {
@@ -890,6 +1001,9 @@ const loadOrCreateManifest = async ({
     roundNumber,
     scenarioFingerprint,
     sourceFingerprint,
+    initialConcurrency,
+    childTimeoutMs,
+    minimumCreatedAt,
     scenarios,
   });
   if (existing) {
@@ -897,6 +1011,9 @@ const loadOrCreateManifest = async ({
   }
 
   const createdAt = now().toISOString();
+  if (minimumCreatedAt && createdAt < minimumCreatedAt) {
+    throw new Error("Campaign round creation time predates its predecessor");
+  }
   const runs = Object.fromEntries(
     scenarios.map((scenario) => {
       const runId = createRunId(campaignId, roundNumber, scenario.id);
@@ -923,7 +1040,9 @@ const loadOrCreateManifest = async ({
     roundNumber,
     scenarioFingerprint,
     sourceFingerprint,
-    concurrency,
+    initialConcurrency,
+    concurrency: initialConcurrency,
+    circuitAcknowledgedRunIds: [],
     childTimeoutMs,
     status: "INCOMPLETE",
     createdAt,
@@ -986,6 +1105,7 @@ const resolveChildReport = async (
         errorCode: "CAMPAIGN_STALE_LIFECYCLE_INVALID",
         message: "Lifecycle marker could not be verified",
         detail: toErrorMessage(lifecycleError),
+        processStarted: report.processStarted,
       });
     }
     if (lifecycle) {
@@ -1077,15 +1197,32 @@ const validateChildReportIdentity = (
   if (
     report.campaignId !== expected.campaignId ||
     report.roundId !== expected.roundId ||
-    report.runId !== expected.runId ||
-    report.lifecycleFile !== expected.lifecycleFile
+    report.runId !== expected.runId
   ) {
+    if (!report.processStarted) {
+      return {
+        ...report,
+        status: "FAIL",
+        errorCode: "CAMPAIGN_CHILD_PROTOCOL_FAILURE",
+        error: "Pre-engine child report identity does not match the requested run",
+      };
+    }
     return createLifecycleAuditReport({
       scenarioId: expected.scenarioId,
       lifecycleFile: expected.lifecycleFile,
       errorCode: "CAMPAIGN_CHILD_PROTOCOL_FAILURE",
       message: "Child report identity does not match the requested run",
       detail: "campaignId, roundId, runId, or lifecycleFile mismatch",
+    });
+  }
+  if (!report.processStarted) return undefined;
+  if (report.lifecycleFile !== expected.lifecycleFile) {
+    return createLifecycleAuditReport({
+      scenarioId: expected.scenarioId,
+      lifecycleFile: expected.lifecycleFile,
+      errorCode: "CAMPAIGN_CHILD_PROTOCOL_FAILURE",
+      message: "Child report lifecycle path does not match the requested run",
+      detail: "lifecycleFile mismatch",
     });
   }
   for (const [key, path] of [
@@ -1170,10 +1307,27 @@ const reconcileChildExit = (
   report: SingleRunPublicReport,
   lifecycleFile: string,
 ): SingleRunPublicReport => {
+  if (execution.timedOut) {
+    if (!report.processStarted) return report;
+    return createInterruptedEngineReport({
+      scenarioId: report.scenario,
+      lifecycleFile,
+      timedOut: true,
+      detail: "Child timeout elapsed even though a terminal report was recovered",
+    });
+  }
   const exitMatchesEnvelope =
     (report.status === "PASS" && execution.exitCode === 0) ||
     (report.status === "FAIL" && execution.exitCode !== null && execution.exitCode !== 0);
   if (exitMatchesEnvelope) return report;
+  if (!report.processStarted) {
+    return {
+      ...report,
+      status: "FAIL",
+      errorCode: report.errorCode ?? "CAMPAIGN_CHILD_PROTOCOL_FAILURE",
+      error: `Pre-engine child exit code ${String(execution.exitCode)} conflicts with ${report.status} envelope`,
+    };
+  }
   return createLifecycleAuditReport({
     scenarioId: report.scenario,
     lifecycleFile,
@@ -1189,16 +1343,18 @@ const createLifecycleAuditReport = ({
   errorCode,
   message,
   detail,
+  processStarted = true,
 }: {
   scenarioId: TestScenarioName;
   lifecycleFile: string;
   errorCode: string;
   message: string;
   detail: string;
+  processStarted?: boolean;
 }): SingleRunPublicReport => ({
   status: "FAIL",
   scenario: scenarioId,
-  processStarted: true,
+  processStarted,
   engineStatus: "ERROR",
   errorCode,
   engineErrorMessage: message,
@@ -1354,7 +1510,10 @@ const spawnSingleRun = async (
         `\nCAMPAIGN_CHILD_TIMEOUT after ${timeoutMs}ms`,
       );
       child.kill("SIGTERM");
-      forceKillTimer = setTimeout(() => child.kill("SIGKILL"), 10_000);
+      forceKillTimer = setTimeout(
+        () => child.kill("SIGKILL"),
+        CAMPAIGN_CHILD_TERMINATION_GRACE_MS,
+      );
       forceKillTimer.unref();
     }, timeoutMs);
     timeout.unref();
@@ -1439,15 +1598,84 @@ const parsePositiveDuration = (value: number, label: string): number => {
   return value;
 };
 
-const countRunsWithStatus = (
-  manifest: CampaignRoundManifest,
-  status: CampaignRunStatus,
-): number => Object.values(manifest.runs).filter((run) => run.status === status).length;
-
 const countSafelyResumableRuns = (manifest: CampaignRoundManifest): number =>
   Object.values(manifest.runs).filter(
-    (run) => run.status === "PENDING" || run.status === "PRE_ENGINE_FAILURE",
+    (run) =>
+      run.status === "PENDING" ||
+      (run.status === "PRE_ENGINE_FAILURE" && !isPreEngineArtifactAuditRun(run)),
   ).length;
+
+const countAuditBlockingRuns = (manifest: CampaignRoundManifest): number =>
+  Object.values(manifest.runs).filter(
+    (run) => run.status === "AUDIT_REQUIRED" || isPreEngineArtifactAuditRun(run),
+  ).length;
+
+const isPreEngineArtifactAuditRun = (record: CampaignRunRecord): boolean =>
+  record.status === "PRE_ENGINE_FAILURE" &&
+  record.report?.processStarted === false &&
+  record.report.errorCode === "TEST_ARTIFACT_WRITE_FAILURE";
+
+const getInvocationConcurrency = (
+  manifest: CampaignRoundManifest | undefined,
+  initialConcurrency: number,
+): number => {
+  if (!manifest) return initialConcurrency;
+  if (manifest.initialConcurrency !== initialConcurrency) {
+    throw new Error(
+      `Campaign initial concurrency violates the adaptive policy: expected ${initialConcurrency}, received ${manifest.initialConcurrency}`,
+    );
+  }
+  return manifest.status === "CIRCUIT_OPEN"
+    ? getNextCampaignConcurrency(manifest.concurrency, 1)
+    : manifest.concurrency;
+};
+
+const assertRequestedConcurrency = (
+  requestedConcurrency: number | undefined,
+  expectedConcurrency: number,
+): void => {
+  if (
+    requestedConcurrency !== undefined &&
+    requestedConcurrency !== expectedConcurrency
+  ) {
+    throw new Error(
+      `Campaign concurrency must follow the adaptive policy: expected ${expectedConcurrency}, received ${requestedConcurrency}`,
+    );
+  }
+};
+
+const getManifestOutcomeRunIds = (manifest: CampaignRoundManifest): string[] =>
+  Object.values(manifest.runs)
+    .filter((record) => record.outcome !== undefined)
+    .map((record) => record.runId);
+
+const getUnacknowledgedManifestOutcomes = (
+  manifest: CampaignRoundManifest,
+): ClassifiedCampaignRun[] => {
+  const acknowledged = new Set(manifest.circuitAcknowledgedRunIds);
+  return Object.values(manifest.runs)
+    .filter((record) => !acknowledged.has(record.runId))
+    .map((record) => record.outcome)
+    .filter((outcome): outcome is ClassifiedCampaignRun => Boolean(outcome));
+};
+
+const getNextRoundInitialConcurrency = (
+  manifest: CampaignRoundManifest,
+): number => {
+  const unacknowledgedInfrastructureAffectedRuns = aggregateCampaignRuns(
+    getUnacknowledgedManifestOutcomes(manifest),
+  ).infrastructureAffectedRuns;
+  if (
+    manifest.circuitAcknowledgedRunIds.length > 0 &&
+    unacknowledgedInfrastructureAffectedRuns === 0
+  ) {
+    return manifest.concurrency;
+  }
+  return getNextCampaignConcurrency(
+    manifest.concurrency,
+    unacknowledgedInfrastructureAffectedRuns,
+  );
+};
 
 const getManifestOutcomes = (
   manifest: CampaignRoundManifest,
@@ -1531,15 +1759,23 @@ const validateExistingRoundBeforeMutation = async ({
   roundNumber,
   scenarioFingerprint,
   sourceFingerprint,
+  initialConcurrency,
+  childTimeoutMs,
+  minimumCreatedAt,
   scenarios,
-}: ManifestValidationExpectation & { paths: CampaignRoundPaths }): Promise<void> => {
+}: ManifestValidationExpectation & {
+  paths: CampaignRoundPaths;
+}): Promise<CampaignRoundManifest | undefined> => {
   await assertExistingManagedPathsSafe(paths);
-  await readManifestIfPresent(paths, {
+  return await readManifestIfPresent(paths, {
     campaignId,
     roundId,
     roundNumber,
     scenarioFingerprint,
     sourceFingerprint,
+    initialConcurrency,
+    childTimeoutMs,
+    minimumCreatedAt,
     scenarios,
   });
 };
@@ -1589,57 +1825,99 @@ const assertManifestPhysicalPathsSafe = async (
   await assertExistingManagedPathsSafe(paths);
   const physicalRunsDir = await realpath(paths.runsDir);
   for (const record of Object.values(manifest.runs)) {
-    const artifactInfo = await lstatIfPresent(record.artifactDir);
-    if (!artifactInfo) {
-      if (record.status === "COMPLETED" || record.status === "AUDIT_REQUIRED") {
-        throw new Error(`Terminal run artifact directory is missing: ${record.artifactDir}`);
-      }
-      continue;
+    await assertRunRecordPhysicalPathsSafe(manifest, record, physicalRunsDir);
+  }
+};
+
+const assertCurrentRunPhysicalPathsSafe = async (
+  manifest: CampaignRoundManifest,
+  paths: CampaignRoundPaths,
+  record: CampaignRunRecord,
+): Promise<void> => {
+  await assertExistingManagedPathsSafe(paths);
+  const physicalRunsDir = await realpath(paths.runsDir);
+  await assertRunRecordPhysicalPathsSafe(manifest, record, physicalRunsDir);
+};
+
+const assertRunRecordPhysicalPathsSafe = async (
+  manifest: CampaignRoundManifest,
+  record: CampaignRunRecord,
+  physicalRunsDir: string,
+): Promise<void> => {
+  const artifactInfo = await lstatIfPresent(record.artifactDir);
+  if (!artifactInfo) {
+    if (record.status === "COMPLETED" || record.status === "AUDIT_REQUIRED") {
+      throw new Error(`Terminal run artifact directory is missing: ${record.artifactDir}`);
     }
-    if (artifactInfo.isSymbolicLink() || !artifactInfo.isDirectory()) {
-      throw new Error(`Run artifact directory must not be a symlink: ${record.artifactDir}`);
+    return;
+  }
+  if (artifactInfo.isSymbolicLink() || !artifactInfo.isDirectory()) {
+    throw new Error(`Run artifact directory must not be a symlink: ${record.artifactDir}`);
+  }
+  const physicalArtifactDir = await realpath(record.artifactDir);
+  if (
+    dirname(physicalArtifactDir) !== physicalRunsDir ||
+    !isPhysicalChildPath(physicalRunsDir, physicalArtifactDir)
+  ) {
+    throw new Error(`Run artifact directory escapes the round runs directory: ${record.artifactDir}`);
+  }
+  const completed = record.status === "COMPLETED";
+  if (
+    record.status === "AUDIT_REQUIRED" ||
+    record.status === "RUNNING" ||
+    isPreEngineArtifactAuditRun(record)
+  ) return;
+  await assertArtifactFileSafe(record.lifecycleFile, physicalArtifactDir, completed);
+  let completedLifecycle: SingleRunLifecycle | undefined;
+  if (completed) {
+    const lifecycle = await readLifecycleIfPresent(record.lifecycleFile, {
+      campaignId: manifest.campaignId,
+      roundId: manifest.roundId,
+      runId: record.runId,
+      scenarioId: record.scenarioId,
+      artifactDir: record.artifactDir,
+      lifecycleFile: record.lifecycleFile,
+    });
+    if (!lifecycle) {
+      throw new Error(`Required lifecycle marker is missing: ${record.lifecycleFile}`);
     }
-    const physicalArtifactDir = await realpath(record.artifactDir);
     if (
-      dirname(physicalArtifactDir) !== physicalRunsDir ||
-      !isPhysicalChildPath(physicalRunsDir, physicalArtifactDir)
+      lifecycle.state !== "COMPLETED" ||
+      !lifecycle.processStarted ||
+      !lifecycle.publicRun?.processStarted
     ) {
-      throw new Error(`Run artifact directory escapes the round runs directory: ${record.artifactDir}`);
+      throw new Error(`Completed run lacks a counted completed lifecycle: ${record.runId}`);
     }
-    const completed = record.status === "COMPLETED";
-    await assertArtifactFileSafe(record.lifecycleFile, physicalArtifactDir, completed);
-    if (completed) {
-      const lifecycle = await readLifecycleIfPresent(record.lifecycleFile, {
-        campaignId: manifest.campaignId,
-        roundId: manifest.roundId,
-        runId: record.runId,
-        scenarioId: record.scenarioId,
-        artifactDir: record.artifactDir,
-        lifecycleFile: record.lifecycleFile,
-      });
-      if (!lifecycle) {
-        throw new Error(`Required lifecycle marker is missing: ${record.lifecycleFile}`);
-      }
-      if (
-        record.status === "COMPLETED" &&
-        (lifecycle.state !== "COMPLETED" ||
-          !lifecycle.processStarted ||
-          !lifecycle.publicRun?.processStarted)
-      ) {
-        throw new Error(`Completed run lacks a counted completed lifecycle: ${record.runId}`);
-      }
-      await validateCompletedArtifactContents(record, lifecycle);
+    if (!jsonEqual(lifecycle.publicRun, record.report)) {
+      throw new Error(
+        `Completed lifecycle public report does not match its manifest record: ${record.runId}`,
+      );
     }
-    if (record.report) {
-      for (const key of ["resultFile", "logFile", "eventsFile", "lifecycleFile"] as const) {
-        const file = record.report[key];
-        if (file === undefined) continue;
-        if (dirname(resolve(file)) !== record.artifactDir) {
-          throw new Error(`Run report ${key} escapes its artifact directory: ${file}`);
-        }
-        await assertArtifactFileSafe(file, physicalArtifactDir, completed);
+    for (const path of [
+      lifecycle.lifecycleFile,
+      lifecycle.resultFile,
+      lifecycle.logFile,
+      lifecycle.eventsFile,
+    ]) {
+      if (dirname(resolve(path)) !== record.artifactDir) {
+        throw new Error(`Lifecycle artifact escapes its run directory: ${path}`);
       }
+      await assertArtifactFileSafe(path, physicalArtifactDir, true);
     }
+    completedLifecycle = lifecycle;
+  }
+  if (record.report) {
+    for (const key of ["resultFile", "logFile", "eventsFile", "lifecycleFile"] as const) {
+      const file = record.report[key];
+      if (file === undefined) continue;
+      if (dirname(resolve(file)) !== record.artifactDir) {
+        throw new Error(`Run report ${key} escapes its artifact directory: ${file}`);
+      }
+      await assertArtifactFileSafe(file, physicalArtifactDir, completed);
+    }
+  }
+  if (completedLifecycle) {
+    await validateCompletedArtifactContents(record, completedLifecycle);
   }
 };
 
@@ -1669,7 +1947,17 @@ const validateCompletedArtifactContents = async (
   const eventLines = (await readFile(lifecycle.eventsFile, "utf8"))
     .split(/\r?\n/)
     .filter((line) => line.trim().length > 0);
-  for (const line of eventLines) parseJsonArtifact(line, "event JSONL line");
+  const events = eventLines.map((line) => parseJsonArtifact(line, "event JSONL line"));
+  for (const event of events) {
+    if (
+      !isRecord(event.context) ||
+      event.context.campaignId !== record.report.campaignId ||
+      event.context.roundId !== record.report.roundId ||
+      event.context.runId !== record.runId
+    ) {
+      throw new Error(`Completed event context is inconsistent: ${record.runId}`);
+    }
+  }
 
   if (
     log.schemaVersion !== 1 ||
@@ -1689,6 +1977,7 @@ const validateCompletedArtifactContents = async (
     log.lifecycleFile !== lifecycle.lifecycleFile ||
     !Number.isInteger(log.eventCount) ||
     !isRecord(log.trace) ||
+    !jsonEqual(log.trace, record.report.trace) ||
     log.trace.eventCount !== log.eventCount ||
     log.eventCount !== eventLines.length
   ) {
@@ -1885,6 +2174,9 @@ type ManifestValidationExpectation = {
   roundNumber: number;
   scenarioFingerprint: string;
   sourceFingerprint?: string;
+  initialConcurrency?: number;
+  childTimeoutMs?: number;
+  minimumCreatedAt?: string;
   scenarios: CampaignScenario[];
 };
 
@@ -1913,7 +2205,13 @@ const reconcileStaleRunRecords = async (
   now: () => Date,
 ): Promise<void> => {
   for (const record of Object.values(manifest.runs)) {
-    if (record.status !== "RUNNING") continue;
+    const originalStatus = record.status;
+    if (
+      (originalStatus !== "RUNNING" &&
+        originalStatus !== "PENDING" &&
+        originalStatus !== "PRE_ENGINE_FAILURE") ||
+      isPreEngineArtifactAuditRun(record)
+    ) continue;
     const scenario = scenarioById.get(record.scenarioId);
     if (!scenario) throw new Error(`Missing scenario definition: ${record.scenarioId}`);
 
@@ -1929,6 +2227,7 @@ const reconcileStaleRunRecords = async (
       });
     } catch (error) {
       const report = createInvalidLifecycleReport(record, error);
+      ensureRunHasExecutionEvidence(record, undefined, now);
       record.report = report;
       record.outcome = classifyCampaignRun(report, scenario);
       record.status = "AUDIT_REQUIRED";
@@ -1937,6 +2236,7 @@ const reconcileStaleRunRecords = async (
     }
 
     if (!lifecycle) {
+      if (originalStatus !== "RUNNING") continue;
       const report: SingleRunPublicReport = {
         status: "FAIL",
         scenario: record.scenarioId,
@@ -1967,18 +2267,22 @@ const reconcileStaleRunRecords = async (
     }
     if (lifecycle.state === "COMPLETED" && lifecycle.publicRun) {
       const report = parseLifecyclePublicRun(lifecycle.publicRun, record.scenarioId);
-      record.report = report;
-      record.outcome = classifyCampaignRun(report, scenario);
       if (lifecycle.processStarted && report.processStarted) {
+        ensureRunHasExecutionEvidence(record, lifecycle, now);
+        record.report = report;
+        record.outcome = classifyCampaignRun(report, scenario);
         record.status = isAuditRequiredReport(report) ? "AUDIT_REQUIRED" : "COMPLETED";
         record.completedAt = now().toISOString();
-      } else {
+      } else if (originalStatus === "RUNNING") {
+        record.report = report;
+        record.outcome = classifyCampaignRun(report, scenario);
         record.status = "PRE_ENGINE_FAILURE";
         record.completedAt = now().toISOString();
       }
       continue;
     }
 
+    ensureRunHasExecutionEvidence(record, lifecycle, now);
     const report = createInterruptedEngineReport({
       scenarioId: record.scenarioId,
       lifecycleFile: record.lifecycleFile,
@@ -1990,6 +2294,16 @@ const reconcileStaleRunRecords = async (
     record.status = "AUDIT_REQUIRED";
     record.completedAt = now().toISOString();
   }
+};
+
+const ensureRunHasExecutionEvidence = (
+  record: CampaignRunRecord,
+  lifecycle: SingleRunLifecycle | undefined,
+  now: () => Date,
+): void => {
+  record.executionCount = Math.max(1, record.executionCount);
+  record.startedAt ??=
+    lifecycle?.engineProcessStartedAt ?? lifecycle?.updatedAt ?? now().toISOString();
 };
 
 const createInvalidLifecycleReport = (
@@ -2013,6 +2327,11 @@ const readLifecycleIfPresent = async (
   expected?: LifecycleExpectation,
 ): Promise<SingleRunLifecycle | undefined> => {
   try {
+    const info = await lstatIfPresent(lifecycleFile);
+    if (!info) return undefined;
+    if (info.isSymbolicLink() || !info.isFile()) {
+      throw new Error(`Lifecycle marker must be a regular non-symlink file: ${lifecycleFile}`);
+    }
     const value: unknown = JSON.parse(await readFile(lifecycleFile, "utf8"));
     return validateSingleRunLifecycle(value, lifecycleFile, expected);
   } catch (error) {
@@ -2132,7 +2451,9 @@ const validateCampaignRoundManifest = (
       "roundNumber",
       "scenarioFingerprint",
       "sourceFingerprint",
+      "initialConcurrency",
       "concurrency",
+      "circuitAcknowledgedRunIds",
       "childTimeoutMs",
       "status",
       "createdAt",
@@ -2152,6 +2473,13 @@ const validateCampaignRoundManifest = (
     value.scenarioFingerprint !== expected.scenarioFingerprint ||
     (expected.sourceFingerprint !== undefined &&
       value.sourceFingerprint !== expected.sourceFingerprint) ||
+    (expected.initialConcurrency !== undefined &&
+      value.initialConcurrency !== expected.initialConcurrency) ||
+    (expected.childTimeoutMs !== undefined &&
+      value.childTimeoutMs !== expected.childTimeoutMs) ||
+    (expected.minimumCreatedAt !== undefined &&
+      (typeof value.createdAt !== "string" ||
+        value.createdAt < expected.minimumCreatedAt)) ||
     typeof value.sourceFingerprint !== "string" ||
     !/^[a-f0-9]{64}$/.test(value.sourceFingerprint) ||
     !isCampaignRoundStatus(value.status) ||
@@ -2163,7 +2491,13 @@ const validateCampaignRoundManifest = (
   ) {
     throw new Error(`Campaign manifest identity or metadata is invalid: ${paths.manifestPath}`);
   }
-  parseConcurrency(asNumber(value.concurrency, "manifest concurrency"));
+  const initialConcurrency = parseConcurrency(
+    asNumber(value.initialConcurrency, "manifest initialConcurrency"),
+  );
+  const concurrency = parseConcurrency(asNumber(value.concurrency, "manifest concurrency"));
+  if (concurrency > initialConcurrency) {
+    throw new Error("Campaign concurrency cannot exceed its round initial concurrency");
+  }
   parsePositiveDuration(asNumber(value.childTimeoutMs, "manifest childTimeoutMs"), "childTimeoutMs");
 
   if (!Array.isArray(value.scenarioIds) || value.scenarioIds.length !== CAMPAIGN_ROUND_SIZE) {
@@ -2195,6 +2529,22 @@ const validateCampaignRoundManifest = (
       expected.roundNumber,
       paths,
     );
+  }
+
+  if (
+    !Array.isArray(value.circuitAcknowledgedRunIds) ||
+    !value.circuitAcknowledgedRunIds.every((runId) => typeof runId === "string") ||
+    new Set(value.circuitAcknowledgedRunIds).size !==
+      value.circuitAcknowledgedRunIds.length
+  ) {
+    throw new Error("Campaign circuit acknowledgement run IDs are invalid");
+  }
+  const recordsByRunId = new Map(Object.values(runs).map((record) => [record.runId, record]));
+  for (const runId of value.circuitAcknowledgedRunIds) {
+    const record = recordsByRunId.get(runId);
+    if (!record?.outcome) {
+      throw new Error(`Campaign circuit acknowledgement references no outcome: ${String(runId)}`);
+    }
   }
 
   const manifest = value as CampaignRoundManifest;
@@ -2420,7 +2770,9 @@ const validateManifestStatusInvariants = (manifest: CampaignRoundManifest): void
   }
   if (
     manifest.status === "AUDIT_REQUIRED" &&
-    records.every((run) => run.status !== "AUDIT_REQUIRED")
+    records.every(
+      (run) => run.status !== "AUDIT_REQUIRED" && !isPreEngineArtifactAuditRun(run),
+    )
   ) {
     throw new Error("Audit-required campaign manifest has no audit-required run");
   }
@@ -2510,10 +2862,30 @@ const assertExactKeySet = (
 };
 
 const writeJsonAtomic = async (path: string, value: unknown): Promise<void> => {
-  await mkdir(dirname(path), { recursive: true });
+  const parentDirectory = dirname(path);
+  await mkdir(parentDirectory, { recursive: true });
   const temporaryPath = `${path}.${process.pid}.${randomUUID()}.tmp`;
-  await writeFile(temporaryPath, `${JSON.stringify(value, null, 2)}\n`, "utf8");
-  await rename(temporaryPath, path);
+  let renamed = false;
+  try {
+    const temporaryFile = await open(temporaryPath, "wx", 0o600);
+    try {
+      await temporaryFile.writeFile(`${JSON.stringify(value, null, 2)}\n`, "utf8");
+      await temporaryFile.sync();
+    } finally {
+      await temporaryFile.close();
+    }
+    await rename(temporaryPath, path);
+    renamed = true;
+
+    const parentHandle = await open(parentDirectory, "r");
+    try {
+      await parentHandle.sync();
+    } finally {
+      await parentHandle.close();
+    }
+  } finally {
+    if (!renamed) await unlink(temporaryPath).catch(() => undefined);
+  }
 };
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -2534,7 +2906,7 @@ const compareStrings = (left: string, right: string): number =>
 type CampaignCliOptions = {
   campaignId: string;
   roundNumber: number;
-  concurrency: number;
+  concurrency?: number;
   childTimeoutMs: number;
   artifactsRoot: string;
   statsFile?: string;
@@ -2543,6 +2915,9 @@ type CampaignCliOptions = {
 };
 
 export const parseCampaignCliOptions = (args: string[]): CampaignCliOptions => {
+  const separatorCount = args.filter((arg) => arg === "--").length;
+  if (separatorCount > 1) throw new Error("Duplicate campaign argument separator: --");
+  const normalizedArgs = args.filter((arg) => arg !== "--");
   const knownPrefixes = [
     "--campaign-id=",
     "--round=",
@@ -2551,7 +2926,7 @@ export const parseCampaignCliOptions = (args: string[]): CampaignCliOptions => {
     "--stats-file=",
     "--child-timeout-ms=",
   ];
-  const unknown = args.filter(
+  const unknown = normalizedArgs.filter(
     (arg) =>
       arg !== "--json" &&
       arg !== "--allow-time-budget-override" &&
@@ -2559,26 +2934,27 @@ export const parseCampaignCliOptions = (args: string[]): CampaignCliOptions => {
   );
   if (unknown.length > 0) throw new Error(`Unknown campaign option: ${unknown.join(", ")}`);
 
-  const campaignId = readCliValue(args, "--campaign-id") ?? createCampaignId();
-  const roundValue = readCliValue(args, "--round") ?? "1";
+  const campaignId = readCliValue(normalizedArgs, "--campaign-id") ?? createCampaignId();
+  const roundValue = readCliValue(normalizedArgs, "--round") ?? "1";
   const roundNumber = roundValue === "final" ? 11 : Number(roundValue);
-  const concurrency = Number(
-    readCliValue(args, "--concurrency") ?? String(CAMPAIGN_INITIAL_CONCURRENCY),
-  );
+  const concurrencyValue = readCliValue(normalizedArgs, "--concurrency");
   const childTimeoutMs = Number(
-    readCliValue(args, "--child-timeout-ms") ?? String(DEFAULT_CHILD_TIMEOUT_MS),
+    readCliValue(normalizedArgs, "--child-timeout-ms") ?? String(DEFAULT_CHILD_TIMEOUT_MS),
   );
   return {
     campaignId: parseCampaignIdentifier(campaignId, "campaignId"),
     roundNumber: parseRoundNumber(roundNumber),
-    concurrency: parseConcurrency(concurrency),
+    concurrency:
+      concurrencyValue === undefined
+        ? undefined
+        : parseConcurrency(Number(concurrencyValue)),
     childTimeoutMs: parsePositiveDuration(childTimeoutMs, "childTimeoutMs"),
     artifactsRoot: resolve(
-      readCliValue(args, "--artifacts-root") ?? DEFAULT_CAMPAIGN_ARTIFACTS_ROOT,
+      readCliValue(normalizedArgs, "--artifacts-root") ?? DEFAULT_CAMPAIGN_ARTIFACTS_ROOT,
     ),
-    statsFile: readCliValue(args, "--stats-file"),
-    allowTimeBudgetOverride: args.includes("--allow-time-budget-override"),
-    json: args.includes("--json"),
+    statsFile: readCliValue(normalizedArgs, "--stats-file"),
+    allowTimeBudgetOverride: normalizedArgs.includes("--allow-time-budget-override"),
+    json: normalizedArgs.includes("--json"),
   };
 };
 

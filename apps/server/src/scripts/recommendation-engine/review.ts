@@ -1165,15 +1165,22 @@ const readRequiredJson = async (path: string, label: string): Promise<JsonRecord
 export type ReviewCliOptions = { manifestPath: string; json: boolean };
 
 export const parseReviewCliOptions = (args: string[]): ReviewCliOptions => {
-  const manifestArgs = args.filter((arg) => arg.startsWith("--manifest="));
+  const separatorCount = args.filter((arg) => arg === "--").length;
+  if (separatorCount > 1) {
+    throw new Error("Review CLI accepts at most one standalone -- separator");
+  }
+  const normalizedArgs = args.filter((arg) => arg !== "--");
+  const manifestArgs = normalizedArgs.filter((arg) => arg.startsWith("--manifest="));
   if (manifestArgs.length !== 1) {
     throw new Error("Review CLI requires exactly one --manifest=/absolute/path/manifest.json");
   }
-  const unknown = args.filter((arg) => arg !== "--json" && !arg.startsWith("--manifest="));
+  const unknown = normalizedArgs.filter(
+    (arg) => arg !== "--json" && !arg.startsWith("--manifest="),
+  );
   if (unknown.length > 0) throw new Error(`Unknown review option: ${unknown.join(", ")}`);
   const manifestPath = manifestArgs[0]?.slice("--manifest=".length).trim();
   if (!manifestPath) throw new Error("--manifest requires a path");
-  return { manifestPath, json: args.includes("--json") };
+  return { manifestPath, json: normalizedArgs.includes("--json") };
 };
 
 export const runReviewCli = async (args = process.argv.slice(2)): Promise<CampaignRoundReviewPacket> => {

@@ -1,4 +1,12 @@
 import { randomUUID } from "node:crypto";
+import {
+  closeSync,
+  fsyncSync,
+  openSync,
+  renameSync,
+  unlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { lstat, mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -51,7 +59,7 @@ export type TestCliOptions = {
   expectedErrorCode?: string;
 };
 
-type RunInvocationState = {
+export type RunInvocationState = {
   processStarted: boolean;
 };
 
@@ -125,10 +133,12 @@ export type LifecycleMarkerContext = {
   processId?: number;
 };
 
-type LifecycleStartContext = {
+export type LifecycleStartContext = {
   options: TestCliOptions;
   paths: TestArtifactPaths;
 };
+
+export type LifecycleStartWriter = (context: LifecycleStartContext) => void;
 
 export const runCli = async (args = process.argv.slice(2)): Promise<TestRun> => {
   const options = parseTestCliOptions(args);
@@ -318,6 +328,38 @@ export const finalizeEventArtifact = async (
   }
 };
 
+export const createEngineProcessStartHook = ({
+  input,
+  invocationState,
+  lifecycle,
+  writeStartedLifecycleMarker = writeEngineProcessStartedLifecycleMarkerSync,
+}: {
+  input: UserInput;
+  invocationState: RunInvocationState;
+  lifecycle?: LifecycleStartContext;
+  writeStartedLifecycleMarker?: LifecycleStartWriter;
+}): (() => void) =>
+  () => {
+    // This hook is the literal first statement in RecommendationEngine.process().
+    // Set the in-memory boundary before any filesystem operation so marker I/O
+    // failures remain counted harness failures rather than preflight failures.
+    invocationState.processStarted = true;
+    if (!lifecycle) return;
+    try {
+      writeStartedLifecycleMarker(lifecycle);
+    } catch (error) {
+      const message = `Failed to persist process-start lifecycle marker: ${toErrorMessage(error)}`;
+      throw createTestFailure(message, {
+        status: "ERROR",
+        userInput: input,
+        error: {
+          code: artifactWriteFailureCode,
+          message,
+        },
+      });
+    }
+  };
+
 const executeEngineTest = async (
   input: UserInput,
   scenarioName: TestScenarioName,
@@ -329,9 +371,12 @@ const executeEngineTest = async (
   const engine = new RecommendationEngine(input, testConfig, {
     logger: monitor.logger,
     secrets: getRecommendationEngineSecretsFromEnv(),
+    onProcessStart: createEngineProcessStartHook({
+      input,
+      invocationState,
+      lifecycle,
+    }),
   });
-  if (lifecycle) await writeEngineProcessStartedLifecycleMarker(lifecycle);
-  invocationState.processStarted = true;
   const result = EngineOutputSchema.parse(await engine.process());
   const reportFields = getEngineReportFields(result);
   const log = {
@@ -556,10 +601,55 @@ export const writeLifecycleMarkerAtomic = async (
   await rename(temporaryFile, lifecycleFile);
 };
 
-const writeEngineProcessStartedLifecycleMarker = async ({
+export const writeLifecycleMarkerAtomicSync = (
+  lifecycleFile: string,
+  marker: TestRunLifecycleMarker,
+): void => {
+  const temporaryFile = `${lifecycleFile}.${process.pid}.${randomUUID()}.tmp`;
+  let renamed = false;
+  try {
+    const descriptor = openSync(temporaryFile, "wx", 0o600);
+    try {
+      writeFileSync(descriptor, `${JSON.stringify(marker, null, 2)}\n`, "utf8");
+      fsyncSync(descriptor);
+    } finally {
+      closeSync(descriptor);
+    }
+    renameSync(temporaryFile, lifecycleFile);
+    renamed = true;
+    fsyncParentDirectory(dirname(lifecycleFile));
+  } finally {
+    if (!renamed) {
+      try {
+        unlinkSync(temporaryFile);
+      } catch {
+        // The temp file may not have been created, or may already have been
+        // removed. Preserve the original marker write error.
+      }
+    }
+  }
+};
+
+const fsyncParentDirectory = (directory: string): void => {
+  let descriptor: number | undefined;
+  try {
+    descriptor = openSync(directory, "r");
+    fsyncSync(descriptor);
+  } catch (error) {
+    if (!isUnsupportedDirectoryFsync(error)) throw error;
+  } finally {
+    if (descriptor !== undefined) closeSync(descriptor);
+  }
+};
+
+const isUnsupportedDirectoryFsync = (error: unknown): boolean =>
+  isRecord(error) &&
+  (error.code === "EINVAL" || error.code === "ENOTSUP" || error.code === "EISDIR");
+
+export const writeEngineProcessStartedLifecycleMarkerSync = ({
   options,
   paths,
-}: LifecycleStartContext): Promise<void> => {
+}: LifecycleStartContext): void => {
   const marker = createEngineProcessStartedLifecycleMarker({
     campaignId: options.campaignId,
     roundId: options.roundId,
@@ -567,7 +657,7 @@ const writeEngineProcessStartedLifecycleMarker = async ({
     scenario: options.scenario,
     paths,
   });
-  await writeLifecycleMarkerAtomic(paths.lifecycleFile, marker);
+  writeLifecycleMarkerAtomicSync(paths.lifecycleFile, marker);
 };
 
 const writeCompletedLifecycleMarker = async (run: TestRun): Promise<void> => {
