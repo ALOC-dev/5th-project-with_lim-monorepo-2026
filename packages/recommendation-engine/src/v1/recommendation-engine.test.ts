@@ -38,8 +38,21 @@ import { toDiscoverSeedsFailure } from "./steps/discoverSeeds/utils/failure.js";
 import { settleProviderSeeds } from "./steps/discoverSeeds/utils/provider.js";
 import type { LocalSeedSearchResponse } from "./steps/discoverSeeds/vendors/contracts.js";
 import { toLocalSeed } from "./steps/discoverSeeds/vendors/tmap-local.js";
-import { logRecoverableAgenticCandidateFailure } from "./steps/evaluateSeeds/llm/enrichment.js";
+import {
+  createRecommendationEvaluationSession,
+  getCandidateFingerprint,
+} from "./steps/evaluateSeeds/evaluation-session.js";
+import { getLightweightEvaluationPriority } from "./steps/evaluateSeeds/index.js";
+import {
+  type BoundedWebFallbackDependencies,
+  createBoundedWebFallbackClient,
+} from "./steps/evaluateSeeds/llm/bounded-web-fallback.js";
+import {
+  type CascadeEnrichmentDependencies,
+  createCascadeEnrichmentClient,
+} from "./steps/evaluateSeeds/llm/cascade-enrichment.js";
 import { resolveCandidateReferenceUrls } from "./steps/evaluateSeeds/tools/reference-urls.js";
+import { NaverSearchQueue } from "./steps/evaluateSeeds/tools/shared/naver-search-queue.js";
 import type { ReferenceUrlMatch } from "./steps/evaluateSeeds/tools/shared/reference-query.js";
 import { buildReferenceQueryVariants } from "./steps/evaluateSeeds/tools/shared/reference-query.js";
 import {
@@ -57,6 +70,7 @@ import type {
 } from "./steps/evaluateSeeds/utils/enrichment-types.js";
 import type { CandidateScoringEvidence } from "./steps/evaluateSeeds/utils/evidence.js";
 import { getOutputAddress } from "./steps/evaluateSeeds/utils/output.js";
+import { assessPreEnrichmentSemanticFit } from "./steps/evaluateSeeds/utils/semantic-fit.js";
 
 const schedule = (overrides: Partial<{ dateISO: string; time24h: string; stay: number }> = {}) => ({
   dateISO: overrides.dateISO ?? "2026-08-03",
@@ -361,6 +375,63 @@ void test("keeps malformed initial plans on the existing plan-error path", async
   assert.equal(output.status, "ERROR");
   if (output.status === "ERROR") assert.equal(output.error.code, "DISCOVER_SEEDS_PLAN_ERROR");
   assert.equal(discoverCalls, 0);
+});
+
+void test("cascade prefetches one more discovery page before enriching a short initial pool", async () => {
+  const contexts: Array<{ alreadyCheckedIds: string[]; queries: Array<{ query: string }> }> = [];
+  let evaluatedSeedCount = 0;
+  const seed = (index: number) => ({
+    provider: "tmap" as const,
+    providerPlaceId: `prefetch-${index}`,
+    name: `사전수집 식당 ${index}`,
+    category: "음식점",
+    phone: "",
+    address: "서울 중구 테스트동",
+    roadAddress: "서울 중구 테스트로 1",
+    longitude: 126.978 + index / 10_000,
+    latitude: 37.5665,
+  });
+  const initialSeeds = Array.from({ length: 13 }, (_, index) => seed(index));
+  const prefetchedSeeds = [seed(13), seed(14)];
+  const engine = new RecommendationEngine(
+    recommendationInput("서울 한식"),
+    DEFAULT_ENGINE_CONFIG,
+    {
+      testDependencies: {
+        createInitialDiscoveryPlanWithLlm: () =>
+          Promise.resolve({ intent: "SUPPORTED" as const, queries: [{ query: "한식", count: 20, page: 1 }] }),
+        discoverSeeds: (context) => {
+          contexts.push({
+            alreadyCheckedIds: context.alreadyCheckedIds,
+            queries: context.queries.map((query) => ({ query: query.query })),
+          });
+          const isPrefetch = contexts.length === 2;
+          const seeds = isPrefetch ? prefetchedSeeds : initialSeeds;
+          return Promise.resolve({
+            ok: true as const,
+            data: {
+              seeds,
+              seedKeys: seeds.map((item) => `tmap:${item.providerPlaceId}`),
+              excludedSeedKeysApplied: [],
+              nextQueries: isPrefetch ? [] : [{ query: "서울 한식 맛집", count: 20, page: 2 }],
+              attemptNo: 1,
+            },
+          });
+        },
+        evaluateSeeds: (_input, discovery) => {
+          evaluatedSeedCount = discovery.seedKeys.length;
+          return Promise.resolve({ ok: true as const, data: { items: [], evaluations: [] } } as never);
+        },
+      },
+    },
+  );
+
+  await engine.process();
+
+  assert.equal(contexts.length, 2);
+  assert.equal(contexts[1]?.alreadyCheckedIds.length, 13);
+  assert.deepEqual(contexts[1]?.queries, [{ query: "서울 한식 맛집" }]);
+  assert.equal(evaluatedSeedCount, 15);
 });
 
 void test("runs the synchronous process-start hook before logging or provider work", async () => {
@@ -1870,7 +1941,7 @@ void test("keeps only verified over-budget candidates out of reference and scori
             : [];
     return {
       candidateId,
-      source: "agentic-web",
+      source: "bounded-web",
       sourceUrls: [],
       operationInfo: {},
       operationVerification: {
@@ -2287,6 +2358,33 @@ void test("does not fabricate a TMap road address from jibun number fields", () 
   );
 });
 
+void test("prioritises explicit claim-compatible seed tags without treating them as verified claims", () => {
+  const veganTagged = evidence({
+    name: "그린테이블",
+    mainCategory: "음식점",
+    subCategory: "비건 음식점",
+    tags: ["음식점", "비건"],
+    request: "이태원 비건 저녁",
+  });
+  const ordinaryRestaurant = evidence({
+    name: "일반식당",
+    mainCategory: "음식점",
+    subCategory: "한식",
+    tags: ["음식점", "한식"],
+    request: "이태원 비건 저녁",
+  });
+
+  assert.ok(
+    getLightweightEvaluationPriority(veganTagged, recommendationInput("이태원 비건 저녁")) >
+      getLightweightEvaluationPriority(ordinaryRestaurant, recommendationInput("이태원 비건 저녁")),
+  );
+  assert.equal(
+    assessSemanticFit(veganTagged).status,
+    "REJECT",
+    "우선순위 tag는 enrichment claim hard gate를 우회하지 않는다",
+  );
+});
+
 const referenceMatch = ({
   url,
   kind = "name_address",
@@ -2384,13 +2482,18 @@ void test("keeps a close structured provider entity and omits the competing weak
     addressScore: 0.4,
   });
 
+  let naverLookupCalls = 0;
   const result = await resolveCandidateReferenceUrls(candidate, {
     ...referenceResolverBase,
     resolveKakaoMapReferenceUrl: () => Promise.resolve(closeKakaoEntity),
-    resolveNaverMapReferenceUrl: () => Promise.resolve(weakNaverBranch),
+    resolveNaverMapReferenceUrl: () => {
+      naverLookupCalls += 1;
+      return Promise.resolve(weakNaverBranch);
+    },
   });
 
   assert.deepEqual(result.referenceUrls, { kakaoMap: "https://place.map.kakao.com/12345" });
+  assert.equal(naverLookupCalls, 0, "강한 Kakao entity가 있으면 Naver Map 중복 조회를 생략한다");
   assert.equal(result.source.kakaoMap?.status, "resolved");
   assert.equal(
     result.source.kakaoMap && "distanceMeters" in result.source.kakaoMap
@@ -2467,6 +2570,54 @@ void test("accepts an exact-address Naver detail and revalidates incomplete exis
   assert.equal(incompleteResult.rejectedReason, "insufficient_reference_identity_evidence");
 });
 
+void test("reuses a strong Kakao entity URL even when another source supplied the OPEN hours", async () => {
+  const candidate = {
+    ...evidence({
+      candidateId: "kakao-identity-naver-hours",
+      name: "A Great Cafe",
+      mainCategory: "카페",
+      subCategory: "커피전문점",
+      tags: ["카페", "커피전문점"],
+      request: "강남 카페",
+      address: "서울 강남구 역삼동",
+      roadAddress: "테헤란로",
+    }),
+    enrichment: {
+      sourceDetails: [
+        {
+          source: "kakao-local" as const,
+          status: "UNKNOWN" as const,
+          reason: "Kakao has no operation text",
+          sourceUrls: ["https://place.map.kakao.com/76543"],
+          confidence: 0.2,
+          identityMatchScore: 0.95,
+          referenceIdentity: {
+            nameScore: 1,
+            addressScore: 0.95,
+            identityScore: 0.97,
+            acceptedReason: "name_address_match",
+          },
+        },
+      ],
+    },
+  } as CandidateScoringEvidence;
+  let resolverCalls = 0;
+  const result = await resolveCandidateReferenceUrls(candidate, {
+    ...referenceResolverBase,
+    resolveKakaoMapReferenceUrl: () => {
+      resolverCalls += 1;
+      return Promise.resolve(undefined);
+    },
+    resolveNaverMapReferenceUrl: () => {
+      resolverCalls += 1;
+      return Promise.resolve(undefined);
+    },
+  });
+
+  assert.deepEqual(result.referenceUrls, { kakaoMap: "https://place.map.kakao.com/76543" });
+  assert.equal(resolverCalls, 0);
+});
+
 const evaluation = (candidateId: string) => ({
   candidateId,
   inputMatch: 80,
@@ -2514,6 +2665,28 @@ void test("keeps the rest of a chunk when one candidate breaks the response", as
     result.map((item) => item.candidateId).sort(),
     ["c0", "c1", "c3"],
     "후보 하나가 깨져도 나머지는 살아야 한다",
+  );
+});
+
+void test("recovers only candidate IDs omitted from an otherwise valid scoring chunk", async () => {
+  const calls: string[][] = [];
+  const client: LlmScoringClient = ({ evidences: chunk }) => {
+    calls.push(chunk.map((candidate) => candidate.candidateId));
+    return Promise.resolve(
+      chunk.length > 1
+        ? [evaluation(chunk[0]?.candidateId ?? "")]
+        : chunk.map((candidate) => evaluation(candidate.candidateId)),
+    );
+  };
+
+  const result = await createScoringPipeline(client, 3)({
+    evidences: evidences(3),
+  });
+
+  assert.deepEqual(calls, [["c0", "c1", "c2"], ["c1"], ["c2"]]);
+  assert.deepEqual(
+    result.map((entry) => entry.candidateId).sort(),
+    ["c0", "c1", "c2"],
   );
 });
 
@@ -2663,26 +2836,6 @@ void test("preserves successful TMAP queries when another query rejects", () => 
   });
 });
 
-void test("logs a recoverable agentic candidate failure before falling back to UNKNOWN", () => {
-  const events: LogEvent[] = [];
-  logRecoverableAgenticCandidateFailure(
-    createLogger((event) => events.push(event)),
-    "candidate-7",
-    new Error("OpenAI request timed out"),
-  );
-
-  assert.equal(events.length, 1);
-  assert.equal(events[0]?.phase, "evaluateSeeds.enrichment.agentic_candidate.failure");
-  assert.equal(events[0]?.context?.candidateId, "candidate-7");
-  assert.equal(events[0]?.context?.source, "agentic");
-  assert.deepEqual(events[0]?.data, {
-    provider: "OPENAI",
-    recoverable: true,
-    fallbackStatus: "UNKNOWN",
-  });
-  assert.equal(events[0]?.error?.message, "OpenAI request timed out");
-});
-
 void test("classifies rejection of every TMAP query as a provider failure", () => {
   const queries = [
     { query: "한식", page: 1, count: 20 },
@@ -2754,4 +2907,739 @@ void test("throws only when no candidate could be scored at all", async () => {
     createScoringPipeline(client, 4)({ evidences: evidences(4) }),
     /no usable evaluation/,
   );
+});
+
+const sessionEvidence = (
+  overrides: Partial<{
+    candidateId: string;
+    providerPlaceId: string;
+    name: string;
+    lat: number;
+    lng: number;
+  }> = {},
+): CandidateScoringEvidence => {
+  const candidateId = overrides.candidateId ?? "kakao:cache-1";
+  const name = overrides.name ?? "세션 캐시 식당";
+  const lat = overrides.lat ?? 37.55;
+  const lng = overrides.lng ?? 126.98;
+  return {
+    candidateId,
+    name,
+    category: { mainCategory: "음식점", subCategory: "한식", tags: ["한식"] },
+    userFit: {
+      naturalLanguageRequest: "한식 맛집",
+      partyType: "FRIENDS",
+      numberOfPeople: 2,
+      budgetPerPerson: undefined,
+    },
+    placeInfo: {
+      address: "서울 중구 테스트동",
+      roadAddress: "서울 중구 테스트로 1",
+      lat,
+      lng,
+    },
+    trustSignals: { evidenceUrls: [] },
+    accessibilitySignals: {},
+    raw: {
+      seedKey: candidateId,
+      seed: {
+        provider: "kakao",
+        providerPlaceId: overrides.providerPlaceId ?? "cache-1",
+        name,
+        category: "음식점>한식",
+        phone: "",
+        address: "서울 중구 테스트동",
+        roadAddress: "서울 중구 테스트로 1",
+        longitude: lng,
+        latitude: lat,
+      },
+    },
+  } as unknown as CandidateScoringEvidence;
+};
+
+const establishedEnrichment = (
+  candidateId: string,
+  status: "OPEN" | "CLOSED" = "OPEN",
+  overrides: Partial<CandidateEnrichment> = {},
+): CandidateEnrichment =>
+  ({
+    candidateId,
+    source: "naver-search",
+    sourceUrls: [`https://example.com/${candidateId}`],
+    operationInfo: {},
+    operationVerification: {
+      status,
+      requestedDateISO: "2026-08-17",
+      requestedTime24h: "19:00",
+      stayDurationMinutes: 60,
+      reason: "verified in test",
+      sourceUrls: [`https://example.com/${candidateId}`],
+      confidence: 0.9,
+    },
+    ...overrides,
+  }) as CandidateEnrichment;
+
+const validOpenOperationInfo = (): NonNullable<CandidateEnrichment["operationInfo"]> => {
+  const open = {
+    status: "OPEN" as const,
+    open: "10:00",
+    close: "22:00",
+    breakTimes: [],
+  };
+  return {
+    timezone: "Asia/Seoul",
+    schedules: {
+      MONDAY: open,
+      TUESDAY: open,
+      WEDNESDAY: open,
+      THURSDAY: open,
+      FRIDAY: open,
+      SATURDAY: open,
+      SUNDAY: open,
+    },
+  };
+};
+
+void test("reuses only stable enrichment and successful references with fingerprint validation", () => {
+  const session = createRecommendationEvaluationSession();
+  const original = sessionEvidence();
+  const enrichment = establishedEnrichment(original.candidateId);
+  const reference = {
+    evidence: {
+      ...original,
+      referenceUrls: { kakaoMap: "https://place.map.kakao.com/1" },
+    },
+    referenceUrls: { kakaoMap: "https://place.map.kakao.com/1" },
+    source: {},
+  };
+
+  assert.equal(session.setEnrichment(original, enrichment), true);
+  assert.equal(session.setReference(original, reference), true);
+  assert.equal(session.getEnrichment(original).status, "HIT");
+  assert.equal(session.getReference(original).status, "HIT");
+
+  const collision = sessionEvidence({ name: "동명이지만 다른 지점", lat: 37.6 });
+  assert.notEqual(getCandidateFingerprint(original), getCandidateFingerprint(collision));
+  assert.deepEqual(session.getEnrichment(collision), {
+    status: "MISS",
+    reason: "FINGERPRINT_MISMATCH",
+  });
+  assert.deepEqual(session.getReference(collision), {
+    status: "MISS",
+    reason: "FINGERPRINT_MISMATCH",
+  });
+});
+
+void test("does not cache UNKNOWN enrichment or failed reference resolution", () => {
+  const session = createRecommendationEvaluationSession();
+  const candidate = sessionEvidence();
+  const unknown = establishedEnrichment(candidate.candidateId, "OPEN", {
+    operationInfo: undefined,
+    sourceUrls: [],
+    operationVerification: {
+      ...establishedEnrichment(candidate.candidateId).operationVerification,
+      status: "UNKNOWN",
+      sourceUrls: [],
+    },
+  });
+
+  assert.equal(session.setEnrichment(candidate, unknown), false);
+  assert.equal(
+    session.setReference(candidate, {
+      evidence: candidate,
+      rejectedReason: "transport failure",
+      source: {},
+    }),
+    false,
+  );
+  assert.deepEqual(session.getEnrichment(candidate), { status: "MISS", reason: "EMPTY" });
+  assert.deepEqual(session.getReference(candidate), { status: "MISS", reason: "EMPTY" });
+});
+
+void test("shares stable enrichment and references across evaluation attempts and logs cache branches", async () => {
+  const session = createRecommendationEvaluationSession();
+  const candidate = sessionEvidence();
+  const events: LogEvent[] = [];
+  const logger = createLogger((event) => events.push(event));
+  let enrichmentCalls = 0;
+  let referenceCalls = 0;
+  const run = () =>
+    collectEnrichmentBatches({
+      userInput: recommendationInput("한식 맛집"),
+      evidences: [candidate],
+      config: { ...DEFAULT_ENGINE_CONFIG, targetCount: 1, scoringPoolSize: 1 },
+      logger,
+      session,
+      enrichCandidates: ({ evidences: requested }) => {
+        enrichmentCalls += 1;
+        return Promise.resolve(
+          requested.map(({ candidateId }) => establishedEnrichment(candidateId)),
+        );
+      },
+      resolveReferenceUrls: (requested) => {
+        referenceCalls += 1;
+        return Promise.resolve(
+          requested.map((evidence) => ({
+            evidence: {
+              ...evidence,
+              referenceUrls: { kakaoMap: "https://place.map.kakao.com/1" },
+            },
+            referenceUrls: { kakaoMap: "https://place.map.kakao.com/1" },
+            source: {},
+          })),
+        );
+      },
+    });
+
+  await run();
+  await run();
+  assert.equal(enrichmentCalls, 1);
+  assert.equal(referenceCalls, 1);
+  assert.ok(
+    events.some(
+      (event) =>
+        event.phase === "evaluateSeeds.enrichment.cache" && event.data?.hitCount === 1,
+    ),
+  );
+  assert.ok(
+    events.some(
+      (event) =>
+        event.phase === "evaluateSeeds.reference_urls.cache" && event.data?.hitCount === 1,
+    ),
+  );
+});
+
+void test("keeps claim-dependent constraints out of the pre-enrichment seed filter", () => {
+  const sparseVegan = sessionEvidence();
+  sparseVegan.userFit.naturalLanguageRequest = "비건 식당";
+  assert.equal(assessPreEnrichmentSemanticFit(sparseVegan).status, "PASS");
+
+  const conflictingCuisine = sessionEvidence();
+  conflictingCuisine.userFit.naturalLanguageRequest = "일식 식당";
+  assert.equal(assessPreEnrichmentSemanticFit(conflictingCuisine).status, "REJECT");
+});
+
+void test("deterministic OPEN and CLOSED cascade branches skip targeted LLM, map, and bounded fallback", async () => {
+  for (const status of ["OPEN", "CLOSED"] as const) {
+    let targetedCalls = 0;
+    let mapCalls = 0;
+    let fallbackCalls = 0;
+    const dependencies: CascadeEnrichmentDependencies = {
+      enrichWithKakaoLocal: (candidate) =>
+        Promise.resolve(
+          establishedEnrichment(candidate.candidateId, status, { source: "kakao-local" }),
+        ),
+      enrichWithNaverSearch: (candidate) =>
+        Promise.resolve(
+          establishedEnrichment(candidate.candidateId, status, { source: "naver-search" }),
+        ),
+      scrapeNaverMapCandidate: (candidate) => {
+        mapCalls += 1;
+        return Promise.resolve(
+          establishedEnrichment(candidate.candidateId, status, { source: "naver-map" }),
+        );
+      },
+      parseOperationInfoWithLlmFallback: () => {
+        targetedCalls += 1;
+        return Promise.resolve({ parser: "none", reason: "should not run" });
+      },
+      createBoundedWebFallbackClient: () => () => {
+        fallbackCalls += 1;
+        return Promise.resolve([]);
+      },
+    };
+    const candidate = sessionEvidence({ candidateId: `kakao:${status.toLowerCase()}` });
+    const client = createCascadeEnrichmentClient(
+      {
+        clientId: "test",
+        clientSecret: "test",
+        getBrowser: () => Promise.resolve(({}) as never),
+      },
+      dependencies,
+    );
+    const result = await client({
+      userInput: recommendationInput("한식 맛집"),
+      evidences: [candidate],
+    });
+
+    assert.equal(result[0]?.operationVerification.status, status);
+    assert.equal(targetedCalls, 0);
+    assert.equal(mapCalls, 0);
+    assert.equal(fallbackCalls, 0);
+  }
+});
+
+void test("source conflict remains UNKNOWN after bounded fallback and map without a second targeted LLM", async () => {
+  let targetedCalls = 0;
+  let mapCalls = 0;
+  let fallbackCalls = 0;
+  let targetedLlmDeferred = false;
+  const candidate = sessionEvidence({ candidateId: "kakao:conflict" });
+  const dependencies: CascadeEnrichmentDependencies = {
+    enrichWithKakaoLocal: (evidence) =>
+      Promise.resolve(
+        establishedEnrichment(evidence.candidateId, "CLOSED", { source: "kakao-local" }),
+      ),
+    enrichWithNaverSearch: (evidence) =>
+      Promise.resolve(
+        establishedEnrichment(evidence.candidateId, "OPEN", {
+          source: "naver-search",
+          rawTextSnippet: `${evidence.name} 영업시간 10:00-22:00`,
+        }),
+      ),
+    scrapeNaverMapCandidate: (evidence) => {
+      mapCalls += 1;
+      return Promise.resolve(
+        establishedEnrichment(evidence.candidateId, "OPEN", { source: "naver-map" }),
+      );
+    },
+    parseOperationInfoWithLlmFallback: (options) => {
+      targetedCalls += 1;
+      assert.equal(options.maxRetries, 0);
+      return Promise.resolve({
+        operationInfo: validOpenOperationInfo(),
+        parser: "llm",
+        reason: "targeted parse",
+      });
+    },
+    createBoundedWebFallbackClient: (options) => ({ evidences: requested }) => {
+      fallbackCalls += 1;
+      targetedLlmDeferred = options.skipTargetedLlm ?? false;
+      return Promise.resolve(
+        requested.map(({ candidateId }) =>
+          establishedEnrichment(candidateId, "OPEN", { source: "bounded-web" }),
+        ),
+      );
+    },
+  };
+  const client = createCascadeEnrichmentClient(
+    {
+      clientId: "test",
+      clientSecret: "test",
+      getBrowser: () => Promise.resolve(({}) as never),
+    },
+    dependencies,
+  );
+  const result = await client({
+    userInput: recommendationInput("한식 맛집"),
+    evidences: [candidate],
+  });
+
+  assert.equal(result[0]?.operationVerification.status, "UNKNOWN");
+  assert.equal(targetedCalls, 1);
+  assert.equal(mapCalls, 1);
+  assert.equal(fallbackCalls, 1);
+  assert.equal(targetedLlmDeferred, true);
+});
+
+void test("unparsed deterministic sources escalate to the bounded fallback", async () => {
+  const candidate = sessionEvidence({ candidateId: "kakao:unparsed" });
+  const unknown = (
+    source: CandidateEnrichment["source"],
+    rawTextSnippet?: string,
+  ): CandidateEnrichment => ({
+    candidateId: candidate.candidateId,
+    source,
+    sourceUrls: [],
+    operationVerification: {
+      status: "UNKNOWN",
+      requestedDateISO: "2026-08-17",
+      requestedTime24h: "19:00",
+      stayDurationMinutes: 60,
+      reason: "unparsed",
+      sourceUrls: [],
+      confidence: 0,
+    },
+    ...(rawTextSnippet ? { rawTextSnippet } : {}),
+  });
+  let targetedCalls = 0;
+  let mapCalls = 0;
+  let fallbackCalls = 0;
+  const client = createCascadeEnrichmentClient(
+    {
+      clientId: "test",
+      clientSecret: "test",
+      getBrowser: () => Promise.resolve(({}) as never),
+    },
+    {
+      enrichWithKakaoLocal: () => Promise.resolve(unknown("kakao-local")),
+      enrichWithNaverSearch: () =>
+        Promise.resolve(unknown("naver-search", `${candidate.name} 영업시간 안내`)),
+      scrapeNaverMapCandidate: () => {
+        mapCalls += 1;
+        return Promise.resolve(unknown("naver-map"));
+      },
+      parseOperationInfoWithLlmFallback: () => {
+        targetedCalls += 1;
+        return Promise.resolve({ parser: "none", reason: "targeted unparseable" });
+      },
+      createBoundedWebFallbackClient: () => () => {
+        fallbackCalls += 1;
+        return Promise.resolve([
+          establishedEnrichment(candidate.candidateId, "OPEN", { source: "bounded-web" }),
+        ]);
+      },
+    },
+  );
+
+  const cascadeResult = await client({
+    userInput: recommendationInput("한식 맛집"),
+    evidences: [candidate],
+  });
+  assert.equal(cascadeResult[0]?.operationVerification.status, "OPEN");
+  assert.equal(targetedCalls, 0, "bounded deterministic resolution skips the targeted LLM lane");
+  assert.equal(mapCalls, 1, "bounded web은 Naver Map 결정론 probe 뒤에만 실행한다");
+  assert.equal(fallbackCalls, 1);
+
+});
+
+void test("runs post-bounded targeted operation parsers with concurrency two", async () => {
+  const candidates = [
+    sessionEvidence({ candidateId: "kakao:targeted-one", name: "첫번째 식당" }),
+    sessionEvidence({ candidateId: "kakao:targeted-two", name: "두번째 식당" }),
+    sessionEvidence({ candidateId: "kakao:targeted-three", name: "세번째 식당" }),
+  ];
+  const unknown = (
+    candidateId: string,
+    source: CandidateEnrichment["source"],
+    rawTextSnippet?: string,
+  ): CandidateEnrichment => ({
+    candidateId,
+    source,
+    sourceUrls: [],
+    operationVerification: {
+      status: "UNKNOWN",
+      requestedDateISO: "2026-08-17",
+      requestedTime24h: "19:00",
+      stayDurationMinutes: 60,
+      reason: "unparsed",
+      sourceUrls: [],
+      confidence: 0,
+    },
+    ...(rawTextSnippet ? { rawTextSnippet } : {}),
+  });
+  let activeParsers = 0;
+  let maxActiveParsers = 0;
+  let parserCalls = 0;
+  const client = createCascadeEnrichmentClient(
+    {
+      clientId: "test",
+      clientSecret: "test",
+      getBrowser: () => Promise.resolve(({}) as never),
+    },
+    {
+      enrichWithKakaoLocal: (candidate) =>
+        Promise.resolve(unknown(candidate.candidateId, "kakao-local")),
+      enrichWithNaverSearch: (candidate) =>
+        Promise.resolve(
+          unknown(candidate.candidateId, "naver-search", `${candidate.name} 영업시간 안내`),
+        ),
+      scrapeNaverMapCandidate: (candidate) =>
+        Promise.resolve(unknown(candidate.candidateId, "naver-map")),
+      parseOperationInfoWithLlmFallback: async () => {
+        parserCalls += 1;
+        activeParsers += 1;
+        maxActiveParsers = Math.max(maxActiveParsers, activeParsers);
+        await new Promise((resolve) => setTimeout(resolve, 5));
+        activeParsers -= 1;
+        return { parser: "none", reason: "unparseable" };
+      },
+      createBoundedWebFallbackClient: () => ({ evidences: requested }) =>
+        Promise.resolve(requested.map(({ candidateId }) => unknown(candidateId, "bounded-web"))),
+    },
+  );
+
+  const result = await client({
+    userInput: recommendationInput("한식 맛집"),
+    evidences: candidates,
+  });
+
+  assert.equal(parserCalls, 3);
+  assert.equal(maxActiveParsers, 2);
+  assert.deepEqual(
+    result.map((entry) => entry.operationVerification.status),
+    ["UNKNOWN", "UNKNOWN", "UNKNOWN"],
+  );
+});
+
+void test("bounded web fallback gives every candidate round one before round two and parses once", async () => {
+  const first = sessionEvidence({ candidateId: "kakao:bounded-first", name: "첫번째 식당" });
+  const second = sessionEvidence({ candidateId: "kakao:bounded-second", name: "두번째 식당" });
+  const searches: string[] = [];
+  const fetchedUrls: string[] = [];
+  let targetedCalls = 0;
+  const dependencies: BoundedWebFallbackDependencies = {
+    searchNaver: (_type, query) => {
+      searches.push(query);
+      const name = query.includes(first.name) ? first.name : second.name;
+      const suffix = query.includes("휴무") ? "two" : "one";
+      return Promise.resolve({
+        total: 1,
+        items: [
+          {
+            title: `${name} 서울 중구 테스트로 1`,
+            description: "서울 중구 테스트로 1 영업시간 안내",
+            link: `https://example.com/${name}-${suffix}`,
+          },
+        ],
+      });
+    },
+    getOrFetchStaticUrl: (url) => {
+      fetchedUrls.push(url);
+      return Promise.resolve({
+        snapshot: {
+          schemaVersion: 1,
+          url,
+          capturedAt: "2026-08-15T00:00:00.000Z",
+          frameTexts: [{ url, text: "매장 영업시간은 별도 공지" }],
+        },
+        cache: { status: "DISABLED" },
+      });
+    },
+    parseOperationInfoWithLlmFallback: (options) => {
+      if (options.allowLlmFallback) {
+        targetedCalls += 1;
+        return Promise.resolve({
+          operationInfo: validOpenOperationInfo(),
+          parser: "llm",
+          reason: "targeted bounded parse",
+        });
+      }
+      return Promise.resolve({ parser: "none", reason: "not deterministic" });
+    },
+  };
+
+  const result = await createBoundedWebFallbackClient(
+    { clientId: "test", clientSecret: "test" },
+    dependencies,
+  )({ userInput: recommendationInput("한식 맛집"), evidences: [first, second] });
+
+  assert.equal(searches.length, 4);
+  assert.ok(searches.slice(0, 2).every((query) => !query.includes("휴무")));
+  assert.ok(searches.slice(2).every((query) => query.includes("휴무")));
+  assert.equal(fetchedUrls.length, 4);
+  assert.equal(targetedCalls, 2, "candidate마다 final targeted parser는 한 번만 호출한다");
+  assert.deepEqual(
+    result.map((entry) => entry.operationVerification.status),
+    ["OPEN", "OPEN"],
+  );
+});
+
+void test("bounded web keeps fair rounds after a Naver 429 instead of opening a skip circuit", async () => {
+  const candidates = [
+    sessionEvidence({ candidateId: "kakao:rate-limit-one", name: "첫번째 식당" }),
+    sessionEvidence({ candidateId: "kakao:rate-limit-two", name: "두번째 식당" }),
+    sessionEvidence({ candidateId: "kakao:rate-limit-three", name: "세번째 식당" }),
+  ];
+  let searchCalls = 0;
+  const rateLimitError = Object.assign(new Error("Request failed with status code 429"), {
+    response: { status: 429 },
+  });
+  const dependencies: BoundedWebFallbackDependencies = {
+    searchNaver: () => {
+      searchCalls += 1;
+      return searchCalls === 1
+        ? Promise.reject(rateLimitError)
+        : Promise.resolve({ total: 0, items: [] });
+    },
+    getOrFetchStaticUrl: () => Promise.reject(new Error("must not fetch after 429")),
+    parseOperationInfoWithLlmFallback: () =>
+      Promise.reject(new Error("must not invoke parser after 429")),
+  };
+
+  const result = await createBoundedWebFallbackClient(
+    { clientId: "test", clientSecret: "test" },
+    dependencies,
+  )({ userInput: recommendationInput("한식 맛집"), evidences: candidates });
+
+  assert.equal(searchCalls, 6, "429 뒤에도 각 후보의 공정한 1/2차 기회는 유지한다");
+  assert.deepEqual(
+    result.map((entry) => entry.operationVerification.status),
+    ["UNKNOWN", "UNKNOWN", "UNKNOWN"],
+  );
+});
+
+void test("serializes Naver endpoints in one FIFO queue and cools down after 429", async () => {
+  let now = 0;
+  const waits: number[] = [];
+  const order: string[] = [];
+  const queue = new NaverSearchQueue({
+    minIntervalMs: 0,
+    maxCooldownMs: 10_000,
+    now: () => now,
+    wait: (ms) => {
+      waits.push(ms);
+      now += ms;
+      return Promise.resolve();
+    },
+  });
+  const rateLimitError = Object.assign(new Error("429"), {
+    response: {
+      status: 429,
+      headers: { get: (name: string) => (name === "retry-after" ? "2" : null) },
+    },
+  });
+
+  const first = queue.schedule("blog", () => {
+    order.push("blog");
+    return Promise.resolve("first");
+  });
+  const limited = queue.schedule("webkr", () => {
+    order.push("webkr-limited");
+    return Promise.reject(rateLimitError);
+  });
+  const last = queue.schedule("webkr", () => {
+    order.push("webkr-after-cooldown");
+    return Promise.resolve("last");
+  });
+
+  const settled = await Promise.allSettled([first, limited, last]);
+  assert.deepEqual(order, ["blog", "webkr-limited", "webkr-after-cooldown"]);
+  assert.equal(settled[0]?.status, "fulfilled");
+  assert.equal(settled[1]?.status, "rejected");
+  assert.equal(settled[2]?.status, "fulfilled");
+  assert.deepEqual(waits, [2_000]);
+});
+
+void test("backs off the Naver request interval after a 429 and gradually relaxes after successes", async () => {
+  let now = 0;
+  const waits: number[] = [];
+  const queue = new NaverSearchQueue({
+    minIntervalMs: 100,
+    now: () => now,
+    wait: (ms) => {
+      waits.push(ms);
+      now += ms;
+      return Promise.resolve();
+    },
+  });
+  const rateLimitError = Object.assign(new Error("429"), { response: { status: 429 } });
+
+  const results = await Promise.allSettled([
+    queue.schedule("webkr", () => Promise.reject(rateLimitError)),
+    queue.schedule("webkr", () => Promise.resolve("first")),
+    queue.schedule("webkr", () => Promise.resolve("second")),
+    queue.schedule("webkr", () => Promise.resolve("third")),
+    queue.schedule("webkr", () => Promise.resolve("fourth")),
+    queue.schedule("webkr", () => Promise.resolve("fifth")),
+  ]);
+
+  assert.equal(results[0]?.status, "rejected");
+  assert.equal(results.filter((result) => result.status === "fulfilled").length, 5);
+  assert.deepEqual(
+    waits,
+    [1_000, 200, 200, 200, 100],
+    "429 뒤 200ms로 늦추고 성공 네 번 뒤 기본 100ms로 회복한다",
+  );
+});
+
+void test("bounded web deterministic hours skip second search and targeted LLM", async () => {
+  const candidate = sessionEvidence({ candidateId: "kakao:bounded-deterministic" });
+  let searchCalls = 0;
+  let fetchCalls = 0;
+  let targetedCalls = 0;
+  const dependencies: BoundedWebFallbackDependencies = {
+    searchNaver: () => {
+      searchCalls += 1;
+      return Promise.resolve({
+        total: 1,
+        items: [
+          {
+            title: `${candidate.name} 서울 중구 테스트로 1`,
+            description: "서울 중구 테스트로 1 영업시간",
+            link: "https://example.com/bounded-deterministic",
+          },
+        ],
+      });
+    },
+    getOrFetchStaticUrl: (url) => {
+      fetchCalls += 1;
+      return Promise.resolve({
+        snapshot: {
+          schemaVersion: 1,
+          url,
+          capturedAt: "2026-08-15T00:00:00.000Z",
+          frameTexts: [{ url, text: "매일 10:00-22:00" }],
+        },
+        cache: { status: "HIT", key: "bounded" },
+      });
+    },
+    parseOperationInfoWithLlmFallback: (options) => {
+      if (options.allowLlmFallback) targetedCalls += 1;
+      return Promise.resolve(
+        options.allowLlmFallback
+          ? { parser: "none", reason: "should not run" }
+          : {
+              operationInfo: validOpenOperationInfo(),
+              parser: "deterministic",
+              reason: "deterministic hours",
+            },
+      );
+    },
+  };
+
+  const [result] = await createBoundedWebFallbackClient(
+    { clientId: "test", clientSecret: "test" },
+    dependencies,
+  )({ userInput: recommendationInput("한식 맛집"), evidences: [candidate] });
+
+  assert.equal(searchCalls, 1);
+  assert.equal(fetchCalls, 1);
+  assert.equal(targetedCalls, 0);
+  assert.equal(result?.source, "bounded-web");
+  assert.equal(result?.operationVerification.status, "OPEN");
+});
+
+void test("bounded web rejects weak identity and never refetches a URL across rounds", async () => {
+  const candidate = sessionEvidence({ candidateId: "kakao:bounded-identity" });
+  let round = 0;
+  const fetchedUrls: string[] = [];
+  let targetedCalls = 0;
+  const dependencies: BoundedWebFallbackDependencies = {
+    searchNaver: () => {
+      round += 1;
+      return Promise.resolve({
+        total: 2,
+        items: [
+          {
+            title: candidate.name,
+            description: "다른 지점 영업시간",
+            link: "https://example.com/weak-branch",
+          },
+          {
+            title: `${candidate.name} 서울 중구 테스트로 1`,
+            description: "서울 중구 테스트로 1 영업시간",
+            link: "https://example.com/same-url",
+          },
+        ],
+      });
+    },
+    getOrFetchStaticUrl: (url) => {
+      fetchedUrls.push(url);
+      return Promise.resolve({
+        snapshot: {
+          schemaVersion: 1,
+          url,
+          capturedAt: "2026-08-15T00:00:00.000Z",
+          frameTexts: [{ url, text: "운영 정보는 별도 공지" }],
+        },
+        cache: { status: "MISS", key: "same-url" },
+      });
+    },
+    parseOperationInfoWithLlmFallback: (options) => {
+      if (options.allowLlmFallback) targetedCalls += 1;
+      return Promise.resolve({ parser: "none", reason: "unparseable" });
+    },
+  };
+
+  const [result] = await createBoundedWebFallbackClient(
+    { clientId: "test", clientSecret: "test" },
+    dependencies,
+  )({ userInput: recommendationInput("한식 맛집"), evidences: [candidate] });
+
+  assert.equal(round, 2);
+  assert.deepEqual(fetchedUrls, ["https://example.com/same-url"]);
+  assert.equal(targetedCalls, 1);
+  assert.equal(result?.operationVerification.status, "UNKNOWN");
+  assert.deepEqual(result?.sourceUrls, ["https://example.com/same-url"]);
 });

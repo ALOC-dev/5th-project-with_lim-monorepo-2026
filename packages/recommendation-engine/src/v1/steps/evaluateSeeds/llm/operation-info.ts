@@ -51,6 +51,8 @@ export const parseOperationInfoWithLlmFallback = async ({
   operationVerifier,
   sourceName,
   sourceTextKind,
+  allowLlmFallback = true,
+  maxRetries,
   logger,
 }: ParseOperationInfoOptions): Promise<OperationInfoParseResult> => {
   if (!text?.trim()) {
@@ -72,6 +74,13 @@ export const parseOperationInfoWithLlmFallback = async ({
     };
   }
 
+  if (!allowLlmFallback) {
+    return {
+      parser: "none",
+      reason: `${sourceName} deterministic parser could not establish OPEN/CLOSED`,
+    };
+  }
+
   if (!shouldTryLlmFallback(text, evidence)) {
     return {
       parser: "none",
@@ -84,6 +93,7 @@ export const parseOperationInfoWithLlmFallback = async ({
       task: "evaluate.operation_hours",
       modelId: OPERATION_INFO_MODEL_ID,
       openAiApiKey,
+      maxRetries,
       schema: LlmOperationInfoResponseSchema,
       system: OPERATION_INFO_SYSTEM_PROMPT,
       prompt: buildOperationInfoPrompt(
@@ -93,6 +103,12 @@ export const parseOperationInfoWithLlmFallback = async ({
         sourceName,
         sourceTextKind,
       ),
+      onTelemetry: (telemetry) =>
+        logger?.info("recommendation.llm_task", {
+          ...telemetry,
+          candidateId: evidence.candidateId,
+          source: sourceName,
+        }),
     });
     return toParseResult(response, sourceName);
   } catch (error) {

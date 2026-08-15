@@ -7,6 +7,17 @@ export type RecommendationLlmTask =
   | "evaluate.operation_hours"
   | "evaluate.scoring";
 
+export type RecommendationLlmTelemetry = {
+  task: RecommendationLlmTask;
+  status: "SUCCESS" | "FAILURE";
+  durationMs: number;
+  retryCount: number;
+  requestCount: number;
+  inputTokens?: number;
+  outputTokens?: number;
+  totalTokens?: number;
+};
+
 export type GenerateRecommendationObjectOptions<TObject> = {
   modelId?: string;
   openAiApiKey?: string;
@@ -15,6 +26,7 @@ export type GenerateRecommendationObjectOptions<TObject> = {
   system: string;
   prompt: string;
   maxRetries?: number;
+  onTelemetry?: (telemetry: RecommendationLlmTelemetry) => void;
 };
 
 export type GenerateRecommendationTextOptions = Omit<
@@ -24,4 +36,5 @@ export type GenerateRecommendationTextOptions = Omit<
   modelId?: string;
   openAiApiKey?: string;
   task: RecommendationLlmTask;
+  onTelemetry?: (telemetry: RecommendationLlmTelemetry) => void;
 };

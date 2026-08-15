@@ -21,10 +21,12 @@ import {
   createDiscoveryContextWithLlm,
   createInitialDiscoveryPlanWithLlm,
 } from "./steps/discoverSeeds/llm/approaches.js";
+import { createRecommendationEvaluationSession } from "./steps/evaluateSeeds/evaluation-session.js";
 import { evaluateSeeds } from "./steps/evaluateSeeds/index.js";
 import { getLocationCentroid } from "./utils/geography.js";
 
 const MAX_DISCOVERY_ATTEMPTS = 5;
+const CASCADE_INITIAL_EVALUATION_SEED_MULTIPLIER = 3;
 
 export type RecommendationProgressStep = 'input_validated' | 'discovering' | 'evaluating' | 'enriching' | 'scoring';
 
@@ -221,6 +223,7 @@ export class RecommendationEngine {
       const regenerated = await this.steps.createDiscoveryContextWithLlm(this.userInput, {
         openAiApiKey: this.secrets.openAiApiKey,
         targetSeedCount: this.config.targetCount * this.config.candidatePoolMultiplier,
+        logger,
         retry: {
           previousQueries: previousQueries.map((query) => query.query),
           previousFailureReason,
@@ -250,6 +253,7 @@ export class RecommendationEngine {
       queries: [],
     };
     let discoverySeedPool: DiscoverySeedPool = EMPTY_DISCOVERY_SEED_POOL;
+    const evaluationSession = createRecommendationEvaluationSession();
     const finish = this.logger.startTimer("engine.process.success");
     this.logger.info("engine.process.start", {
       maxDiscoveryAttempts: MAX_DISCOVERY_ATTEMPTS,
@@ -262,6 +266,7 @@ export class RecommendationEngine {
       const initialPlan = await this.steps.createInitialDiscoveryPlanWithLlm(this.userInput, {
         openAiApiKey: this.secrets.openAiApiKey,
         targetSeedCount: this.config.targetCount * this.config.candidatePoolMultiplier,
+        logger: this.logger,
       });
       this.logger.info("engine.intent_classified", {
         intent: initialPlan.intent,
@@ -357,16 +362,81 @@ export class RecommendationEngine {
         nextQueryCount: discoverSeedsOutput.nextQueries.length,
       });
 
+      // 후보가 너무 적은 상태에서 곧바로 영업시간/참조 URL 보강을 시작하면
+      // 부족 판정 뒤 같은 run에서 discovery attempt를 다시 한 번 전부 돌게 된다.
+      // 첫 시도에만 다음 TMap query를 저비용으로 한 번 더 소비해 최소 3배 후보를 모은다.
+      let latestDiscoverSeedsOutput = discoverSeedsOutput;
+      const minimumInitialSeedCount =
+        this.config.targetCount * CASCADE_INITIAL_EVALUATION_SEED_MULTIPLIER;
       if (
-        discoverySeedPool.seedKeys.length < this.config.targetCount &&
+        currAttemptNo === 1 &&
+        discoverySeedPool.seedKeys.length < minimumInitialSeedCount &&
         discoverSeedsOutput.nextQueries.length > 0
       ) {
-        discoveryState = {
+        const seedPoolCountBeforePrefetch = discoverySeedPool.seedKeys.length;
+        attemptLogger.info("engine.discovery_prefetch.start", {
+          seedPoolCountBefore: seedPoolCountBeforePrefetch,
+          minimumInitialSeedCount,
+          nextQueryCount: discoverSeedsOutput.nextQueries.length,
+        });
+        const prefetchState: EngineDiscoveryState = {
           ...discoveryState,
           alreadyCheckedIds: Array.from(
             new Set([...discoveryState.alreadyCheckedIds, ...discoverSeedsOutput.seedKeys]),
           ),
           queries: discoverSeedsOutput.nextQueries,
+          previousFailureReason: "LOW_QUALITY",
+        };
+        const prefetchContext = buildDiscoveryContext(this.config, {
+          ...prefetchState,
+          attemptNo: currAttemptNo,
+        });
+        const prefetchResult = await this.steps.discoverSeeds(
+          prefetchContext,
+          attemptLogger,
+          { secrets: { tmapAppKey: this.secrets.tmapAppKey } },
+        );
+        if (prefetchResult.ok) {
+          latestDiscoverSeedsOutput = prefetchResult.data;
+          discoverySeedPool = appendDiscoverSeedsOutputToPool(
+            discoverySeedPool,
+            latestDiscoverSeedsOutput,
+          );
+          discoveryState = {
+            ...prefetchState,
+            alreadyCheckedIds: Array.from(
+              new Set([...prefetchState.alreadyCheckedIds, ...latestDiscoverSeedsOutput.seedKeys]),
+            ),
+            queries: latestDiscoverSeedsOutput.nextQueries,
+          };
+          attemptLogger.info("engine.discovery_prefetch.success", {
+            seedPoolCountBefore: seedPoolCountBeforePrefetch,
+            seedPoolCountAfter: discoverySeedPool.seedKeys.length,
+            minimumInitialSeedCount,
+            nextQueryCount: latestDiscoverSeedsOutput.nextQueries.length,
+          });
+        } else {
+          attemptLogger.warn("engine.discovery_prefetch.failure", {
+            failedStep: prefetchResult.failedStep,
+            errorCode: prefetchResult.errorCode,
+            seedPoolCount: discoverySeedPool.seedKeys.length,
+          });
+        }
+      }
+
+      if (
+        discoverySeedPool.seedKeys.length < this.config.targetCount &&
+        latestDiscoverSeedsOutput.nextQueries.length > 0
+      ) {
+        discoveryState = {
+          ...discoveryState,
+          alreadyCheckedIds: Array.from(
+            new Set([
+              ...discoveryState.alreadyCheckedIds,
+              ...latestDiscoverSeedsOutput.seedKeys,
+            ]),
+          ),
+          queries: latestDiscoverSeedsOutput.nextQueries,
           previousFailureReason:
             discoverySeedPool.seedKeys.length === 0 ? "ZERO_SEEDS" : "LOW_QUALITY",
         };
@@ -379,7 +449,7 @@ export class RecommendationEngine {
         continue;
       }
 
-      const evaluateSeedsInput = toEvaluateSeedsInput(discoverySeedPool, discoverSeedsOutput);
+      const evaluateSeedsInput = toEvaluateSeedsInput(discoverySeedPool, latestDiscoverSeedsOutput);
       this.onProgress?.('evaluating');
 
       const evaluateSeedsResult = await this.steps.evaluateSeeds(
@@ -395,6 +465,7 @@ export class RecommendationEngine {
             openAiApiKey: this.secrets.openAiApiKey,
           },
           onProgress: this.onProgress,
+          session: evaluationSession,
         },
       );
       if (!evaluateSeedsResult.ok) {
@@ -424,8 +495,8 @@ export class RecommendationEngine {
         // 결과를 다 봤다"는 건 "다른 검색어도 소용없다"는 뜻이 아니다. 실패 사유를
         // 알려주고 새 검색어를 만들어 한 번 더 시도한다.
         const nextQueries =
-          discoverSeedsOutput.nextQueries.length > 0
-            ? discoverSeedsOutput.nextQueries
+          latestDiscoverSeedsOutput.nextQueries.length > 0
+            ? latestDiscoverSeedsOutput.nextQueries
             : await this.regenerateQueries(discoveryState.queries, reason, attemptLogger);
 
         if (nextQueries.length === 0) {
@@ -455,7 +526,7 @@ export class RecommendationEngine {
           alreadyCheckedIds: Array.from(
             new Set([
               ...discoveryState.alreadyCheckedIds,
-              ...discoverSeedsOutput.seedKeys,
+              ...latestDiscoverSeedsOutput.seedKeys,
               ...excludeSeedKeys,
             ]),
           ),

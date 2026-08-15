@@ -22,7 +22,7 @@ export type EnrichmentSourceName =
   | "naver-map"
   | "kakao-local"
   | "naver-search"
-  | "agentic-web"
+  | "bounded-web"
   | "none";
 
 export type UrlScrapeCacheMetadata = {
@@ -53,7 +53,7 @@ export type EnrichmentSourceDetail = {
   };
   operationParser?: "deterministic" | "llm" | "none";
   operationParseReason?: string;
-  sourceTextKind?: "snippet" | "scraped_page" | "agentic_fetch";
+  sourceTextKind?: "snippet" | "scraped_page" | "bounded_fetch";
   rawTextSnippet?: string;
   scrapeCache?: UrlScrapeCacheMetadata;
 };
@@ -133,54 +133,14 @@ export type CandidateEnrichmentClient = (
   request: CandidateEnrichmentRequest,
 ) => Promise<CandidateEnrichment[]>;
 
-export type AgenticEnrichmentSource = "agentic" | "kakao-local" | "naver-search" | "naver-map";
-
-export type AgenticWebEnrichmentToolEvent =
-  | {
-      type: "search";
-      candidateId: string;
-      query: string;
-      resultCount: number;
-      sourceUrls: string[];
-    }
-  | {
-      type: "fetch";
-      candidateId: string;
-      url: string;
-      cache: UrlScrapeCacheMetadata;
-      textLength: number;
-    }
-  | {
-      type: "lookup";
-      candidateId: string;
-      source: Exclude<AgenticEnrichmentSource, "agentic">;
-      status: OperationVerificationStatus;
-      sourceUrls: string[];
-      placeMatchScore?: number;
-    }
-  | {
-      type: "finalize";
-      candidateId: string;
-      source: AgenticEnrichmentSource;
-      status: OperationVerificationStatus;
-      reason: string;
-      sourceUrls: string[];
-      confidence: number;
-    };
-
-export type AgenticWebEnrichmentOptions = {
-  modelId?: string;
+export type CascadeEnrichmentOptions = {
   openAiApiKey?: string;
   kakaoRestApiKey?: string;
   clientId?: string;
   clientSecret?: string;
-  maxCandidates?: number;
-  maxConcurrency?: number;
-  maxFetchesPerCandidate?: number;
-  maxToolSteps?: number;
-  timeoutMs?: number;
+  /** Naver의 긴 Retry-After 대기를 제한한다. */
+  naverSearchRetryLimit?: number;
   fetchCache?: UrlScrapeCache;
-  headless?: boolean;
   /**
    * 공유 브라우저 공급자. 주면 클라이언트가 브라우저를 직접 띄우거나 닫지 않는다.
    * 배치마다 Chromium을 새로 기동하면 1~3초씩 그냥 버려지므로 실행 1건당 하나만 쓴다.
@@ -191,6 +151,9 @@ export type AgenticWebEnrichmentOptions = {
   kakaoScrapeCache?: UrlScrapeCache;
   kakaoScrapePlaceDetails?: boolean;
   naverMapScrapeCache?: UrlScrapeCache;
-  onToolEvent?: (event: AgenticWebEnrichmentToolEvent) => void;
+  /** Cascade에서 이미 operation-hours LLM budget을 사용한 후보는 재호출하지 않는다. */
+  targetedLlmAlreadyUsedCandidateIds?: ReadonlySet<string>;
+  /** Cascade는 deterministic bounded evidence를 먼저 모은 뒤 targeted LLM을 별도 lane에서 처리한다. */
+  skipTargetedLlm?: boolean;
   logger?: Logger;
 };

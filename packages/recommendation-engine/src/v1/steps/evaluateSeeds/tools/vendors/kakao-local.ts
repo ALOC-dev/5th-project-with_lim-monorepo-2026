@@ -57,6 +57,7 @@ export const enrichWithKakaoLocal = async (
     operationVerifier,
     sourceName: "kakao-local",
     sourceTextKind: "scraped_page",
+    allowLlmFallback: options.allowLlmFallback,
     logger: options.logger,
   });
   const operationInfo = operationParse.operationInfo;

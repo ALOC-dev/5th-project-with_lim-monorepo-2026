@@ -37,7 +37,6 @@ export type {
   CandidateEnrichmentClient,
   LlmScoringClient,
 } from "./steps/evaluateSeeds/index.js";
-export { createAgenticWebEnrichmentClient } from "./steps/evaluateSeeds/index.js";
 export {
   createOpenAiLlmScoringClient,
   createScoringPipeline,
