@@ -2877,16 +2877,41 @@ const writeJsonAtomic = async (path: string, value: unknown): Promise<void> => {
     await rename(temporaryPath, path);
     renamed = true;
 
-    const parentHandle = await open(parentDirectory, "r");
-    try {
-      await parentHandle.sync();
-    } finally {
-      await parentHandle.close();
-    }
+    await syncParentDirectory(parentDirectory);
   } finally {
     if (!renamed) await unlink(temporaryPath).catch(() => undefined);
   }
 };
+
+/**
+ * rename까지 디스크에 내려가도록 부모 디렉터리를 sync한다.
+ *
+ * 내구성을 조금 더 챙기려는 부가 단계이지 없으면 안 되는 것이 아니다. 지원하지
+ * 않는 플랫폼에서는 조용히 건너뛴다.
+ *
+ * 윈도우는 디렉터리 핸들 플러시를 지원하지 않아 **EPERM**을 준다(실측: 같은
+ * 디렉터리에서 파일 sync는 성공하고 디렉터리 sync만 EPERM). 예전에는 이 예외를
+ * 전혀 걸러내지 않아 윈도우에서 캠페인 실행이 통째로 죽었다.
+ */
+const syncParentDirectory = async (directory: string): Promise<void> => {
+  let parentHandle: Awaited<ReturnType<typeof open>> | undefined;
+  try {
+    parentHandle = await open(directory, "r");
+    await parentHandle.sync();
+  } catch (error) {
+    if (!isUnsupportedDirectorySync(error)) throw error;
+  } finally {
+    await parentHandle?.close().catch(() => undefined);
+  }
+};
+
+const isUnsupportedDirectorySync = (error: unknown): boolean =>
+  isRecord(error) &&
+  (error.code === "EINVAL" ||
+    error.code === "ENOTSUP" ||
+    error.code === "EISDIR" ||
+    error.code === "EPERM" ||
+    error.code === "EACCES");
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null;
