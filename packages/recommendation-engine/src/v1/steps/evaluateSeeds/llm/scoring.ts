@@ -1,4 +1,5 @@
 import { generateRecommendationObject, RECOMMENDATION_LLM_MODEL_ID } from "../../../llm/ai-sdk.js";
+import { mapWithConcurrency } from "../../../utils/concurrency.js";
 import type { CandidateScoringEvidence } from "../utils/evidence.js";
 import {
   type LlmCandidateEvaluation,
@@ -26,7 +27,9 @@ const SCORING_SYSTEM_PROMPT = `너는 지역 추천 엔진의 후보 평가기�
 - inputMatch: 사용자 자연어 요청, 인원, 예산, 모임 유형과의 일치도
 - trust: 평점, 리뷰 수, 근거 URL, 외부 언급 등 신뢰 신호
 - accessibility: 거리, 이동 편의성, 영업 시간 적합성
-- diversity: 후보 목록 안에서 중복 카테고리/경험을 피하는 다양성
+- diversity: 이 후보만의 차별점이 얼마나 뚜렷한가. 특색 있는 대표 메뉴, 공간이나 컨셉,
+  그 동네에서 이 집만의 이유가 분명하면 높다. 어디에나 있는 흔한 구성이면 낮다.
+  **다른 후보와 비교하지 말고 후보 자체의 개성으로만** 평가한다.
 
 규칙:
 - 입력된 모든 candidateId에 대해 정확히 하나의 evaluation을 반환한다.
@@ -37,6 +40,22 @@ const SCORING_SYSTEM_PROMPT = `너는 지역 추천 엔진의 후보 평가기�
 - rationaleFacts에는 사용자가 바로 읽을 수 있는 주력 메뉴/공간/이용 맥락을 최소 1개 포함한다.
 - matchedSignals.label은 UI의 추천 근거로 그대로 노출될 수 있게 90자 이내의 자연스러운 한국어 문장으로 쓴다.
 - semanticFit.status가 PENALIZE면 해당 negativeSignals를 반드시 반영하고 inputMatch를 낮춘다.
+- 요청에 식이 제약(비건·채식·할랄·글루텐프리·알러지 등)이 있으면 가장 엄격하게 본다.
+  지도 업종 분류는 "아시아음식", "양식"처럼 재료를 알려주지 않으므로, 상호와 스크랩
+  원문에서 주력 메뉴를 읽어 판단한다. 케밥·바베큐·스테이크·정육처럼 육류가 주력인
+  곳이 분명하면 inputMatch를 크게 낮추고 negativeSignals에 이유를 남긴다.
+  해당 제약을 충족한다는 근거(비건 메뉴, 채식 옵션 등)가 있으면 높인다.
+- userFit.numberOfPeople가 5명 이상이면, 함께 앉기 어려워 보이는 후보(카운터석 위주,
+  포장·배달 전문, 1인석 중심, 좌석이 매우 적어 보이는 소형 매장)의 inputMatch를 낮춘다.
+  단체석·룸·홀이 확인되면 높인다. 좌석을 알 수 없으면 이 항목으로 감점하지 않는다.
+- userFit.partyType을 inputMatch에 반영한다.
+  LOVERS: 마주 앉아 대화하기 좋은 조용하고 아늑한 곳을 높인다.
+  FAMILY: 남녀노소가 함께 가기 무난하고 좌석이 넉넉한 곳을 높인다.
+  COLLEAGUES: 여럿이 나눠 먹기 좋은 곳을 높인다.
+  FRIENDS: 별도 제약을 두지 않는다.
+  근거가 없으면 추측으로 깎지 않는다.
+- placeInfo.priceRangePerPerson이 없으면 가격을 확인하지 못한 것이다. 예산에 맞는다고도
+  안 맞는다고도 단정하지 말고, rationaleFacts에 가격을 지어내 적지 않는다.
 - 출력은 반드시 JSON schema만 따른다. 마크다운이나 설명 문장은 붙이지 않는다.`;
 
 const buildScoringUserPrompt = (evidences: CandidateScoringEvidence[]): string =>
@@ -155,35 +174,7 @@ const validateEvaluationCoverage = (
   return usable;
 };
 
-const mapWithConcurrency = async <TItem, TResult>(
-  items: TItem[],
-  concurrency: number,
-  mapper: (item: TItem, index: number) => Promise<TResult>,
-): Promise<TResult[]> => {
-  const results = new Array<TResult>(items.length);
-  let nextIndex = 0;
-  const workerCount = normalizeConcurrency(concurrency, items.length);
 
-  await Promise.all(
-    Array.from({ length: workerCount }, async () => {
-      while (nextIndex < items.length) {
-        const index = nextIndex;
-        nextIndex += 1;
-        const item = items[index];
-        if (item === undefined) continue;
-        results[index] = await mapper(item, index);
-      }
-    }),
-  );
-
-  return results;
-};
-
-const normalizeConcurrency = (requestedConcurrency: number, itemCount: number): number => {
-  if (itemCount <= 0) return 1;
-  if (!Number.isFinite(requestedConcurrency)) return 1;
-  return Math.max(1, Math.min(itemCount, Math.floor(requestedConcurrency)));
-};
 
 const toLlmEvidencePayload = (evidence: CandidateScoringEvidence) => ({
   candidateId: evidence.candidateId,

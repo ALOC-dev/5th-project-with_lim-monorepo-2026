@@ -1,4 +1,5 @@
 import type { UserInput } from "../../../interfaces/input.contracts.js";
+import { toDistanceMeters, toSearchCenter } from "../../../utils/geo.js";
 import type { LocalSeed } from "../../discoverSeeds/vendors/contracts.js";
 import type { CandidateEnrichment } from "./enrichment-types.js";
 import type { SemanticFitAssessment } from "./semantic-fit.js";
@@ -46,6 +47,14 @@ export type CandidateScoringEvidence = {
     seed: LocalSeed;
   };
   enrichment?: CandidateEnrichment;
+  /**
+   * 영업시간을 끝내 확인하지 못한 후보.
+   *
+   * 예전에는 이런 후보를 전부 버렸다. 그런데 "영업시간을 못 읽었다"는 대부분
+   * 가게 문제가 아니라 우리 문제(스크랩 실패·봇 차단)였고, 그 탓에 후보가 모자라
+   * 재시도를 반복하며 느려졌다. 이제는 버리지 않고 감점해서 예비로 둔다.
+   */
+  operationUnverified?: boolean;
   semanticFit?: SemanticFitAssessment;
   referenceUrls?: {
     kakaoMap?: string;
@@ -53,7 +62,6 @@ export type CandidateScoringEvidence = {
   };
 };
 
-const EARTH_RADIUS_METERS = 6_371_000;
 
 export const buildCandidateScoringEvidence = (
   seed: LocalSeed,
@@ -104,18 +112,13 @@ const splitCategoryTags = (category: string): string[] =>
     .map((value) => value.trim())
     .filter(Boolean);
 
+/**
+ * 거리 기준점도 첫 참여자가 아니라 전체 무게중심이다.
+ * 그래야 여러 명이 모일 때 "중간에서 가까운 곳"이 실제로 가깝게 평가된다.
+ */
 const toDistanceFromUserLocation = (seed: LocalSeed, userInput: UserInput): number | undefined => {
-  const [origin] = userInput.location;
-  if (!origin) return undefined;
+  const center = toSearchCenter(userInput);
+  if (!center) return undefined;
 
-  const dLat = toRadians(seed.latitude - origin.lat);
-  const dLng = toRadians(seed.longitude - origin.lng);
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(toRadians(origin.lat)) * Math.cos(toRadians(seed.latitude)) * Math.sin(dLng / 2) ** 2;
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-  return EARTH_RADIUS_METERS * c;
+  return toDistanceMeters(center, { lat: seed.latitude, lng: seed.longitude });
 };
-
-const toRadians = (degrees: number): number => (degrees * Math.PI) / 180;

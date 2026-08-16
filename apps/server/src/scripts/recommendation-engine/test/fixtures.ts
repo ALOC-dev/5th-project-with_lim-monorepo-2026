@@ -186,6 +186,74 @@ export const testScenarios = {
     budgetPerPerson: [10000, 35000],
     userNaturalLanguageRequest: "회기역 이자카야",
   },
+  /**
+   * 여러 명이 흩어져 있을 때 중간 지점으로 모이는지 보는 시나리오.
+   *
+   * 다른 시나리오는 전부 출발지가 하나뿐이라, 중간 지점 계산이 실제 파이프라인에서
+   * 어떻게 동작하는지 한 번도 검증되지 않았다. 혜화·성수·왕십리 세 곳의 무게중심은
+   * 대략 왕십리 근처가 되어야 하고, 세 사람 중 누구의 동네도 아니어야 정상이다.
+   */
+  group_midpoint: {
+    schedule: {
+      dateISO: "2026-05-16",
+      time24h: "18:30",
+      stayDurationMinutes: 120,
+    },
+    location: [
+      // 혜화역
+      { lat: 37.5822, lng: 127.0019 },
+      // 성수역
+      { lat: 37.5446, lng: 127.0559 },
+      // 왕십리역
+      { lat: 37.5613, lng: 127.0379 },
+    ],
+    numberOfPeople: 3,
+    partyType: "FRIENDS",
+    budgetPerPerson: [15000, 40000],
+    userNaturalLanguageRequest: "다 같이 모여서 저녁 먹을 곳",
+  },
+  /**
+   * 예산이 높고 업종어가 없는 요청.
+   *
+   * "파인다이닝"은 음식 종류가 아니라 격식·가격대라, 업종 계열 규칙으로는 걸러지지
+   * 않는다. 예산 상한도 다른 시나리오의 5배라 예산 판정이 실제로 작동하는지 본다.
+   * 체류 시간도 길게 잡아 브레이크타임·마감 판정에 걸리는지 함께 확인한다.
+   */
+  apgujeong_fine_dining: {
+    schedule: {
+      dateISO: "2026-05-22",
+      time24h: "19:00",
+      stayDurationMinutes: 150,
+    },
+    location: [
+      // 압구정역
+      { lat: 37.5273, lng: 127.0286 },
+    ],
+    numberOfPeople: 2,
+    partyType: "LOVERS",
+    budgetPerPerson: [80000, 200000],
+    userNaturalLanguageRequest: "압구정 파인다이닝",
+  },
+  /**
+   * 자연어 입력에 아무 말이나 써 갈긴 경우. 파이프라인을 태우기 전에 끊겨야 한다.
+   */
+  gibberish_request: {
+    schedule: {
+      dateISO: "2026-05-16",
+      time24h: "19:00",
+      stayDurationMinutes: 120,
+    },
+    location: [
+      {
+        lat: 37.5556,
+        lng: 126.9226,
+      },
+    ],
+    numberOfPeople: 2,
+    partyType: "FRIENDS",
+    budgetPerPerson: [10000, 30000],
+    userNaturalLanguageRequest: "ㅁㄴㅇㄹㅁㄴㅇㄹ asdf 1234 ㅋㅋㅋㅋㅋ",
+  },
 } satisfies Record<string, UserInput>;
 
 export type TestScenarioName = keyof typeof testScenarios;

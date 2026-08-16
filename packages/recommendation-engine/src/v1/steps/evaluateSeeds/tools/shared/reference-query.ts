@@ -34,6 +34,24 @@ export type ReferenceUrlMatch = {
 const CLOSE_PLACE_DISTANCE_METERS = 300;
 const MAX_DISTANCE_SCORE_METERS = 2_000;
 
+/**
+ * 같은 가게로 인정할 수 있는 최대 거리(m).
+ *
+ * 지도 링크를 눌렀더니 다른 동네의 같은 브랜드 지점이 열리는 버그를 막는다.
+ * 이름과 주소만 보던 승인 규칙(`name_address_match`, `strong_name_partial_address_match`)
+ * 에는 거리 조건이 없었다. 참조 검색은 후보 좌표 기준 반경 2km로 도는데, 그
+ * 안에는 같은 체인의 다른 지점이 얼마든지 있다. "이디야커피 회기역중앙점"과
+ * "이디야커피 회기점"은 이름 0.82, 주소 0.2를 가볍게 넘기고 승인돼 버렸다.
+ *
+ * 제공자 간 좌표 편차는 수십 m 수준이라 500m면 넉넉하다. 이보다 멀면 이름이
+ * 아무리 같아도 다른 가게다. 애매하면 링크를 안 주는 쪽이 틀린 링크를 주는
+ * 것보다 낫다.
+ */
+const MAX_SAME_PLACE_DISTANCE_METERS = 500;
+
+/** 거리로 탈락시킬 때 쓰는 점수. 참조 확인(0.65)과 보강 조회(0.35) 문턱 아래여야 한다. */
+const REJECTED_BY_DISTANCE_SCORE = 0.3;
+
 export const buildReferenceQueryVariants = (
   evidence: CandidateScoringEvidence,
 ): ReferenceQueryVariant[] => {
@@ -164,6 +182,19 @@ const toReferenceIdentityScore = ({
           1 - Math.min(distanceMeters, MAX_DISTANCE_SCORE_METERS) / MAX_DISTANCE_SCORE_METERS,
         );
   const weightedIdentity = nameScore * 0.55 + addressScore * 0.3 + (distanceScore ?? 0.4) * 0.15;
+
+  // 좌표를 아는데 멀리 떨어져 있으면, 이름과 주소가 아무리 비슷해도 다른 가게다.
+  // 이름 가중치(0.55)만으로 승인선을 넘길 수 있어서 거리를 거부권으로 둔다.
+  if (distanceMeters !== undefined && distanceMeters > MAX_SAME_PLACE_DISTANCE_METERS) {
+    return {
+      nameScore,
+      addressScore,
+      distanceScore,
+      identityScore: Math.min(weightedIdentity, REJECTED_BY_DISTANCE_SCORE),
+      accepted: false,
+      acceptedReason: "too_far_to_be_the_same_place",
+    };
+  }
 
   if (
     distanceMeters !== undefined &&

@@ -154,11 +154,28 @@ const buildSearchParams = (
     searchParams.searchtypCd = "R";
     searchParams.centerLon = params.location.longitude;
     searchParams.centerLat = params.location.latitude;
-    searchParams.radius = params.location.radiusKm;
+    searchParams.radius = toTmapRadiusKm(params.location.radiusKm);
   }
 
   return searchParams;
 };
+
+/** TMap이 받는 반경의 상한(km). */
+const TMAP_MAX_RADIUS_KM = 33;
+
+/**
+ * TMap의 `radius`는 **km 정수**만 받는다. 소수를 넘기면 400을 준다.
+ *
+ * 검색 반경을 5,000m에서 1,500m로 좁히면서 `1500 / 1000 = 1.5`가 넘어갔고,
+ * 그때부터 TMap이 모든 검색어에서 400으로 죽었다. 실패가 빈 결과로 조용히
+ * 바뀌던 탓에 카카오 혼자 돌고 있다는 걸 아무도 몰랐다(실측 400: 1.5 / 2.4 /
+ * 3.84, 성공: 2 / 5).
+ *
+ * 내림이 아니라 **올림**한다. 1.5km를 1km로 줄이면 의도한 범위보다 좁게 찾아
+ * 경계에 있는 장소를 놓친다. 넓게 받아온 뒤 거리 게이트에서 잘라내는 편이 낫다.
+ */
+export const toTmapRadiusKm = (radiusKm: number): number =>
+  Math.min(TMAP_MAX_RADIUS_KM, Math.max(1, Math.ceil(radiusKm)));
 
 const toLocalSeed = (poi: TmapPoi): LocalSeed => {
   const longitude = Number(poi.frontLon ?? poi.noorLon);
@@ -182,13 +199,61 @@ const getTmapCategory = (poi: TmapPoi): string =>
     .filter(isNonEmptyString)
     .join(">");
 
-const getTmapAddress = (poi: TmapPoi): string =>
-  [poi.upperAddrName, poi.middleAddrName, poi.lowerAddrName, poi.detailAddrName]
+/**
+ * 지번 주소. "서울 동대문구 휘경동 319-32" 형태로 맞춘다.
+ *
+ * 예전에는 번지를 빼고 동까지만 만들어서("서울 동대문구 휘경동") 카카오의
+ * `address_name`과 비교했을 때 같은 동의 모든 가게가 똑같은 점수를 받았다.
+ */
+const getTmapAddress = (poi: TmapPoi): string => {
+  const area = [poi.upperAddrName, poi.middleAddrName, poi.lowerAddrName]
     .filter(isNonEmptyString)
     .join(" ");
+  const lotNumber = joinBuildingNumber(poi.firstNo, poi.secondNo);
 
-const getTmapRoadAddress = (poi: TmapPoi): string =>
-  [poi.roadName, poi.firstNo, poi.secondNo].filter(isNonEmptyString).join(" ");
+  return [area, lotNumber || poi.detailAddrName].filter(isNonEmptyString).join(" ");
+};
+
+/**
+ * 도로명 주소.
+ *
+ * 예전에는 `roadName + firstNo + secondNo`를 이어붙였다. 그런데 `firstNo`/`secondNo`는
+ * **지번**이지 도로명 건물번호가 아니다. 그래서 "회기로28길 319 32" 같은, 실제로
+ * 존재하지 않는 주소가 만들어졌다(진짜 주소는 "서울 동대문구 회기로28길 11").
+ * 시/구 접두어도 빠져 있었다.
+ *
+ * 그 결과 TMap seed의 주소 점수가 통째로 무너졌고, 카카오 참조 URL 확인이
+ * 줄줄이 실패했다. 실측에서 거절된 후보 10건이 전부 멀쩡한 곱창집이었다.
+ *
+ * TMap은 `newAddressList`에 완성된 도로명주소를 주므로 그걸 먼저 쓰고,
+ * 없을 때만 건물번호로 직접 조립한다.
+ */
+const getTmapRoadAddress = (poi: TmapPoi): string => {
+  const fullAddressRoad = getTmapFullRoadAddress(poi);
+  if (fullAddressRoad) return fullAddressRoad;
+
+  const buildingNumber = joinBuildingNumber(poi.firstBuildNo, poi.secondBuildNo);
+  if (!isNonEmptyString(poi.roadName) || !buildingNumber) return "";
+
+  return [poi.upperAddrName, poi.middleAddrName, poi.roadName, buildingNumber]
+    .filter(isNonEmptyString)
+    .join(" ");
+};
+
+const getTmapFullRoadAddress = (poi: TmapPoi): string | undefined => {
+  const list = poi.newAddressList;
+  if (typeof list !== "object" || list === null) return undefined;
+
+  const first = list.newAddress?.[0];
+  return isNonEmptyString(first?.fullAddressRoad) ? first.fullAddressRoad : undefined;
+};
+
+/** 본번-부번. 부번이 없거나 "0"이면 본번만 쓴다. */
+const joinBuildingNumber = (first?: string, second?: string): string => {
+  if (!isNonEmptyString(first)) return "";
+  if (!isNonEmptyString(second) || second === "0") return first;
+  return `${first}-${second}`;
+};
 
 const isNonEmptyString = (value: unknown): value is string =>
   typeof value === "string" && value.length > 0;

@@ -19,9 +19,20 @@ const DISCOVERY_CONTEXT_SYSTEM_PROMPT = `너는 지역 추천 엔진의 Discover
   장소 유형 또는 업종명 중심으로 작성하고, 형용사·부사·조사·조건절은 포함하지 않는다.
   올바른 예) "파스타", "이탈리안 레스토랑", "파스타 맛집", "양식 레스토랑"
   잘못된 예) "분위기 좋은 와인바", "친구랑 가기 좋은 파스타집", "비 오는 날 가기 좋은 실내 카페"
+- 지도는 **상호명과 업종 분류**로 찾는다. 격식·가격대·평판을 나타내는 말은 업종이
+  아니라서 검색되지 않는다. 실측에서 "파인다이닝 코스요리", "미쉐린 레스토랑"은
+  각각 0건이었다. 그런 요청은 실제 업종어로 바꿔라.
+  예) "파인다이닝" → "레스토랑", "이탈리안 레스토랑", "일식당", "코스요리"
+      "가성비" → 해당 업종어 그대로,  "핫플" → 해당 업종어 그대로
 - 사용자 조건이 좁으면, 모든 query를 좁게 만들지 말고 최소 하나는 업종 중심의 넓은 query로 만든다.
 - 동일/유사 의미의 query를 중복 생성하지 않는다.
-- 출력은 검색어 문자열만 담은 JSON 스키마를 그대로 따른다. 설명/주석/마크다운을 붙이지 않는다.`;
+- requestUnderstood: 요청에서 "어떤 장소를 찾는지"를 읽어낼 수 있으면 true.
+  키보드를 아무렇게나 친 문자열, 뜻 없는 낱자·자모 나열처럼 장소 요청으로 볼 수
+  없으면 false로 준다. false일 때도 queries는 스키마를 맞추기 위해 아무거나 하나
+  넣어라 — 어차피 쓰이지 않는다.
+  판단은 보수적으로 한다. 막연하지만 장소를 찾는 뜻이면("아무데나", "놀 곳") true다.
+  정상 요청을 false로 막는 쪽이 훨씬 나쁘다.
+- 출력은 JSON 스키마를 그대로 따른다. 설명/주석/마크다운을 붙이지 않는다.`;
 
 /**
  * 재시도용 프롬프트.
@@ -76,6 +87,14 @@ export type DiscoveryRetryContext = {
   previousFailureReason: string;
 };
 
+/** 요청을 장소 검색으로 읽어낼 수 없을 때 던진다. 호출자가 즉시 끊는다. */
+export class UninterpretableRequestError extends Error {
+  constructor() {
+    super("요청에서 어떤 장소를 찾아야 할지 읽어낼 수 없습니다.");
+    this.name = "UninterpretableRequestError";
+  }
+}
+
 export const createDiscoveryContextWithLlm = async (
   userInput: UserInput,
   options: {
@@ -84,7 +103,7 @@ export const createDiscoveryContextWithLlm = async (
     retry?: DiscoveryRetryContext;
   },
 ): Promise<SearchQuery[]> => {
-  const { queries } = await generateRecommendationObject({
+  const { queries, requestUnderstood } = await generateRecommendationObject({
     task: "discover.discovery_context",
     modelId: DISCOVERY_CONTEXT_MODEL_ID,
     openAiApiKey: options.openAiApiKey,
@@ -96,6 +115,12 @@ export const createDiscoveryContextWithLlm = async (
       ...(options.retry ? { retry: options.retry } : {}),
     }),
   });
+
+  // 재시도 호출에서는 판정하지 않는다. 첫 호출에서 이미 통과한 요청이고,
+  // 재시도는 "검색어가 나빴다"는 뜻이지 "요청이 이상하다"는 뜻이 아니다.
+  if (!requestUnderstood && !options.retry) {
+    throw new UninterpretableRequestError();
+  }
 
   return toSearchQueries(
     queries.map((query) => query.query),
@@ -120,16 +145,23 @@ const toSearchQueries = (
   return distributeSeedCounts(texts, targetSeedCount);
 };
 
+/**
+ * 사용자 조건이 좁으면 결과가 0건이 되기 쉬우므로 넓은 업종어를 하나 섞는다.
+ *
+ * 단, **자리가 남을 때만 덧붙인다.** 예전에는 검색어가 상한(4개)까지 차 있으면
+ * 마지막 검색어를 "맛집" 같은 최광의어로 갈아치웠다. 그래서 잘 만들어진 특화
+ * 검색어가 버려지고 반경 안의 아무 식당이나 쏟아져 들어왔다 — 실측에서 "회기 곱창"
+ * 요청에 김밥집·꽈배기집·프랜차이즈 카페가 추천 10건 중 5건을 차지했다.
+ *
+ * 검색어가 전부 너무 좁아서 결과가 모자란 경우는 재시도가 이미 처리한다
+ * (`DISCOVERY_RETRY_SYSTEM_PROMPT`의 ZERO_SEEDS 전략).
+ */
 const withBroadFallbackQuery = (queries: string[], userInput: UserInput): string[] => {
   const fallbackQuery = inferBroadFallbackQuery(userInput);
   if (!fallbackQuery || queries.some((query) => query.includes(fallbackQuery))) return queries;
-  // 사용자 조건이 좁으면 결과가 0건이 되기 쉬우므로 넓은 업종어를 하나 섞는다.
   if (queries.length < MAX_DISCOVERY_TERM_COUNT) return [...queries, fallbackQuery];
-  return [...queries.slice(0, -1), fallbackQuery];
+  return queries;
 };
-
-/** TMAP POI 검색의 한 페이지 상한. 이보다 크게 요청해도 더 오지 않는다. */
-const MAX_COUNT_PER_QUERY = 20;
 
 /**
  * seed 목표치를 검색어들에 균등 배분한다.
@@ -137,6 +169,10 @@ const MAX_COUNT_PER_QUERY = 20;
  * 예전에는 LLM이 만든 count를 쓰고 모자란 만큼을 전부 첫 검색어에 몰아줬다. 그래서
  * 검색어 하나가 결과 대부분을 가져오고 나머지는 구색만 갖췄다. 검색어를 여러 개
  * 만든 의미가 사라지는 배분이었다.
+ *
+ * `DiscoveryContextSchema`가 "count 합 == targetSeedCount"를 요구하므로 나머지를
+ * 앞쪽 검색어에 1씩 나눠 정확히 맞춘다. 페이지당 개수에 상한을 걸면 이 불변식이
+ * 깨져 컨텍스트 생성 자체가 실패한다.
  */
 export const distributeSeedCounts = (
   queries: string[],
@@ -149,7 +185,7 @@ export const distributeSeedCounts = (
 
   return queries.map((query, index) => ({
     query,
-    count: Math.max(1, Math.min(MAX_COUNT_PER_QUERY, base + (index < remainder ? 1 : 0))),
+    count: Math.max(1, base + (index < remainder ? 1 : 0)),
     page: 1,
   }));
 };

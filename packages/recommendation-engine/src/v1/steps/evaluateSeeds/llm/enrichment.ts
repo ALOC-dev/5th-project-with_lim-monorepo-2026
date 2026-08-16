@@ -3,6 +3,7 @@ import { hasToolCall, stepCountIs } from "ai";
 import type { UserInput } from "../../../interfaces/input.contracts.js";
 import { generateRecommendationText, RECOMMENDATION_LLM_MODEL_ID } from "../../../llm/ai-sdk.js";
 import type { Logger } from "../../../observability/logger.js";
+import { mapWithConcurrency } from "../../../utils/concurrency.js";
 import {
   type AgenticFinalizeCandidateEvidence,
   createAgenticEnrichmentTools,
@@ -203,31 +204,6 @@ export const createAgenticWebEnrichmentClient = ({
   };
 };
 
-const mapWithConcurrency = async <TItem, TResult>(
-  items: TItem[],
-  concurrency: number,
-  mapper: (item: TItem, index: number) => Promise<TResult>,
-): Promise<TResult[]> => {
-  const results = new Array<TResult>(items.length);
-  let nextIndex = 0;
-  const workerCount =
-    items.length <= 0 || !Number.isFinite(concurrency)
-      ? 1
-      : Math.max(1, Math.min(items.length, Math.floor(concurrency)));
-
-  const workers = Array.from({ length: workerCount }, async () => {
-    while (nextIndex < items.length) {
-      const index = nextIndex;
-      nextIndex += 1;
-      const item = items[index];
-      if (item === undefined) continue;
-      results[index] = await mapper(item, index);
-    }
-  });
-
-  await Promise.all(workers);
-  return results;
-};
 
 const withTimeout = async <TResult>(
   promise: Promise<TResult>,
