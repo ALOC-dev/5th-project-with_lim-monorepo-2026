@@ -1,3 +1,4 @@
+import { assessClosure } from "./closure.js";
 import type { CandidateEnrichment, EnrichmentSourceName } from "./enrichment-types.js";
 import type { CandidateScoringEvidence } from "./evidence.js";
 import { type OperationVerifier } from "./operation-hours.js";
@@ -32,6 +33,15 @@ export const mergeEvidenceWithEnrichment = (
 // UNKNOWN을 OPEN으로 승격하지 않는다. 실제 operationInfo가 있어야 scoring 대상이 된다.
 export const shouldRecommendByOperationHours = (enrichment: CandidateEnrichment): boolean =>
   enrichment.operationVerification.status === "OPEN" && enrichment.operationInfo !== undefined;
+
+/**
+ * 폐업으로 보이는 후보를 제외한다.
+ *
+ * 영업시간 판정의 `CLOSED`는 "요청한 시각에 닫혀 있다"는 뜻이라 폐업을 잡지 못한다.
+ * 폐업한 가게도 지도에 데이터가 남아 있으면 그대로 추천될 수 있었다.
+ */
+export const shouldRecommendByClosure = (enrichment: CandidateEnrichment): boolean =>
+  !assessClosure(enrichment).closed;
 
 export const unique = (values: string[]): string[] => Array.from(new Set(values.filter(Boolean)));
 

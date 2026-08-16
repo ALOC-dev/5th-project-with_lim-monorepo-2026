@@ -17,8 +17,17 @@ import {
   type SearchQuery,
 } from "./steps/discoverSeeds/contracts.js";
 import { discoverSeeds } from "./steps/discoverSeeds/index.js";
-import { createDiscoveryContextWithLlm } from "./steps/discoverSeeds/llm/approaches.js";
+import {
+  createDiscoveryContextWithLlm,
+  UninterpretableRequestError,
+} from "./steps/discoverSeeds/llm/approaches.js";
 import { evaluateSeeds } from "./steps/evaluateSeeds/index.js";
+import type {
+  EvaluateSeedsFunnel,
+  EvaluateSeedsOutput,
+} from "./steps/evaluateSeeds/types.js";
+import { toSearchCenter, toSearchRadiusMeters } from "./utils/geo.js";
+import { validateNaturalLanguageRequest } from "./utils/request-validation.js";
 
 const MAX_DISCOVERY_ATTEMPTS = 5;
 
@@ -57,26 +66,34 @@ const buildDiscoveryContext = (
     previousFailureReason: state.previousFailureReason,
   });
 
-const DEFAULT_SEARCH_RADIUS_KM = 5;
 
+/**
+ * 검색 중심은 참여자 전체의 무게중심이다.
+ *
+ * 예전에는 `location[0]`(첫 참여자)만 썼다. 여러 명이 모이는 요청에서도 첫 사람
+ * 주변만 탐색했고, 중간 지점은 출력 컨텍스트를 만들 때만 계산하고 정작 탐색에는
+ * 쓰지 않았다. 반경도 5km 고정이라 혼자 혜화에서 요청해도 종각까지 훑었다.
+ */
 const getDefaultSearchLocation = (
   userInput: UserInput,
+  widenStep: number,
 ): DiscoveryContext["queries"][number]["location"] | undefined => {
-  const [firstLocation] = userInput.location;
-  if (!firstLocation) return undefined;
+  const center = toSearchCenter(userInput);
+  if (!center) return undefined;
 
   return {
-    longitude: firstLocation.lng,
-    latitude: firstLocation.lat,
-    radiusKm: DEFAULT_SEARCH_RADIUS_KM,
+    longitude: center.lng,
+    latitude: center.lat,
+    radiusKm: toSearchRadiusMeters(userInput, widenStep) / 1_000,
   };
 };
 
 const hydrateQueriesWithLocation = (
   queries: SearchQuery[],
   userInput: UserInput,
+  widenStep = 0,
 ): SearchQuery[] => {
-  const defaultLocation = getDefaultSearchLocation(userInput);
+  const defaultLocation = getDefaultSearchLocation(userInput, widenStep);
   return queries.map((query) => ({
     ...query,
     location: query.location ?? defaultLocation,
@@ -193,6 +210,7 @@ export class RecommendationEngine {
     previousQueries: SearchQuery[],
     previousFailureReason: string,
     logger: Logger,
+    widenStep: number,
   ): Promise<SearchQuery[]> {
     try {
       const regenerated = await createDiscoveryContextWithLlm(this.userInput, {
@@ -203,9 +221,13 @@ export class RecommendationEngine {
           previousFailureReason,
         },
       });
-      const hydrated = hydrateQueriesWithLocation(regenerated, this.userInput);
+      // 검색어를 새로 만들 때마다 반경도 한 단계 넓힌다. 기본 반경을 좁게 잡았기
+      // 때문에, 상권이 얕은 동네에서 후보가 안 나오면 여기서 만회해야 한다.
+      const hydrated = hydrateQueriesWithLocation(regenerated, this.userInput, widenStep);
       logger.info("engine.discovery_context.regenerated", {
         previousFailureReason,
+        widenStep,
+        searchRadiusMeters: toSearchRadiusMeters(this.userInput, widenStep),
         queries: hydrated.map((query) => query.query),
       });
       return hydrated;
@@ -226,11 +248,37 @@ export class RecommendationEngine {
       queries: [],
     };
     let discoverySeedPool: DiscoverySeedPool = EMPTY_DISCOVERY_SEED_POOL;
+    /**
+     * 목표 개수를 못 채운 시도 중 가장 결과가 많았던 것.
+     *
+     * 재시도를 다 쓰면 예전에는 통째로 실패했다. 쓸 만한 곳을 이미 찾아 놓고도
+     * "10곳을 못 채웠다"는 이유로 사용자에게 아무것도 주지 않는 셈이었다.
+     */
+    let bestPartial: { data: EvaluateSeedsOutput; funnel: EvaluateSeedsFunnel } | undefined;
+    const startedAt = Date.now();
     const finish = this.logger.startTimer("engine.process.success");
     this.logger.info("engine.process.start", {
       maxDiscoveryAttempts: MAX_DISCOVERY_ATTEMPTS,
       targetCount: this.config.targetCount,
     });
+
+    // 의미 없는 입력은 여기서 끊는다. 계약이 `min(1)`뿐이라 "ㅁㄴㅇㄹ" 같은 문자열도
+    // 그대로 통과했고, 그러면 LLM이 억지 검색어를 만든 뒤 결과가 안 나올 때까지
+    // 재시도를 5번 돌린다. 입력 하나에 3분과 API 쿼터를 통째로 쓰는 셈이었다.
+    const requestValidation = validateNaturalLanguageRequest(
+      this.userInput.userNaturalLanguageRequest,
+    );
+    if (!requestValidation.usable) {
+      this.logger.warn("engine.process.failure", {
+        failedStep: "input",
+        errorCode: requestValidation.code,
+      });
+      return {
+        status: "ERROR",
+        userInput: this.userInput,
+        error: { code: requestValidation.code, message: requestValidation.reason },
+      };
+    }
 
     try {
       const finishDiscoveryContext = this.logger.startTimer("engine.discovery_context.success");
@@ -247,6 +295,20 @@ export class RecommendationEngine {
         queryCount: discoveryState.queries.length,
       });
     } catch (error) {
+      // 규칙으로는 거를 수 없던 입력을 LLM이 "장소 요청이 아니다"로 판정한 경우.
+      // 검색어 생성 실패와 구분해서, 사용자에게 다시 입력하라고 안내할 수 있게 한다.
+      if (error instanceof UninterpretableRequestError) {
+        this.logger.warn("engine.process.failure", {
+          failedStep: "input",
+          errorCode: "REQUEST_NOT_MEANINGFUL",
+        });
+        return {
+          status: "ERROR",
+          userInput: this.userInput,
+          error: { code: "REQUEST_NOT_MEANINGFUL", message: error.message },
+        };
+      }
+
       const message = error instanceof Error ? error.message : String(error);
       this.logger.warn("engine.process.failure", {
         failedStep: "discoverSeeds",
@@ -281,7 +343,12 @@ export class RecommendationEngine {
         attemptNo: currAttemptNo,
       });
       const discoverSeedsResult = await discoverSeeds(discoveryContext, attemptLogger, {
-        secrets: { tmapAppKey: this.secrets.tmapAppKey },
+        secrets: {
+          tmapAppKey: this.secrets.tmapAppKey,
+          kakaoRestApiKey: this.secrets.kakaoRestApiKey,
+          naverSearchClientId: this.secrets.naverSearchClientId,
+          naverSearchClientSecret: this.secrets.naverSearchClientSecret,
+        },
       });
       if (!discoverSeedsResult.ok) {
         // seed 확보 실패는 recoverable context가 없으므로 즉시 종료한다.
@@ -310,26 +377,43 @@ export class RecommendationEngine {
         nextQueryCount: discoverSeedsOutput.nextQueries.length,
       });
 
-      if (
-        discoverySeedPool.seedKeys.length < this.config.targetCount &&
-        discoverSeedsOutput.nextQueries.length > 0
-      ) {
-        discoveryState = {
-          ...discoveryState,
-          alreadyCheckedIds: Array.from(
-            new Set([...discoveryState.alreadyCheckedIds, ...discoverSeedsOutput.seedKeys]),
-          ),
-          queries: discoverSeedsOutput.nextQueries,
-          previousFailureReason:
-            discoverySeedPool.seedKeys.length === 0 ? "ZERO_SEEDS" : "LOW_QUALITY",
-        };
-        attemptLogger.warn("engine.attempt.defer_evaluation", {
-          seedPoolCount: discoverySeedPool.seedKeys.length,
-          targetCount: this.config.targetCount,
-          nextAlreadyCheckedIdCount: discoveryState.alreadyCheckedIds.length,
-          nextQueryCount: discoveryState.queries.length,
-        });
-        continue;
+      if (discoverySeedPool.seedKeys.length < this.config.targetCount) {
+        const deferReason =
+          discoverySeedPool.seedKeys.length === 0 ? "ZERO_SEEDS" : ("LOW_QUALITY" as const);
+
+        // 페이지를 더 넘길 수 있으면 그게 가장 싸다.
+        // 아니면 검색어를 새로 만들면서 반경을 한 단계 넓힌다. 기본 반경을 좁게
+        // 잡았기 때문에 상권이 얕은 동네에서는 이 경로가 필요하다. 여기서 넓히지
+        // 않으면 적은 후보로 비싼 평가 단계를 한 바퀴 돌고 나서야 알게 된다.
+        const nextQueries =
+          discoverSeedsOutput.nextQueries.length > 0
+            ? discoverSeedsOutput.nextQueries
+            : await this.regenerateQueries(
+                discoveryState.queries,
+                deferReason,
+                attemptLogger,
+                currAttemptNo,
+              );
+
+        if (nextQueries.length > 0) {
+          discoveryState = {
+            ...discoveryState,
+            alreadyCheckedIds: Array.from(
+              new Set([...discoveryState.alreadyCheckedIds, ...discoverSeedsOutput.seedKeys]),
+            ),
+            queries: nextQueries,
+            previousFailureReason: deferReason,
+          };
+          attemptLogger.warn("engine.attempt.defer_evaluation", {
+            seedPoolCount: discoverySeedPool.seedKeys.length,
+            targetCount: this.config.targetCount,
+            widened: discoverSeedsOutput.nextQueries.length === 0,
+            nextAlreadyCheckedIdCount: discoveryState.alreadyCheckedIds.length,
+            nextQueryCount: discoveryState.queries.length,
+          });
+          continue;
+        }
+        // 더 넓힐 수도 없으면 지금 모인 후보로라도 평가한다. 빈손보다 낫다.
       }
 
       const evaluateSeedsInput = toEvaluateSeedsInput(discoverySeedPool, discoverSeedsOutput);
@@ -372,6 +456,10 @@ export class RecommendationEngine {
 
       if ("needsMoreSeeds" in evaluateSeedsResult) {
         const { excludeSeedKeys, reason } = evaluateSeedsResult.needsMoreSeeds;
+        const partial = evaluateSeedsResult.partial;
+        if (partial && partial.data.items.length > (bestPartial?.data.items.length ?? 0)) {
+          bestPartial = partial;
+        }
 
         // 페이지를 더 넘길 수 없으면 예전에는 여기서 바로 실패했다. 하지만 "이 검색어의
         // 결과를 다 봤다"는 건 "다른 검색어도 소용없다"는 뜻이 아니다. 실패 사유를
@@ -379,7 +467,39 @@ export class RecommendationEngine {
         const nextQueries =
           discoverSeedsOutput.nextQueries.length > 0
             ? discoverSeedsOutput.nextQueries
-            : await this.regenerateQueries(discoveryState.queries, reason, attemptLogger);
+            : await this.regenerateQueries(
+                discoveryState.queries,
+                reason,
+                attemptLogger,
+                currAttemptNo,
+              );
+
+        if (nextQueries.length === 0 && bestPartial) {
+          // 더 찾을 방법은 없지만 이미 찾아 둔 곳은 있다. 적게라도 돌려준다.
+          this.logger.warn("engine.process.partial_success", {
+            reason,
+            recommendationCount: bestPartial.data.items.length,
+            targetCount: this.config.targetCount,
+          });
+          finish({
+            attemptNo: currAttemptNo,
+            recommendationCount: bestPartial.data.items.length,
+          });
+          return {
+            status: "SUCCESS",
+            userInput: this.userInput,
+            userOutput: {
+              originContext: buildRecommendationOriginContext(this.userInput),
+              recommendations: bestPartial.data.items,
+            },
+            meta: {
+              attemptCount: currAttemptNo,
+              discoveredSeedCount: discoverySeedPool.seedKeys.length,
+              durationMs: Date.now() - startedAt,
+              ...bestPartial.funnel,
+            },
+          };
+        }
 
         if (nextQueries.length === 0) {
           attemptLogger.warn("engine.attempt.failure", {
@@ -440,6 +560,35 @@ export class RecommendationEngine {
         userOutput: {
           originContext: buildRecommendationOriginContext(this.userInput),
           recommendations: evaluateSeedsResult.data.items,
+        },
+        meta: {
+          attemptCount: currAttemptNo,
+          discoveredSeedCount: discoverySeedPool.seedKeys.length,
+          durationMs: Date.now() - startedAt,
+          ...evaluateSeedsResult.funnel,
+        },
+      };
+    }
+
+    if (bestPartial) {
+      // 재시도를 다 썼지만 찾아 둔 곳은 있다.
+      this.logger.warn("engine.process.partial_success", {
+        recommendationCount: bestPartial.data.items.length,
+        targetCount: this.config.targetCount,
+        maxDiscoveryAttempts: MAX_DISCOVERY_ATTEMPTS,
+      });
+      return {
+        status: "SUCCESS",
+        userInput: this.userInput,
+        userOutput: {
+          originContext: buildRecommendationOriginContext(this.userInput),
+          recommendations: bestPartial.data.items,
+        },
+        meta: {
+          attemptCount: MAX_DISCOVERY_ATTEMPTS,
+          discoveredSeedCount: discoverySeedPool.seedKeys.length,
+          durationMs: Date.now() - startedAt,
+          ...bestPartial.funnel,
         },
       };
     }

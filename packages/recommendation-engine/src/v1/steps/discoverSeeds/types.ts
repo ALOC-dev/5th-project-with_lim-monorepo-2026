@@ -21,5 +21,8 @@ export type DiscoverSeedsProcessResult =
     };
 
 export type DiscoverSeedsOptions = {
-  secrets?: Pick<RecommendationEngineSecrets, "tmapAppKey">;
+  secrets?: Pick<
+    RecommendationEngineSecrets,
+    "tmapAppKey" | "kakaoRestApiKey" | "naverSearchClientId" | "naverSearchClientSecret"
+  >;
 };

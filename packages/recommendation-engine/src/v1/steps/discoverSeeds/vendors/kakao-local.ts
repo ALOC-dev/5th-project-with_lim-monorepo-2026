@@ -57,22 +57,55 @@ export const searchKakaoLocalRaw = async (
   return KakaoLocalSearchResponseSchema.parse(response);
 };
 
+/** 카카오가 허용하는 마지막 페이지. */
+const KAKAO_MAX_PAGE = 45;
+
+/**
+ * 요청한 개수를 채울 때까지 페이지를 이어 받는다.
+ *
+ * 카카오는 한 페이지에 최대 15건만 준다. 예전에는 1페이지만 받고 끝내서, 검색어당
+ * 25건을 요청해도 15건만 얻고 나머지는 버렸다. 실측에서 "회기 곱창"의 후보가
+ * 33건까지 줄었고 채점 대상이 14건밖에 안 됐다 — 10건을 고르는데 선택의 여지가
+ * 거의 없었다. REST 호출 한 번은 싸니 채울 수 있으면 채운다.
+ *
+ * 바깥 페이지 번호는 우리 쪽 페이지네이션 단위라, 카카오 페이지로 환산해서 이어
+ * 받아야 같은 결과를 두 번 받지 않는다.
+ */
 export const searchKakaoLocal = async (
   params: LocalSeedSearchParams,
   credentials?: KakaoLocalCredentials,
 ): Promise<LocalSeedSearchResponse> => {
   const searchParams = normalizeLocalSeedSearchParams(params);
-  const response = await searchKakaoLocalRaw(params, credentials);
-  const seeds = response.documents.map(toLocalSeed);
+  const pagesPerRequest = Math.max(1, Math.ceil(searchParams.count / KAKAO_MAX_COUNT));
+  const firstKakaoPage = (searchParams.page - 1) * pagesPerRequest + 1;
+
+  const documents: KakaoLocalItem[] = [];
+  let totalCount = 0;
+  let isEnd = true;
+
+  for (let offset = 0; offset < pagesPerRequest; offset += 1) {
+    const kakaoPage = firstKakaoPage + offset;
+    if (kakaoPage > KAKAO_MAX_PAGE) break;
+
+    const response = await searchKakaoLocalRaw(
+      { ...params, pagination: { page: kakaoPage, count: KAKAO_MAX_COUNT } },
+      credentials,
+    );
+    documents.push(...response.documents);
+    totalCount = response.meta.pageable_count;
+    isEnd = response.meta.is_end;
+
+    if (isEnd) break;
+  }
 
   return LocalSeedSearchResponseSchema.parse({
     provider: "kakao",
     query: searchParams.query,
     page: searchParams.page,
-    count: Math.min(searchParams.count, KAKAO_MAX_COUNT),
-    totalCount: response.meta.pageable_count,
-    isEnd: response.meta.is_end,
-    seeds,
+    count: searchParams.count,
+    totalCount,
+    isEnd,
+    seeds: documents.slice(0, searchParams.count).map(toLocalSeed),
   });
 };
 

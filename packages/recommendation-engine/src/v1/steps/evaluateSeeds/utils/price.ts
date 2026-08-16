@@ -31,10 +31,23 @@ export const inferPriceRangePerPersonFromText = (
   return [minPrice, maxPrice];
 };
 
+export type PriceRangeSource = "SOURCE" | "CATEGORY_ESTIMATE";
+
 // 실제 source에서 가격을 찾은 경우만 우선한다.
 // 없으면 user budget을 echo하지 않고 category fallback을 사용한다.
 export const getRecommendationPriceRange = (evidence: CandidateScoringEvidence): PriceRange =>
   evidence.placeInfo.priceRangePerPerson ?? estimatePriceRangeFromCategory(evidence.category);
+
+/**
+ * 가격 범위가 실제 근거에서 나온 것인지, 업종만 보고 넣은 추정인지.
+ *
+ * 둘을 구분하지 않으면 추정치가 실제 가격처럼 사용자에게 나가고, 예산 적합도
+ * 판단도 근거 없는 값 위에서 이뤄진다.
+ */
+export const getRecommendationPriceRangeSource = (
+  evidence: CandidateScoringEvidence,
+): PriceRangeSource =>
+  evidence.placeInfo.priceRangePerPerson ? "SOURCE" : "CATEGORY_ESTIMATE";
 
 const estimatePriceRangeFromCategory = ({
   mainCategory,

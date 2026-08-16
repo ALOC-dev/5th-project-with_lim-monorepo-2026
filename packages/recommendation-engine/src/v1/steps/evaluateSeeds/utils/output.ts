@@ -6,7 +6,7 @@ import {
 } from "../../../interfaces/output.contracts.js";
 import { type EvaluateSeedsEvaluation, EvaluateSeedsEvaluationSchema } from "../contracts.js";
 import type { CandidateEnrichment, EnrichmentSourceDetail } from "./enrichment-types.js";
-import { getRecommendationPriceRange } from "./price.js";
+import { getRecommendationPriceRange, getRecommendationPriceRangeSource } from "./price.js";
 import type { RankedCandidate } from "./ranking.js";
 import { isUsableEvidenceUrl } from "./source-url.js";
 
@@ -74,6 +74,7 @@ export const toPlaceRecommendationItem = (
       roadAddressKo: seed.roadAddress || seed.address,
     },
     priceRangePerPerson: getRecommendationPriceRange(evidence),
+    priceRangeSource: getRecommendationPriceRangeSource(evidence),
     score: Math.round(scores.total),
     scoreBreakdown: scores,
     reasons: buildRecommendationReasons({
@@ -234,11 +235,30 @@ const toCompactSentence = (value: string, maxLength: number): string => {
   return compact.slice(0, maxLength - 1).trimEnd();
 };
 
+/** 영업시간을 확인하지 못한 후보용. 전 요일 UNKNOWN으로 정직하게 표기한다. */
+const UNKNOWN_OPERATION_INFO: OperationInfo = {
+  timezone: "Asia/Seoul",
+  schedules: {
+    MONDAY: { status: "UNKNOWN" },
+    TUESDAY: { status: "UNKNOWN" },
+    WEDNESDAY: { status: "UNKNOWN" },
+    THURSDAY: { status: "UNKNOWN" },
+    FRIDAY: { status: "UNKNOWN" },
+    SATURDAY: { status: "UNKNOWN" },
+    SUNDAY: { status: "UNKNOWN" },
+  },
+};
+
 const getVerifiedEnrichment = (
   evidence: RankedCandidate["evidence"],
 ): VerifiedCandidateEnrichment => {
-  if (!evidence.enrichment?.operationInfo) {
-    throw new Error(`Missing verified enrichment for candidate ${evidence.candidateId}`);
+  if (!evidence.enrichment) {
+    throw new Error(`Missing enrichment for candidate ${evidence.candidateId}`);
   }
-  return evidence.enrichment as VerifiedCandidateEnrichment;
+  // 영업시간 미확인 후보도 예비로 추천될 수 있다. 없는 스케줄을 지어내지 않고
+  // 전 요일 UNKNOWN으로 내보내, 사용자와 후속 단계가 "확인되지 않음"을 알게 한다.
+  return {
+    ...evidence.enrichment,
+    operationInfo: evidence.enrichment.operationInfo ?? UNKNOWN_OPERATION_INFO,
+  };
 };

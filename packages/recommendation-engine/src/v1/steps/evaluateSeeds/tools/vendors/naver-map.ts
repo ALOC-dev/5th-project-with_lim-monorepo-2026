@@ -19,7 +19,7 @@ import {
   type ReferenceUrlMatch,
   scoreTextReferenceIdentity,
 } from "../shared/reference-query.js";
-import { normalizeText } from "../shared/text.js";
+import { isBotCheckPage, normalizeText } from "../shared/text.js";
 import type { PlaywrightPage, ScrapeNaverMapCandidateOptions, UrlScrapeResult } from "../types.js";
 
 export const scrapeNaverMapCandidate = async (
@@ -115,6 +115,11 @@ export const resolveNaverMapReferenceUrl = async (
     const searchUrl = `${NAVER_MAP_SEARCH_BASE_URL}/${encodeURIComponent(query.query)}`;
     const { snapshot } = await getOrScrapeNaverMapUrl(searchUrl, evidence, options);
     const searchableText = chooseCandidateText(snapshot.frameTexts, evidence);
+
+    // 봇 차단이 걸렸으면 검색어를 바꿔도 결과가 같다. 남은 변형을 시도하는 건
+    // 시간만 버리는 일이라 즉시 포기한다.
+    if (isBotCheckPage(searchableText)) return undefined;
+
     const hasDetail = hasUsefulDetailText(searchableText, evidence);
     const identity = scoreNaverMapTextIdentity(searchableText, evidence);
 

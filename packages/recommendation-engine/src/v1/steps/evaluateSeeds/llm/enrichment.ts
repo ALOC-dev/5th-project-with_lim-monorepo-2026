@@ -3,6 +3,7 @@ import { hasToolCall, stepCountIs } from "ai";
 import type { UserInput } from "../../../interfaces/input.contracts.js";
 import { generateRecommendationText, RECOMMENDATION_LLM_MODEL_ID } from "../../../llm/ai-sdk.js";
 import type { Logger } from "../../../observability/logger.js";
+import { mapWithConcurrency } from "../../../utils/concurrency.js";
 import {
   type AgenticFinalizeCandidateEvidence,
   createAgenticEnrichmentTools,
@@ -184,7 +185,6 @@ export const createAgenticWebEnrichmentClient = ({
               abortSignal: abortController.signal,
             });
           } catch (error) {
-            logRecoverableAgenticCandidateFailure(logger, evidence.candidateId, error);
             return buildUnknownEnrichment(
               evidence.candidateId,
               operationVerifier,
@@ -204,50 +204,6 @@ export const createAgenticWebEnrichmentClient = ({
   };
 };
 
-/**
- * 후보 하나의 agentic/OpenAI 호출이 실패해 UNKNOWN으로 강등되는 경로를 남긴다.
- * 이 이벤트는 추천 결과를 바꾸지 않으며, QA monitor가 실제 transport/auth/quota
- * 오류인 경우에만 infrastructure signal로 정규화한다.
- */
-export const logRecoverableAgenticCandidateFailure = (
-  logger: Logger | undefined,
-  candidateId: string,
-  error: unknown,
-): void => {
-  logger
-    ?.withContext({ extra: { candidateId, source: "agentic" } })
-    .error("evaluateSeeds.enrichment.agentic_candidate.failure", error, {
-      provider: "OPENAI",
-      recoverable: true,
-      fallbackStatus: "UNKNOWN",
-    });
-};
-
-const mapWithConcurrency = async <TItem, TResult>(
-  items: TItem[],
-  concurrency: number,
-  mapper: (item: TItem, index: number) => Promise<TResult>,
-): Promise<TResult[]> => {
-  const results = new Array<TResult>(items.length);
-  let nextIndex = 0;
-  const workerCount =
-    items.length <= 0 || !Number.isFinite(concurrency)
-      ? 1
-      : Math.max(1, Math.min(items.length, Math.floor(concurrency)));
-
-  const workers = Array.from({ length: workerCount }, async () => {
-    while (nextIndex < items.length) {
-      const index = nextIndex;
-      nextIndex += 1;
-      const item = items[index];
-      if (item === undefined) continue;
-      results[index] = await mapper(item, index);
-    }
-  });
-
-  await Promise.all(workers);
-  return results;
-};
 
 const withTimeout = async <TResult>(
   promise: Promise<TResult>,
@@ -346,7 +302,6 @@ const enrichWithAgenticWeb = async (
     {
       onToolEvent: options.onToolEvent,
       openAiApiKey: options.openAiApiKey,
-      logger: options.logger,
     },
   );
 };
@@ -356,7 +311,7 @@ const buildFinalEnrichmentFromAgentic = async (
   memo: Map<AgenticEnrichmentSource, CandidateEnrichment>,
   evidence: CandidateScoringEvidence,
   operationVerifier: OperationVerifier,
-  options: Pick<AgenticWebEnrichmentOptions, "onToolEvent" | "openAiApiKey" | "logger">,
+  options: Pick<AgenticWebEnrichmentOptions, "onToolEvent" | "openAiApiKey">,
 ): Promise<CandidateEnrichment> => {
   if (finalized.selectedSource === "agentic") {
     const operationParse = await parseOperationInfoWithLlmFallback({
@@ -366,7 +321,6 @@ const buildFinalEnrichmentFromAgentic = async (
       sourceName: "agentic-web",
       sourceTextKind: "agentic_fetch",
       openAiApiKey: options.openAiApiKey,
-      logger: options.logger,
     });
     const operationInfo = operationParse.operationInfo;
     const sourceUrls = unique(finalized.sourceUrls);

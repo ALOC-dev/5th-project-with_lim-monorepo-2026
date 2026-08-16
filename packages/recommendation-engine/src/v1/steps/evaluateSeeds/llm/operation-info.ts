@@ -1,5 +1,6 @@
 import { type OperationInfo, OperationInfoSchema } from "../../../interfaces/output.contracts.js";
 import { generateRecommendationObject, RECOMMENDATION_LLM_MODEL_ID } from "../../../llm/ai-sdk.js";
+import { isBotCheckPage } from "../tools/shared/text.js";
 import type { EnrichmentSourceName } from "../utils/enrichment-types.js";
 import type { CandidateScoringEvidence } from "../utils/evidence.js";
 import type { OperationVerifier } from "../utils/operation-hours.js";
@@ -26,7 +27,10 @@ const OPERATION_INFO_SYSTEM_PROMPT = `너는 한국 매장 영업시간 텍스�
 - 후보 장소와 무관한 텍스트면 UNPARSEABLE을 반환한다.
 - 영업시간이 명시되어 있지 않으면 추측하지 말고 UNPARSEABLE을 반환한다.
 - "영업 중", "곧 영업 종료" 같은 현재 상태만 있고 weekly schedule이 없으면 UNPARSEABLE이다.
-- "연중무휴"와 단일 시간 범위가 함께 있으면 MONDAY..SUNDAY 전체에 같은 OPEN schedule을 적용한다.
+- "연중무휴", "매일", "무휴"와 단일 시간 범위가 함께 있으면 MONDAY..SUNDAY 전체에 같은 OPEN schedule을 적용한다.
+- 요일을 구분하는 표현이 전혀 없이 단일 시간 범위 하나만 있으면(예: "11:30 - 23:00",
+  "영업 전 11:30 오픈") 한국 매장 표기 관행상 매일 같은 시간으로 보고 MONDAY..SUNDAY
+  전체에 적용한다. 요일별 정보가 없다는 이유만으로 UNPARSEABLE을 반환하지 않는다.
 - "휴무안내: 연중무휴(명절 일부 제외)"처럼 예외 휴무가 있더라도 기본 weekly schedule은 전 요일 OPEN으로 구조화한다.
 - "평일"은 MONDAY..FRIDAY, "주말"은 SATURDAY/SUNDAY, "주중"은 MONDAY..FRIDAY로 해석한다.
 - "월~금", "월-금", "월요일~금요일"은 MONDAY..FRIDAY로 해석한다.
@@ -57,6 +61,15 @@ export const parseOperationInfoWithLlmFallback = async ({
     return {
       parser: "none",
       reason: `${sourceName} page text was empty`,
+    };
+  }
+
+  // 봇 차단 페이지를 "영업시간 없음"으로 기록하면 원인을 영영 알 수 없다.
+  // 가게에 정보가 없는 것과 우리가 못 본 것은 다른 문제다.
+  if (isBotCheckPage(text)) {
+    return {
+      parser: "none",
+      reason: `${sourceName} was blocked by a bot-check page, so hours could not be read`,
     };
   }
 
@@ -210,8 +223,21 @@ const buildOperationInfoPrompt = (
 
 const normalizeForSignal = (value: string): string => value.replace(/\s+/gu, "").toLowerCase();
 
-const hasOperationSignal = (text: string): boolean =>
-  /영업\s*시간|영업시간|운영\s*시간|운영시간|영업\s*중|휴무|연중무휴|라스트\s*오더|브레이크|매일|평일|주중|주말|월요일|화요일|수요일|목요일|금요일|토요일|일요일/u.test(
+/**
+ * LLM 파서를 시도할 가치가 있는 텍스트인지.
+ *
+ * 이 게이트가 false면 LLM을 호출하지 않고 UNKNOWN으로 끝난다. 실측에서 UNKNOWN
+ * 118건 중 50건(42%)이 여기서 죽었다.
+ *
+ * 원인은 키워드가 좁았던 것이다. 카카오맵은 "영업 전 11:30 오픈", "영업 종료"처럼
+ * 표기하는데 기존 패턴은 `영업 중`과 `영업 시간`만 알았다. 시간 표기는 멀쩡히
+ * 있는데 키워드가 안 맞아 버려졌다.
+ *
+ * 느슨하게 잡아도 안전하다. 뒤의 `hasCandidateIdentitySignal`이 무관한 페이지를
+ * 걸러내고, LLM도 근거가 없으면 UNPARSEABLE을 돌려준다.
+ */
+export const hasOperationSignal = (text: string): boolean =>
+  /영업\s*(?:시간|중|전|종료|시작)|영업시간|운영\s*시간|운영시간|오픈|마감|휴무|무휴|연중무휴|라스트\s*오더|브레이크|24\s*시간|매일|평일|주중|주말|월요일|화요일|수요일|목요일|금요일|토요일|일요일|[월화수목금토일]\s*[~\-–—]\s*[월화수목금토일]/u.test(
     text,
   ) && /(?:[01]?\d|2[0-4]):[0-5]\d/u.test(text);
 

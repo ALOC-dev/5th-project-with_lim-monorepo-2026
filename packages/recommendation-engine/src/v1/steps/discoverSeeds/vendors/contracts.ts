@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const LocalSeedProviderSchema = z.enum(["kakao", "tmap"]);
+export const LocalSeedProviderSchema = z.enum(["kakao", "naver", "tmap"]);
 export type LocalSeedProvider = z.infer<typeof LocalSeedProviderSchema>;
 
 export const LocalSeedSchema = z

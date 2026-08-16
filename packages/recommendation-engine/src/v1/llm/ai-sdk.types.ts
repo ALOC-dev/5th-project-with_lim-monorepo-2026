@@ -5,7 +5,8 @@ export type RecommendationLlmTask =
   | "discover.discovery_context"
   | "evaluate.enrichment"
   | "evaluate.operation_hours"
-  | "evaluate.scoring";
+  | "evaluate.scoring"
+  | "evaluate.shortlist";
 
 export type GenerateRecommendationObjectOptions<TObject> = {
   modelId?: string;

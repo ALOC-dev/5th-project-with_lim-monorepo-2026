@@ -20,6 +20,16 @@ const LlmDiscoveryContextQuerySchema = z
 
 export const LlmDiscoveryContextResponseSchema = z
   .object({
+    /**
+     * 요청에서 찾을 장소를 읽어낼 수 있었는지.
+     *
+     * 규칙 기반 검사는 "ㅁㄴㅇㄹ"처럼 한글 낱자가 섞인 입력까지가 한계다.
+     * "asdfgh qwerty" 같은 입력은 정상적인 로마자 요청과 규칙으로 구분할 수 없다.
+     * 검색어를 만드는 이 호출은 어차피 요청을 읽으므로, 여기서 판단을 함께 받으면
+     * 추가 비용 없이 두 번째 방어선이 된다. 못 읽겠다고 하면 파이프라인 전체를
+     * 돌리기 전에 끊는다(실측: 의미 없는 입력 하나에 66초를 썼다).
+     */
+    requestUnderstood: z.boolean(),
     queries: z
       .array(LlmDiscoveryContextQuerySchema)
       .min(MIN_DISCOVERY_TERM_COUNT)

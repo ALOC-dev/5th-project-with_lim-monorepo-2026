@@ -11,8 +11,37 @@ export const TmapPoiSchema = z
     lowerAddrName: z.string().optional(),
     detailAddrName: z.string().optional(),
     roadName: z.string().optional(),
+    /** 지번 본번/부번. 도로명 건물번호가 아니다. */
     firstNo: z.string().optional(),
     secondNo: z.string().optional(),
+    /** 도로명 건물번호 본번/부번. */
+    firstBuildNo: z.string().optional(),
+    secondBuildNo: z.string().optional(),
+    /**
+     * 완성된 도로명주소가 들어 있는 곳. 결과가 없으면 빈 문자열로 오기도 해서
+     * 객체와 문자열을 모두 받는다.
+     */
+    newAddressList: z
+      .union([
+        z
+          .object({
+            newAddress: z
+              .array(
+                z
+                  .object({
+                    roadName: z.string().optional(),
+                    bldNo1: z.string().optional(),
+                    bldNo2: z.string().optional(),
+                    fullAddressRoad: z.string().optional(),
+                  })
+                  .passthrough(),
+              )
+              .optional(),
+          })
+          .passthrough(),
+        z.string(),
+      ])
+      .optional(),
     frontLon: z.string().optional(),
     frontLat: z.string().optional(),
     noorLon: z.string().optional(),
