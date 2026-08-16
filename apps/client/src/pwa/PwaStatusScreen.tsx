@@ -19,7 +19,7 @@ const PwaStatusScreen = ({ action, description, title, tone }: PwaStatusScreenPr
     <PageRoot backgroundColor={tokens.color.primary[50]} layout="contained">
       <S.Content>
         <S.Icon alt="" src={tone === "boot" ? "/splash-map.png" : "/pwa-192x192.png"} />
-        <S.Brand>ALOC</S.Brand>
+        <S.Brand>SAI</S.Brand>
         <S.Copy>
           <S.Title>{title}</S.Title>
           <S.Description>{description}</S.Description>
@@ -39,7 +39,7 @@ export const PwaBootScreen = () => {
   return (
     <PwaStatusScreen
       description="맞춤 장소와 코스를 준비하고 있어요."
-      title="ALOC를 시작하는 중이에요"
+      title="SAI를 시작하는 중이에요"
       tone="boot"
     />
   );

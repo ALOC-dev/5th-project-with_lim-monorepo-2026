@@ -52,9 +52,9 @@ export default defineConfig({
       registerType: "autoUpdate",
       manifest: {
         id: "/",
-        name: "ALOC",
-        short_name: "ALOC",
-        description: "나에게 맞는 장소와 코스를 추천받는 ALOC",
+        name: "SAI",
+        short_name: "SAI",
+        description: "나에게 맞는 장소와 코스를 추천받는 SAI",
         lang: "ko-KR",
         start_url: "/",
         scope: "/",

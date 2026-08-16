@@ -3,18 +3,14 @@ import { useLocation, useParams } from "react-router-dom";
 
 import FeedbackState from "../../components/FeedbackState/FeedbackState";
 import { Icon } from "../../components/Icon";
-import { CourseIconButton } from "../../features/CourseRecommendation/components/CourseIconButton";
-import { CourseMap } from "../../features/CourseRecommendation/components/CourseMap";
 import { CoursePage } from "../../features/CourseRecommendation/components/CoursePage";
+import { CourseSummaryCard } from "../../features/CourseRecommendation/components/CourseSummaryCard";
+import { CourseTimeline } from "../../features/CourseRecommendation/components/CourseTimeline";
 import type {
   CourseFavorite,
   CourseOption,
 } from "../../features/CourseRecommendation/course.types";
-import {
-  formatCourseCost,
-  formatMinutes,
-  getCourseCandidateCounts,
-} from "../../features/CourseRecommendation/courseRecommendation.utils";
+import { formatCourseReason } from "../../features/CourseRecommendation/courseRecommendation.utils";
 import { courseRepository } from "../../features/CourseRecommendation/courseRepository";
 import { useAppBackNavigate, useAppNavigate } from "../../routes/useAppNavigate";
 import { S } from "./CourseRecommendationResultItemDetailPage.styled";
@@ -66,119 +62,66 @@ export const CourseRecommendationResultItemDetailPage = () => {
       </CoursePage>
     );
 
-  const candidateCounts = getCourseCandidateCounts(option);
   const omittedCandidates = option.candidateDecisions.filter(({ code }) => code !== "INCLUDED");
+  const reason = formatCourseReason(option.reasonTexts) || option.reason;
+  const hasAdditionalInfo = Boolean(
+    option.mealPlan || option.tradeoffs.length || omittedCandidates.length,
+  );
 
   return (
-    <CoursePage
-      onBack={navigateBack}
-      right={
-        <CourseIconButton
-          aria-label={option.isFavorite ? "코스 찜 해제" : "코스 찜하기"}
-          disabled={favorite.isPending}
-          onClick={() => favorite.mutate(!option.isFavorite)}
-          type="button"
-        >
-          <Icon name={option.isFavorite ? "heart-filled" : "heart-outline"} />
-        </CourseIconButton>
-      }
-      title="코스 상세"
-    >
+    <CoursePage onBack={navigateBack} title="코스 상세">
       <S.Detail>
-        <CourseMap height="232px" option={option} />
-        {option.routePathSource !== "TMAP" ? (
-          <S.MapNotice>
-            지도에는 방문 순서만 표시하며 실제 도보 경로선은 제공하지 않아요.
-          </S.MapNotice>
-        ) : null}
+        <CourseSummaryCard
+          favoritePending={favorite.isPending}
+          onFavoriteToggle={() => favorite.mutate(!option.isFavorite)}
+          option={option}
+        />
         {favorite.isError ? (
           <S.InlineError role="alert">코스 찜 상태를 변경하지 못했어요.</S.InlineError>
         ) : null}
         <S.Card>
-          <S.Heading>{option.title}</S.Heading>
-          <S.TypeDescription>{option.courseType.description}</S.TypeDescription>
-          <span>
-            {option.stops.length}곳 · 총 {formatMinutes(option.totalDurationMinutes)} · 이동{" "}
-            {option.totalTravelMinutes}분 · {formatCourseCost(option.estimatedCostPerPerson)}
-          </span>
-          {!option.legacy ? (
-            <span>
-              {option.startTime}~{option.endTime} · 체류 {option.totalStayMinutes}분 · 후보{" "}
-              {candidateCounts.total}곳 중 {candidateCounts.included}곳 사용
-            </span>
-          ) : (
-            <S.LegacyBadge>이전 추천 결과</S.LegacyBadge>
-          )}
-          <S.Route>{option.stops.map((stop) => stop.name).join(" → ")}</S.Route>
+          <S.SectionLabel>코스 구성 이유</S.SectionLabel>
+          <S.Reason>{reason}</S.Reason>
         </S.Card>
-        <S.Card>
-          <h3>코스 구성 이유</h3>
-          <S.ReasonList>
-            {option.reasonTexts.map((reason) => (
-              <li key={reason}>{reason}</li>
-            ))}
-          </S.ReasonList>
-          {option.tradeoffs.length ? (
-            <>
-              <h4>알아둘 점</h4>
-              <S.ReasonList>
-                {option.tradeoffs.map((tradeoff) => (
-                  <li key={tradeoff}>{tradeoff}</li>
-                ))}
-              </S.ReasonList>
-            </>
-          ) : null}
-          {option.mealPlan ? (
-            <S.MealPlan>
-              <strong>식사 계획</strong>
-              <span>{option.mealPlan.reason}</span>
-            </S.MealPlan>
-          ) : null}
-        </S.Card>
-        <S.Card>
-          <h3>시간순 코스</h3>
-          {option.stops.map((stop, index) => (
-            <div key={stop.id}>
-              {index > 0 ? (
-                <S.Leg>
-                  도보 {stop.travelMinutesFromPrevious}분
-                  {stop.waitMinutesFromPrevious > 0
-                    ? ` · 도착 후 ${stop.waitMinutesFromPrevious}분 대기`
-                    : ""}
-                </S.Leg>
+        <CourseTimeline option={option} />
+        {hasAdditionalInfo ? (
+          <S.AdditionalInfo>
+            <summary>
+              <span>추가 정보</span>
+              <Icon name="chevron-right" size={20} />
+            </summary>
+            <S.AdditionalContent>
+              {option.mealPlan ? (
+                <S.InfoSection>
+                  <h4>식사 계획</h4>
+                  <p>{option.mealPlan.reason}</p>
+                </S.InfoSection>
               ) : null}
-              <S.Stop>
-                <time>{stop.visitTime}</time>
-                <b>{index + 1}</b>
-                <span>
-                  <strong>{stop.name}</strong>
-                  <small>
-                    {stop.category} · {stop.activityLabel} · {stop.stayMinutes}분 체류
-                  </small>
-                  {stop.placeUrl ? (
-                    <a href={stop.placeUrl} rel="noreferrer" target="_blank">
-                      카카오맵에서 정확한 장소 보기
-                    </a>
-                  ) : (
-                    <small>지도 상세 링크 미확인</small>
-                  )}
-                </span>
-              </S.Stop>
-            </div>
-          ))}
-        </S.Card>
-        {omittedCandidates.length ? (
-          <S.Card>
-            <h3>포함하지 않은 후보</h3>
-            <S.DecisionList>
-              {omittedCandidates.map((decision) => (
-                <li key={`${decision.candidateId}:${decision.code}`}>
-                  <strong>{decision.candidateName}</strong>
-                  <span>{decision.message}</span>
-                </li>
-              ))}
-            </S.DecisionList>
-          </S.Card>
+              {option.tradeoffs.length ? (
+                <S.InfoSection>
+                  <h4>알아둘 점</h4>
+                  <S.InfoList>
+                    {option.tradeoffs.map((tradeoff) => (
+                      <li key={tradeoff}>{tradeoff}</li>
+                    ))}
+                  </S.InfoList>
+                </S.InfoSection>
+              ) : null}
+              {omittedCandidates.length ? (
+                <S.InfoSection>
+                  <h4>포함하지 않은 후보</h4>
+                  <S.DecisionList>
+                    {omittedCandidates.map((decision) => (
+                      <li key={`${decision.candidateId}:${decision.code}`}>
+                        <strong>{decision.candidateName}</strong>
+                        <span>{decision.message}</span>
+                      </li>
+                    ))}
+                  </S.DecisionList>
+                </S.InfoSection>
+              ) : null}
+            </S.AdditionalContent>
+          </S.AdditionalInfo>
         ) : null}
       </S.Detail>
     </CoursePage>

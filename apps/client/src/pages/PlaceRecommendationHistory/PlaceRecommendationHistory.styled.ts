@@ -87,6 +87,7 @@ export const S = {
   `,
 
   Card: styled.li<{ $status: PlaceRecommendationHistoryDisplayStatus }>`
+    position: relative;
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
@@ -115,14 +116,20 @@ export const S = {
     cursor: pointer;
     text-align: left;
 
-    &:active {
-      background-color: ${tokens.color.neutral["50"]};
+    &::after {
+      position: absolute;
+      inset: 0;
+      border-radius: 12px;
+      content: "";
     }
 
     &:focus-visible {
+      outline: none;
+    }
+
+    &:focus-visible::after {
       outline: 2px solid ${tokens.color.primary["500"]};
       outline-offset: -2px;
-      border-radius: 8px;
     }
   `,
 
@@ -166,6 +173,8 @@ export const S = {
   `,
 
   CardActions: styled.div`
+    position: relative;
+    z-index: 1;
     display: flex;
     align-items: center;
     gap: 8px;

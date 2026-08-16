@@ -152,7 +152,7 @@ export const CourseRecommendationHistoryPage = () => {
                           }}
                           type="button"
                         >
-                          <Icon name="edit" size={18} />
+                          <Icon name="edit" size={20} />
                         </CourseIconButton>
                       ) : null}
                       <CourseIconButton
@@ -163,7 +163,7 @@ export const CourseRecommendationHistoryPage = () => {
                         }}
                         type="button"
                       >
-                        <Icon name="close" size={18} />
+                        <Icon name="close" size={20} />
                       </CourseIconButton>
                     </S.HistoryActions>
                   </S.History>

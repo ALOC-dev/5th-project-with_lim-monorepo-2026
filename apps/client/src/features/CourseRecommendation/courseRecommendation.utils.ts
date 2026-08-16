@@ -1,4 +1,4 @@
-import type { CourseHistoryItem, CourseOption } from "./course.types";
+import type { CourseHistoryItem, CourseOption, CourseStop } from "./course.types";
 
 export type CourseHistoryDisplayStatus = "pending" | "success" | "failed" | "empty" | "cancelled";
 
@@ -26,6 +26,31 @@ export const formatMinutes = (value: number) =>
   value % 60 === 0
     ? `${Math.floor(value / 60)}시간`
     : `${Math.floor(value / 60)}시간 ${value % 60}분`;
+
+export const formatCourseSummary = (
+  option: Pick<
+    CourseOption,
+    "estimatedCostPerPerson" | "stops" | "totalDurationMinutes" | "totalTravelMinutes"
+  >,
+) =>
+  `${option.stops.length}곳 · 총 ${formatMinutes(option.totalDurationMinutes)} · 이동 ${option.totalTravelMinutes}분 · ${formatCourseCost(option.estimatedCostPerPerson)}`;
+
+export const formatCourseReason = (reasonTexts: readonly string[]) =>
+  reasonTexts
+    .map((reason) => reason.trim())
+    .filter(Boolean)
+    .join(" ");
+
+export const formatCourseLeg = (
+  stop: Pick<CourseStop, "travelMinutesFromPrevious" | "waitMinutesFromPrevious">,
+) => {
+  const labels = [
+    stop.travelMinutesFromPrevious > 0 ? `도보 ${stop.travelMinutesFromPrevious}분` : null,
+    stop.waitMinutesFromPrevious > 0 ? `도착 후 ${stop.waitMinutesFromPrevious}분 대기` : null,
+  ].filter((label): label is string => Boolean(label));
+
+  return labels.length > 0 ? labels.join(" · ") : null;
+};
 
 export const formatDate = (value: string) => value.slice(0, 10).replace(/-/g, ". ");
 

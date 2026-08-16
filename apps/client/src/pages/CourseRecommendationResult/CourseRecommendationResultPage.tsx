@@ -1,16 +1,11 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useCallback, useEffect, useRef } from "react";
 import { useParams } from "react-router-dom";
 import { toast } from "sonner";
 
 import FeedbackState from "../../components/FeedbackState/FeedbackState";
-import { CourseMap } from "../../features/CourseRecommendation/components/CourseMap";
 import { CoursePage } from "../../features/CourseRecommendation/components/CoursePage";
-import {
-  formatCourseCost,
-  formatMinutes,
-  getCourseCandidateCounts,
-} from "../../features/CourseRecommendation/courseRecommendation.utils";
+import { CourseSummaryCard } from "../../features/CourseRecommendation/components/CourseSummaryCard";
 import { courseRepository } from "../../features/CourseRecommendation/courseRepository";
 import { CourseRecommendationResultPending } from "../../features/CourseRecommendationResult/CourseRecommendationResultPending";
 import { useAppBackNavigate, useAppNavigate } from "../../routes/useAppNavigate";
@@ -33,7 +28,18 @@ export const CourseRecommendationResultPage = () => {
         : false,
     retry: false,
   });
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const favorite = useMutation({
+    mutationFn: ({ optionId, value }: { readonly optionId: string; readonly value: boolean }) =>
+      courseRepository.toggleFavorite(courseId ?? "", optionId, value),
+    onSuccess: (_result, { optionId }) => {
+      void Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["course", courseId] }),
+        queryClient.invalidateQueries({ queryKey: ["course-option", courseId, optionId] }),
+        queryClient.invalidateQueries({ queryKey: ["course-favorites"] }),
+      ]);
+    },
+    onError: () => toast.error("코스 찜 상태를 변경하지 못했어요."),
+  });
 
   const refreshStatus = useCallback(() => {
     if (!courseId) return;
@@ -129,82 +135,32 @@ export const CourseRecommendationResultPage = () => {
         />
       </CoursePage>
     );
-  const selected =
-    recommendation.options.find(({ id }) => id === selectedId) ?? recommendation.options[0];
-  if (!selected) return null;
-  const selectedIndex = Math.max(
-    0,
-    recommendation.options.findIndex(({ id }) => id === selected.id),
-  );
-
   return (
     <CoursePage onBack={navigateBack} title="코스 결과">
-      <S.ResultMap>
-        <S.MapLabel aria-live="polite">
-          {selectedIndex + 1}번 코스 · {selected.courseType.label}
-        </S.MapLabel>
-        <CourseMap option={selected} />
-      </S.ResultMap>
       <S.Result>
         <S.ResultHeader>
           <S.ResultTitle>
             추천 코스 <S.ResultCount>{recommendation.options.length}개</S.ResultCount>
           </S.ResultTitle>
-          <S.SelectionStatus aria-live="polite">
-            {selectedIndex + 1}번 코스 선택됨
-          </S.SelectionStatus>
+          <S.ResultDescription>장소 흐름과 이동 시간을 확인해 보세요.</S.ResultDescription>
         </S.ResultHeader>
-        {recommendation.legacy ? <S.LegacyBadge>이전 추천 결과</S.LegacyBadge> : null}
-        {recommendation.options.map((option, index) => {
-          const counts = getCourseCandidateCounts(option);
-          const omitted = option.candidateDecisions.filter(({ code }) => code !== "INCLUDED");
+        {recommendation.options.map((option) => {
           return (
-            <S.Option $selected={option.id === selected.id} key={option.id}>
-              <S.OptionRow>
-                <S.OptionSelect
-                  aria-label={`${index + 1}번 ${option.courseType.label} 코스 선택`}
-                  aria-pressed={option.id === selected.id}
-                  onClick={() => setSelectedId(option.id)}
-                  type="button"
-                >
-                  <b>{option.rank}</b>
-                  <span>
-                    <strong>{option.title}</strong>
-                    <small>{option.stops.map((stop) => stop.name).join(" → ")}</small>
-                    <small>
-                      후보 {counts.total}곳 중 {counts.included}곳 사용 · 총{" "}
-                      {formatMinutes(option.totalDurationMinutes)} · 도보{" "}
-                      {option.totalTravelMinutes}분
-                    </small>
-                    <small>{formatCourseCost(option.estimatedCostPerPerson)}</small>
-                  </span>
-                </S.OptionSelect>
-                <S.TextButton
-                  aria-label={`${index + 1}번 ${option.courseType.label} 코스 상세 보기`}
-                  onClick={() =>
-                    void navigate(
-                      `/course/recommendation/${encodeURIComponent(courseId)}/option/${encodeURIComponent(option.id)}`,
-                    )
-                  }
-                  type="button"
-                >
-                  상세 보기
-                </S.TextButton>
-              </S.OptionRow>
-              <S.OptionReason>{option.reasonTexts[0]}</S.OptionReason>
-              {omitted.length ? (
-                <S.Decisions>
-                  <summary>포함하지 않은 후보 {omitted.length}곳</summary>
-                  <ul>
-                    {omitted.map((decision) => (
-                      <li key={`${decision.candidateId}:${decision.code}`}>
-                        <strong>{decision.candidateName}</strong> · {decision.message}
-                      </li>
-                    ))}
-                  </ul>
-                </S.Decisions>
-              ) : null}
-            </S.Option>
+            <CourseSummaryCard
+              favoritePending={favorite.isPending && favorite.variables?.optionId === option.id}
+              key={option.id}
+              onFavoriteToggle={() =>
+                favorite.mutate({ optionId: option.id, value: !option.isFavorite })
+              }
+              onOpen={() =>
+                void navigate(
+                  `/course/recommendation/${encodeURIComponent(courseId)}/option/${encodeURIComponent(option.id)}`,
+                )
+              }
+              option={option}
+              showRank
+              showReason
+            />
           );
         })}
       </S.Result>

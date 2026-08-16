@@ -7,95 +7,98 @@ export const S = {
     display: flex;
     flex: 1;
     flex-direction: column;
-    gap: 14px;
+    gap: 16px;
+    padding: 12px 24px 32px;
     overflow: auto;
   `,
   Card: styled.section`
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    margin: 0 24px;
-    padding: 16px;
+    gap: 14px;
+    padding: 20px 16px;
     border: 1px solid ${tokens.color.neutral[200]};
-    border-radius: 12px;
-    background: white;
+    border-radius: 16px;
+    background: ${tokens.color.neutral[0]};
+  `,
+  SectionLabel: styled.h3`
+    margin: 0;
+    color: ${tokens.color.neutral[700]};
+    ${tokens.typography.label.lg};
+  `,
+  Reason: styled.p`
+    margin: 0;
+    color: ${tokens.color.neutral[900]};
+    ${tokens.typography.body.lg};
+  `,
+  AdditionalInfo: styled.details`
+    border: 1px solid ${tokens.color.neutral[200]};
+    border-radius: 16px;
+    background: ${tokens.color.neutral[0]};
 
-    h3,
+    summary {
+      display: flex;
+      min-height: 56px;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      color: ${tokens.color.neutral[900]};
+      cursor: pointer;
+      list-style: none;
+      ${tokens.typography.label.lg};
+
+      &::-webkit-details-marker {
+        display: none;
+      }
+
+      svg {
+        transition: transform 160ms ease;
+      }
+
+      &:focus-visible {
+        outline: 2px solid ${tokens.color.primary[500]};
+        outline-offset: 2px;
+        border-radius: 16px;
+      }
+    }
+
+    &[open] summary svg {
+      transform: rotate(90deg);
+    }
+  `,
+  AdditionalContent: styled.div`
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    padding: 0 16px 18px;
+  `,
+  InfoSection: styled.section`
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+
     h4,
     p {
       margin: 0;
     }
 
-    span,
+    h4 {
+      color: ${tokens.color.neutral[900]};
+      ${tokens.typography.label.lg};
+    }
+
     p {
       color: ${tokens.color.neutral[700]};
+      ${tokens.typography.body.sm};
     }
   `,
-  Heading: styled.h2`
-    margin: 0;
-    color: ${tokens.color.neutral[900]};
-    ${tokens.typography.title.xs};
-  `,
-  TypeDescription: styled.p`
-    color: ${tokens.color.neutral[700]};
-  `,
-  Route: styled.p`
-    color: ${tokens.color.primary[700]}!important;
-  `,
-  Stop: styled.div`
-    display: grid;
-    grid-template-columns: 42px 26px 1fr;
-    gap: 8px;
-
-    time {
-      color: ${tokens.color.neutral[700]};
-    }
-
-    b {
-      display: grid;
-      width: 24px;
-      height: 24px;
-      place-items: center;
-      border-radius: 50%;
-      background: ${tokens.color.primary[100]};
-    }
-
-    span {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-    }
-
-    small {
-      color: ${tokens.color.neutral[700]};
-    }
-
-    a {
-      min-height: 44px;
-      padding: 12px 0;
-      color: ${tokens.color.primary[700]};
-    }
-  `,
-  Leg: styled.p`
-    margin: 8px 0 8px 76px;
-    color: ${tokens.color.neutral[700]};
-    ${tokens.typography.body.xs};
-  `,
-  ReasonList: styled.ul`
+  InfoList: styled.ul`
     display: flex;
     flex-direction: column;
     gap: 6px;
     margin: 0;
     padding-left: 20px;
     color: ${tokens.color.neutral[700]};
-  `,
-  MealPlan: styled.div`
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    padding: 12px;
-    border-radius: 10px;
-    background: ${tokens.color.primary[50]};
+    ${tokens.typography.body.sm};
   `,
   DecisionList: styled.ul`
     display: flex;
@@ -103,7 +106,9 @@ export const S = {
     gap: 10px;
     margin: 0;
     padding: 0;
+    color: ${tokens.color.neutral[700]};
     list-style: none;
+    ${tokens.typography.body.sm};
 
     li {
       display: flex;
@@ -111,22 +116,9 @@ export const S = {
       gap: 2px;
     }
   `,
-  LegacyBadge: styled.span`
-    align-self: flex-start;
-    padding: 5px 10px;
-    border-radius: 999px;
-    background: ${tokens.color.neutral[50]};
-    color: ${tokens.color.neutral[700]};
-    ${tokens.typography.label.xs};
-  `,
   InlineError: styled.p`
-    margin: 20px 24px 0;
+    margin: -4px 0 0;
     color: ${tokens.color.warning[500]};
-    ${tokens.typography.body.xs};
-  `,
-  MapNotice: styled.p`
-    margin: 0 24px;
-    color: ${tokens.color.neutral[700]};
     ${tokens.typography.body.xs};
   `,
 };

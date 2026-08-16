@@ -110,6 +110,20 @@ const globalResetStyle = css`
     text-align: inherit;
   }
 
+  body
+    :where(
+      button,
+      a[href],
+      input,
+      select,
+      textarea,
+      summary,
+      [tabindex]:not([tabindex="-1"])
+    ):focus-visible {
+    outline: 2px solid ${tokens.color.primary[500]};
+    outline-offset: 2px;
+  }
+
   @media (prefers-reduced-motion: reduce) {
     *,
     *::before,

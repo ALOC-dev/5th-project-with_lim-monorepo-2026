@@ -36,7 +36,6 @@ export const S = {
   `,
   HistoryLoadingCard: styled.li`
     display: flex;
-    min-height: 100px;
     align-items: flex-start;
     justify-content: space-between;
     padding: 16px 12px;
@@ -49,8 +48,7 @@ export const S = {
     min-width: 0;
     flex: 1;
     flex-direction: column;
-    gap: 6px;
-    padding-top: 3px;
+    gap: 3px;
   `,
   HistoryLoadingActions: styled.div`
     display: flex;
@@ -59,6 +57,7 @@ export const S = {
   `,
   HistoryList: styled.ul`
     display: flex;
+    width: 100%;
     flex-direction: column;
     gap: 20px;
     margin: 0;
@@ -66,7 +65,10 @@ export const S = {
     list-style: none;
   `,
   History: styled.li<{ $status: CourseHistoryDisplayStatus }>`
+    position: relative;
     display: flex;
+    width: 100%;
+    box-sizing: border-box;
     align-items: flex-start;
     justify-content: space-between;
     padding: 16px 12px;
@@ -81,6 +83,7 @@ export const S = {
     background: ${({ $status }) =>
       $status === "empty" ? tokens.color.secondary[50] : tokens.color.neutral[0]};
     opacity: ${({ $status }) => ($status === "cancelled" ? 0.72 : 1)};
+    transition: all 0.2s ease-in-out;
   `,
   HistoryOpen: styled.button`
     display: flex;
@@ -88,7 +91,6 @@ export const S = {
     align-self: stretch;
     min-width: 0;
     flex-direction: column;
-    align-items: flex-start;
     padding: 0;
     border: 0;
     background: transparent;
@@ -96,14 +98,20 @@ export const S = {
     cursor: pointer;
     text-align: left;
 
-    &:active {
-      background: ${tokens.color.neutral[50]};
+    &::after {
+      position: absolute;
+      inset: 0;
+      border-radius: 12px;
+      content: "";
     }
 
     &:focus-visible {
+      outline: none;
+    }
+
+    &:focus-visible::after {
       outline: 2px solid ${tokens.color.primary[500]};
       outline-offset: -2px;
-      border-radius: 8px;
     }
   `,
   HistoryInfo: styled.div`
@@ -122,9 +130,13 @@ export const S = {
   `,
   HistoryTitle: styled.h2`
     margin: 0;
+    overflow: hidden;
     color: ${tokens.color.neutral[900]};
+    text-overflow: ellipsis;
+    white-space: nowrap;
     ${tokens.typography.title.xs};
     font-size: 16px;
+    font-weight: 700;
     line-height: 24px;
   `,
   HistoryDescription: styled.p<{ $status: CourseHistoryDisplayStatus }>`
@@ -137,6 +149,7 @@ export const S = {
           : tokens.color.neutral[700]};
     ${tokens.typography.body.xs};
     font-size: 12px;
+    font-weight: 400;
     line-height: 18px;
   `,
   HistoryStatusBadge: styled.span<{ $status: CourseHistoryDisplayStatus }>`
@@ -150,10 +163,21 @@ export const S = {
     ${tokens.typography.label.xs};
   `,
   HistoryActions: styled.div`
+    position: relative;
+    z-index: 1;
     display: flex;
     align-items: center;
     gap: 8px;
     margin-left: 12px;
+
+    svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    & > button:last-child {
+      color: ${tokens.color.neutral[900]};
+    }
   `,
   HistorySpinner: styled.div`
     width: 20px;
