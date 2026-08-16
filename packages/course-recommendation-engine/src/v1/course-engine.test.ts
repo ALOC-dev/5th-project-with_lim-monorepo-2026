@@ -7,6 +7,7 @@ import {
   type CourseCurationClient,
   type CourseInput,
   CourseRecommendationEngine,
+  createCourseRecommendationEngine,
   createCalibratedTmapMatrixClient,
   DEFAULT_COURSE_ENGINE_CONFIG,
   estimateStayDeterministically,
@@ -45,7 +46,10 @@ const passthroughCuration: CourseCurationClient = ({ candidates, targetCourseCou
     })),
   });
 
-const uniformSchedules = (open: string, close: string): PlaceRecommendationItem["operationInfo"] => ({
+const uniformSchedules = (
+  open: string,
+  close: string,
+): PlaceRecommendationItem["operationInfo"] => ({
   timezone: "Asia/Seoul",
   schedules: {
     MONDAY: { status: "OPEN", open, close, breakTimes: [] },
@@ -208,6 +212,83 @@ test("rejects inputs with more than fifteen places", async () => {
   assert.equal(result.error.code, "COURSE_INPUT_TOO_MANY_PLACES");
 });
 
+test("rejects inputs with fewer than two candidate places", async () => {
+  const engine = createCourseRecommendationEngine({
+    ...courseInput([basePlace({ id: "only", name: "유일한 후보" })]),
+  });
+
+  const result = await engine.process();
+
+  assert.equal(result.status, "ERROR");
+  assert.equal(result.error.code, "COURSE_INPUT_TOO_FEW_PLACES");
+});
+
+test("reports stable progress phases and explains every candidate decision", async () => {
+  const places = [
+    basePlace({ id: "first", name: "첫 후보", score: 90 }),
+    basePlace({ id: "second", name: "둘째 후보", score: 85 }),
+    basePlace({ id: "third", name: "셋째 후보", score: 80 }),
+  ];
+  const progress: string[] = [];
+  const engine = createCourseRecommendationEngine(
+    courseInput(places),
+    DEFAULT_COURSE_ENGINE_CONFIG,
+    {
+      curateCourses: passthroughCuration,
+      travelMatrix: walkMatrix(
+        ["first", "second", 10],
+        ["first", "third", 10],
+        ["second", "third", 10],
+      ),
+      onProgress: (step) => {
+        progress.push(step);
+      },
+    },
+  );
+
+  const result = await engine.process();
+
+  assert.equal(result.status, "SUCCESS");
+  assert.deepEqual(progress, ["measuring_travel", "generating_courses", "curating_courses"]);
+  for (const course of result.userOutput.courses) {
+    assert.deepEqual(
+      new Set(course.candidateDecisions.map((decision) => decision.placeId)),
+      new Set(places.map((place) => place.id)),
+    );
+    assert.equal(
+      course.candidateDecisions.filter((decision) => decision.decision === "INCLUDED").length,
+      course.places.length,
+    );
+  }
+});
+
+test("cancels an in-flight engine run with the supplied abort signal", async () => {
+  const abortController = new AbortController();
+  const abortReason = new Error("course job cancelled");
+  const places = [
+    basePlace({ id: "first", name: "첫 후보" }),
+    basePlace({ id: "second", name: "둘째 후보" }),
+  ];
+  const travelMatrix: TravelMatrixClient = ({ signal }) =>
+    new Promise((_, reject) => {
+      signal?.addEventListener("abort", () => reject(signal.reason), { once: true });
+    });
+  const engine = createCourseRecommendationEngine(
+    courseInput(places),
+    DEFAULT_COURSE_ENGINE_CONFIG,
+    {
+      signal: abortController.signal,
+      travelMatrix,
+      curateCourses: passthroughCuration,
+      onProgress: (step) => {
+        if (step === "measuring_travel") queueMicrotask(() => abortController.abort(abortReason));
+      },
+    },
+  );
+
+  await assert.rejects(engine.process(), (error) => error === abortReason);
+});
+
 test("uses measured walk minutes instead of the straight-line estimate", async () => {
   const first = basePlace({
     id: "first",
@@ -219,7 +300,12 @@ test("uses measured walk minutes instead of the straight-line estimate", async (
     id: "second",
     name: "두 번째 장소",
     score: 85,
-    location: { lat: 37.51, lng: 127.01, placeName: "두 번째 장소", roadAddressKo: "서울시 둘로 2" },
+    location: {
+      lat: 37.51,
+      lng: 127.01,
+      placeName: "두 번째 장소",
+      roadAddressKo: "서울시 둘로 2",
+    },
   });
   const engine = new CourseRecommendationEngine(
     {
@@ -479,7 +565,12 @@ test("mirrors a one-directional walk measurement onto both directions", async ()
     name: "두 번째 장소",
     score: 80,
     // 직선거리로는 1km가 넘어 추정하면 13분쯤 나온다. 계측값 7분과 확실히 구분된다.
-    location: { lat: 37.51, lng: 127.01, placeName: "두 번째 장소", roadAddressKo: "서울시 둘로 2" },
+    location: {
+      lat: 37.51,
+      lng: 127.01,
+      placeName: "두 번째 장소",
+      roadAddressKo: "서울시 둘로 2",
+    },
   });
   const engine = new CourseRecommendationEngine(
     {
@@ -518,7 +609,12 @@ test("estimates walking time from straight-line distance when no measurement is 
     id: "second",
     name: "두 번째 장소",
     score: 80,
-    location: { lat: 37.5, lng: 127.006, placeName: "두 번째 장소", roadAddressKo: "서울시 둘로 2" },
+    location: {
+      lat: 37.5,
+      lng: 127.006,
+      placeName: "두 번째 장소",
+      roadAddressKo: "서울시 둘로 2",
+    },
   });
   const engine = new CourseRecommendationEngine(
     {
@@ -666,7 +762,12 @@ test("reports the calibration in meta and applies it to every leg", async () => 
     id: "second",
     name: "두 번째 장소",
     score: 80,
-    location: { lat: 37.554, lng: 126.924, placeName: "두 번째 장소", roadAddressKo: "서울시 둘로 2" },
+    location: {
+      lat: 37.554,
+      lng: 126.924,
+      placeName: "두 번째 장소",
+      roadAddressKo: "서울시 둘로 2",
+    },
   });
 
   const engine = new CourseRecommendationEngine(
@@ -889,8 +990,8 @@ test("extends seated stay for large groups", () => {
   });
 
   const small = estimateStayDeterministically(meal, stayOptions).range.typical;
-  const large = estimateStayDeterministically(meal, { ...stayOptions, numberOfPeople: 6 })
-    .range.typical;
+  const large = estimateStayDeterministically(meal, { ...stayOptions, numberOfPeople: 6 }).range
+    .typical;
 
   assert.equal(large - small, DEFAULT_COURSE_ENGINE_CONFIG.largeGroupExtraStayMinutes);
 });
@@ -920,7 +1021,14 @@ test("clamps an LLM stay estimate into the category range", () => {
 
 test("redistributes leftover time into stays instead of leaving the course short", async () => {
   const places = [
-    basePlace({ id: "meal", name: "식당", mainCategory: "식당", subCategory: "한식", score: 90, priceRangePerPerson: [20_000, 30_000] }),
+    basePlace({
+      id: "meal",
+      name: "식당",
+      mainCategory: "식당",
+      subCategory: "한식",
+      score: 90,
+      priceRangePerPerson: [20_000, 30_000],
+    }),
     basePlace({ id: "cafe", name: "카페", score: 88 }),
   ];
 
@@ -1001,8 +1109,18 @@ test("penalises places with unknown opening hours and flags them as a tradeoff",
 });
 
 test("scores a course against the budget when one is given", async () => {
-  const cheap = basePlace({ id: "cheap", name: "저렴한 곳", score: 80, priceRangePerPerson: [5_000, 10_000] });
-  const pricey = basePlace({ id: "pricey", name: "비싼 곳", score: 80, priceRangePerPerson: [80_000, 120_000] });
+  const cheap = basePlace({
+    id: "cheap",
+    name: "저렴한 곳",
+    score: 80,
+    priceRangePerPerson: [5_000, 10_000],
+  });
+  const pricey = basePlace({
+    id: "pricey",
+    name: "비싼 곳",
+    score: 80,
+    priceRangePerPerson: [80_000, 120_000],
+  });
 
   const withBudget = async (budgetPerPersonWon?: number) => {
     const engine = new CourseRecommendationEngine(

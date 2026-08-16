@@ -1,6 +1,8 @@
-import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 
 import Header from "../../components/Header/Header";
+import { Input } from "../../components/Input";
+import { useAppBackNavigate, useAppNavigate } from "../../routes/useAppNavigate";
 import { useForgotPasswordInput } from "./ForgotPassword.context";
 import { S } from "./ForgotPassword.styled";
 
@@ -8,7 +10,8 @@ export default function ResetPasswordForm() {
   const { password, setPassword, passwordConfirm, setPasswordConfirm, handleResetPassword } =
     useForgotPasswordInput();
 
-  const navigate = useNavigate();
+  const navigate = useAppNavigate();
+  const navigateBack = useAppBackNavigate("/login/forgotpassword");
 
   const isPasswordValid =
     /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d!@#$%^&*()_+~`\-={}[\]:;"'<>,.?/]{8,20}$/.test(password);
@@ -22,7 +25,7 @@ export default function ResetPasswordForm() {
     e.preventDefault();
 
     if (!isPasswordValid) {
-      alert("비밀번호 형식을 확인해 주세요.");
+      toast.warning("비밀번호 형식을 확인해 주세요.");
       return;
     }
 
@@ -38,7 +41,7 @@ export default function ResetPasswordForm() {
 
   return (
     <S.Container>
-      <Header onBack={() => navigate(-1)} title="새 비밀번호 설정" />
+      <Header onBack={navigateBack} title="새 비밀번호 설정" />
 
       <S.Form onSubmit={handleSubmit}>
         <S.IntroSection>
@@ -56,7 +59,7 @@ export default function ResetPasswordForm() {
 
         <S.InputGroup>
           <S.Label htmlFor="password">새 비밀번호</S.Label>
-          <S.Input
+          <Input
             type="password"
             id="password"
             placeholder="8~20자"
@@ -74,7 +77,7 @@ export default function ResetPasswordForm() {
 
         <S.InputGroup>
           <S.Label htmlFor="passwordConfirm">새 비밀번호 확인</S.Label>
-          <S.Input
+          <Input
             type="password"
             id="passwordConfirm"
             placeholder="비밀번호 재입력"

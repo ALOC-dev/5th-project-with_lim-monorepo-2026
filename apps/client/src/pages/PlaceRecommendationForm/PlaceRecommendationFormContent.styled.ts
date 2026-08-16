@@ -58,6 +58,18 @@ export const S = {
     gap: 4px;
   `,
 
+  TimeSelection: styled.div`
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: center;
+    gap: 8px;
+  `,
+
+  TimeSeparator: styled.span`
+    color: ${tokens.color.neutral[700]};
+    ${tokens.typography.body.lg}
+  `,
+
   LocationSection: styled.div`
     display: flex;
     flex-direction: column;
@@ -157,12 +169,12 @@ export const S = {
     border-radius: 8px;
     outline: none;
     resize: none;
-    font-size: 14px;
+    ${tokens.typography.body.sm};
     color: ${tokens.color.neutral["900"]};
 
     &::placeholder {
       font-weight: 4 00;
-      color: ${tokens.color.neutral["700"]};
+      color: ${tokens.color.neutral["200"]};
     }
   `,
 
@@ -191,14 +203,14 @@ export const S = {
     accent-color: ${tokens.color.primary["700"]};
   `,
 
-  OptionalLabel: styled.span`
+  OptionalLabel: styled.label`
     width: 90px;
     font-size: 13px;
     font-weight: 500;
     line-height: 18px;
     white-space: nowrap; // 두 줄로 줄바꿈 되지 않음
     flex-shrink: 0;
-    color: ${tokens.color.secondary["700"]};
+    color: ${tokens.color.neutral["700"]};
   `,
 
   BudgetWrapper: styled.div<{ $disabled: boolean }>`
@@ -214,7 +226,9 @@ export const S = {
   `,
 
   ButtonWrapper: styled.div`
-    margin-top: 24px;
+    flex: none;
+    padding: 16px 28px 24px;
+    border-top: 1px solid ${tokens.color.neutral["200"]};
   `,
 
   SubmitErrorMessage: styled.p`
@@ -223,13 +237,6 @@ export const S = {
     font-size: 13px;
     font-weight: 500;
   `,
-  DateInputWrapper: styled.div`
-    cursor: pointer;
-    & * {
-      cursor: pointer;
-    }
-  `,
-
   BudgetAmountText: styled.div`
     text-align: right;
     font-size: 13px;

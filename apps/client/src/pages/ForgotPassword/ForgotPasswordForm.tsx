@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 
 import Header from "../../components/Header/Header";
+import { Input } from "../../components/Input";
+import { useAppBackNavigate, useAppNavigate } from "../../routes/useAppNavigate";
 import { useForgotPasswordInput } from "./ForgotPassword.context";
 import { S } from "./ForgotPassword.styled";
 
@@ -17,7 +18,8 @@ export default function ForgotPasswordForm() {
     handleVerifyAuthCode,
   } = useForgotPasswordInput();
 
-  const navigate = useNavigate();
+  const navigate = useAppNavigate();
+  const navigateBack = useAppBackNavigate("/login");
 
   // ⏱️ 타이머 상태 관리 추가
   const [timeLeft, setTimeLeft] = useState(300);
@@ -59,7 +61,7 @@ export default function ForgotPasswordForm() {
 
   return (
     <S.Container>
-      <Header onBack={() => navigate(-1)} title="비밀번호 재설정" />
+      <Header onBack={navigateBack} title="비밀번호 재설정" />
 
       <S.Form onSubmit={handleSubmit}>
         <S.IntroSection>
@@ -85,7 +87,7 @@ export default function ForgotPasswordForm() {
         <S.InputGroup>
           <S.Label htmlFor="email">이메일</S.Label>
           <S.InputRow>
-            <S.Input
+            <Input
               type="email"
               id="email"
               placeholder="name@example.com"
@@ -113,7 +115,7 @@ export default function ForgotPasswordForm() {
           <S.InputGroup>
             <S.Label htmlFor="authCode">인증번호</S.Label>
             <S.InputRow>
-              <S.Input
+              <Input
                 type="text"
                 id="authCode"
                 placeholder="6자리 숫자"

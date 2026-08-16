@@ -1,5 +1,9 @@
 import BottomSheet from "../../../../components/BottomSheet/BottomSheet";
-import { usePlaceRecommendationFormUi } from "../../PlaceRecommendationForm.context";
+import { Button } from "../../../../components/Button";
+import {
+  usePlaceRecommendationFormInput,
+  usePlaceRecommendationFormUi,
+} from "../../PlaceRecommendationForm.context";
 import { LocationSelectionProvider, useLocationSelection } from "./LocationSelection.context";
 import { S } from "./LocationSelectionBottomSheet.styled";
 import MapModeContent from "./map-mode/MapModeContent";
@@ -8,12 +12,13 @@ import SearchModeContent from "./search-mode/SearchModeContent";
 
 const LocationSelectionBottomSheet = () => {
   const { closeSheet, isSheetOpen } = usePlaceRecommendationFormUi();
+  const isLocationSheetOpen = isSheetOpen("location");
 
   return (
-    <LocationSelectionProvider>
+    <LocationSelectionProvider isLocationSheetOpen={isLocationSheetOpen}>
       <BottomSheet
         id={"location-selector-bottomsheet"}
-        isOpen={isSheetOpen("location")}
+        isOpen={isLocationSheetOpen}
         close={closeSheet}
         handleType="none"
       >
@@ -24,14 +29,39 @@ const LocationSelectionBottomSheet = () => {
 };
 
 const LocationSelectionBottomSheetContent = () => {
-  const { mode } = useLocationSelection();
+  const { currentLocation, mode, openMapMode, setQuery } = useLocationSelection();
+  const { locations } = usePlaceRecommendationFormInput();
+  const { closeSheet } = usePlaceRecommendationFormUi();
+
+  const closeSearchMode = () => {
+    openMapMode();
+    setQuery("");
+    closeSheet();
+  };
 
   return (
     <S.Wrapper>
+      <S.SelectedLocationStatus aria-live="polite">
+        <S.SelectionMark aria-hidden>✓</S.SelectionMark>
+        현재 출발지 {locations.length}곳 선택됨
+      </S.SelectedLocationStatus>
       <S.SearchInputSlot>
         <LocationSelectionSearchInput />
       </S.SearchInputSlot>
-      {mode === "map" ? <MapModeContent /> : <SearchModeContent />}
+      {mode === "map" ? (
+        <MapModeContent
+          key={`map:${currentLocation?.lat ?? "fallback"}:${currentLocation?.lng ?? "fallback"}`}
+        />
+      ) : (
+        <SearchModeContent />
+      )}
+      {mode === "search" ? (
+        <S.Footer>
+          <Button onClick={closeSearchMode} tone="secondary" type="button" width="100%">
+            취소
+          </Button>
+        </S.Footer>
+      ) : null}
     </S.Wrapper>
   );
 };

@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 
 import { requestSignup } from "../../apis/auth";
 import { toApiClientErrorMessage } from "../../apis/errors";
 import Header from "../../components/Header/Header";
+import { Input } from "../../components/Input";
 import Modal from "../../components/Modal/Modal";
+import { useAppBackNavigate, useAppNavigate } from "../../routes/useAppNavigate";
 import { useSignupFormInput } from "./Signup.context";
 import { S } from "./Signup.styled";
 
@@ -34,7 +36,8 @@ export default function SignupFormContent() {
     handleResetNickname,
   } = useSignupFormInput();
 
-  const navigate = useNavigate();
+  const navigate = useAppNavigate();
+  const navigateBack = useAppBackNavigate("/login");
 
   const isPasswordValid =
     /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d!@#$%^&*()_+~`\-={}[\]:;"'<>,.?/]{8,20}$/.test(password);
@@ -74,7 +77,7 @@ export default function SignupFormContent() {
     e.preventDefault();
 
     if (!isPasswordValid) {
-      alert("비밀번호 형식을 확인해 주세요.");
+      toast.warning("비밀번호 형식을 확인해 주세요.");
       return;
     }
 
@@ -88,12 +91,12 @@ export default function SignupFormContent() {
       });
 
       if (data.success) {
-        alert("회원가입에 성공했습니다!");
+        toast.success("회원가입에 성공했습니다!");
         void navigate("/login");
       }
     } catch (error) {
       const errorMessage = toApiClientErrorMessage(error);
-      alert(`회원가입 중 오류가 발생해습니다: ${errorMessage}`);
+      toast.error(`회원가입 중 오류가 발생해습니다: ${errorMessage}`);
     }
   };
 
@@ -121,13 +124,13 @@ export default function SignupFormContent() {
 
   return (
     <S.Container>
-      <Header onBack={() => navigate(-1)} title="회원가입" />
+      <Header onBack={navigateBack} title="회원가입" />
 
       <S.Form onSubmit={handleSubmit}>
         <S.InputGroup>
           <S.Label htmlFor="email">이메일</S.Label>
           <S.InputRow>
-            <S.Input
+            <Input
               type="email"
               id="email"
               placeholder="name@example.com"
@@ -155,7 +158,7 @@ export default function SignupFormContent() {
         <S.InputGroup>
           <S.Label htmlFor="authCode">인증번호</S.Label>
           <S.InputRow>
-            <S.Input
+            <Input
               type="text"
               id="authCode"
               placeholder="6자리 숫자"
@@ -189,7 +192,7 @@ export default function SignupFormContent() {
 
         <S.InputGroup>
           <S.Label htmlFor="password">비밀번호</S.Label>
-          <S.Input
+          <Input
             type="password"
             id="password"
             placeholder="8~20자"
@@ -207,7 +210,7 @@ export default function SignupFormContent() {
 
         <S.InputGroup>
           <S.Label htmlFor="passwordConfirm">비밀번호 확인</S.Label>
-          <S.Input
+          <Input
             type="password"
             id="passwordConfirm"
             placeholder="비밀번호 재입력"
@@ -226,7 +229,7 @@ export default function SignupFormContent() {
         <S.InputGroup>
           <S.Label htmlFor="nickname">닉네임</S.Label>
           <S.InputRow>
-            <S.Input
+            <Input
               type="text"
               id="nickname"
               placeholder="예: limeojin"

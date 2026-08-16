@@ -1,18 +1,25 @@
-import type {
-  ApiResponse,
-  AuthenticatedUserResponseData,
-  LoginRequest,
-  NicknameCheckResponseData,
-  ResetPasswordRequest,
-  ResetPasswordResponseData,
-  SendSignupCodeRequest,
-  SendSignupCodeResponseData,
-  SignupRequest,
-  VerifySignupCodeRequest,
-  VerifySignupCodeResponseData,
+import {
+  type ApiResponse,
+  type AuthenticatedUserResponseData,
+  createApiError,
+  createApiResponseSchema,
+  type LoginRequest,
+  type LogoutResponseData,
+  LogoutResponseDataSchema,
+  type NicknameCheckResponseData,
+  type ResetPasswordRequest,
+  type ResetPasswordResponseData,
+  type SendSignupCodeRequest,
+  type SendSignupCodeResponseData,
+  type SignupRequest,
+  type VerifySignupCodeRequest,
+  type VerifySignupCodeResponseData,
 } from "@monorepo/api-contracts";
 
 import { serverApi } from "./base";
+import { toApiClientErrorMessage } from "./errors";
+
+const logoutResponseSchema = createApiResponseSchema(LogoutResponseDataSchema);
 
 // 회원가입 API
 export const requestSignup = async (payload: SignupRequest) => {
@@ -28,6 +35,15 @@ export const requestLogin = async (payload: LoginRequest) => {
     .post("api/auth/login", { json: payload })
     .json<ApiResponse<AuthenticatedUserResponseData>>();
   return response;
+};
+
+export const requestLogout = async (): Promise<ApiResponse<LogoutResponseData>> => {
+  try {
+    const response = await serverApi.post("api/auth/logout").json<unknown>();
+    return logoutResponseSchema.parse(response);
+  } catch (error) {
+    return createApiError(toApiClientErrorMessage(error));
+  }
 };
 
 // 닉네임 중복 확인 API

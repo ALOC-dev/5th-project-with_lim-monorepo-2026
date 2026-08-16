@@ -87,8 +87,8 @@ export const tokens = {
       },
       sm: {
         fontFamily: "Noto Sans KR",
-        fontSize: "14px",
-        lineHeight: "22px",
+        fontSize: "16px",
+        lineHeight: "24px",
         fontWeight: 400,
         letterSpacing: "0%",
       },

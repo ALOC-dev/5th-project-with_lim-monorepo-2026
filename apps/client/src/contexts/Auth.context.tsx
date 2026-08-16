@@ -5,7 +5,9 @@ import {
 } from "@monorepo/api-contracts";
 import { createContext, type ReactNode, useContext, useEffect, useState } from "react";
 
-import { requestGetMe } from "../apis/users";
+import { requestLogout } from "../apis/auth";
+import { setUnauthorizedHandler } from "../apis/base";
+import { requestGetMe, requestWithdraw } from "../apis/users";
 
 const meResponseSchema = createApiResponseSchema(AuthenticatedUserResponseDataSchema);
 
@@ -13,8 +15,9 @@ type AuthContextType = {
   isAuthenticated: boolean; // 로그인 여부
   isLoading: boolean;
   user: AuthenticatedUser | null; // 로그인한 유저의 정보
-  login: () => void;
-  logout: () => void;
+  login: (user: AuthenticatedUser) => void;
+  logout: () => Promise<void>;
+  withdraw: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -23,6 +26,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState<AuthenticatedUser | null>(null);
+
+  useEffect(() => {
+    // 세션 만료/무효화로 어떤 요청이든 401을 받으면 즉시 로그아웃 상태로 반영한다.
+    // ProtectedRoute가 isAuthenticated 변화를 보고 /login으로 리다이렉트해 준다.
+    setUnauthorizedHandler(() => {
+      setIsAuthenticated(false);
+      setUser(null);
+    });
+    return () => setUnauthorizedHandler(null);
+  }, []);
 
   useEffect(() => {
     const initializeAuth = async () => {
@@ -48,15 +61,30 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     void initializeAuth();
   }, []);
 
-  const login = () => setIsAuthenticated(true);
+  const login = (loggedInUser: AuthenticatedUser) => {
+    setIsAuthenticated(true);
+    setUser(loggedInUser);
+  };
 
-  const logout = () => {
+  const logout = async (): Promise<void> => {
+    const response = await requestLogout();
+    if (!response.success) throw new Error(response.error);
+
+    setIsAuthenticated(false);
+    setUser(null);
+  };
+
+  const withdraw = async (): Promise<void> => {
+    const response = await requestWithdraw();
+
+    if (!response.success) throw new Error(response.error);
+
     setIsAuthenticated(false);
     setUser(null);
   };
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, isLoading, user, login, logout }}>
+    <AuthContext.Provider value={{ isAuthenticated, isLoading, user, login, logout, withdraw }}>
       {children}
     </AuthContext.Provider>
   );

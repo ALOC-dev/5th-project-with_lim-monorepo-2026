@@ -5,12 +5,16 @@ import { tokens } from "../../../design-system/tokens.generated";
 export const S = {
   Root: styled.div`
     position: relative;
-    min-height: 100dvh;
+    display: flex;
+    min-height: 0;
+    flex: 1;
+    flex-direction: column;
     overflow: hidden;
+    padding-top: env(safe-area-inset-top);
   `,
   HeaderLayer: styled.div`
     position: relative;
-    z-index: 1;
+    z-index: 1001;
     width: 100%;
     max-width: 390px;
     margin-inline: auto;

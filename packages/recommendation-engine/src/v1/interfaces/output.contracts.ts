@@ -3,7 +3,7 @@ import { z } from "zod";
 import { LocationItemSchema, PriceRangeSchema } from "./common.contracts.js";
 import { UserInputSchema } from "./input.contracts.js";
 
-const time24hRegex = /^([01]\d|2[0-3]):[0-5]\d$/;
+const time24hRegex = /^(?:([01]\d|2[0-3]):[0-5]\d|24:00)$/;
 const trimmedUrlSchema = z.string().trim().pipe(z.url());
 const compactLabelSchema = z.string().trim().min(1).max(20);
 const contentSummarySchema = z.string().trim().min(1).max(140);

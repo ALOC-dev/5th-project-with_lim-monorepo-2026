@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import type { CourseRecommendationItem } from "../contracts.js";
-import { COURSE_LLM_MODEL_ID,generateCourseObject } from "./ai-sdk.js";
+import { COURSE_LLM_MODEL_ID, generateCourseObject } from "./ai-sdk.js";
 
 export const CourseCurationCandidateSchema = z
   .object({
@@ -52,6 +52,7 @@ export type CourseCurationRequest = {
   candidates: CourseCurationCandidate[];
   targetCourseCount: number;
   openAiApiKey?: string;
+  signal?: AbortSignal;
 };
 
 export type CourseCurationClient = (
@@ -76,11 +77,12 @@ const CURATION_SYSTEM_PROMPT = `너는 코스 추천 결과 큐레이터다.
 
 export const createOpenAiCourseCurationClient =
   (modelId = COURSE_LLM_MODEL_ID): CourseCurationClient =>
-  async ({ candidates, targetCourseCount, openAiApiKey }) => {
+  async ({ candidates, targetCourseCount, openAiApiKey, signal }) => {
     const response = await generateCourseObject({
       task: "course.curation",
       modelId,
       openAiApiKey,
+      signal,
       schema: CourseCurationResponseSchema,
       system: CURATION_SYSTEM_PROMPT,
       prompt: [

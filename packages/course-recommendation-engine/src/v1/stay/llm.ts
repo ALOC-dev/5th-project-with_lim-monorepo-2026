@@ -50,8 +50,9 @@ const writeCache = (key: string, minutes: number): void => {
   typicalMinutesCache.set(key, minutes);
 };
 
-export const createOpenAiStayEstimatorClient = (modelId?: string): StayEstimatorClient =>
-  async ({ candidates, openAiApiKey }) => {
+export const createOpenAiStayEstimatorClient =
+  (modelId?: string): StayEstimatorClient =>
+  async ({ candidates, openAiApiKey, signal }) => {
     const estimates: { placeId: string; typicalStayMinutes: number }[] = [];
     const uncached: StayEstimateCandidate[] = [];
 
@@ -70,6 +71,7 @@ export const createOpenAiStayEstimatorClient = (modelId?: string): StayEstimator
       task: "course.stayEstimate",
       modelId,
       openAiApiKey,
+      signal,
       schema: StayEstimateResponseSchema,
       system: STAY_SYSTEM_PROMPT,
       prompt: [

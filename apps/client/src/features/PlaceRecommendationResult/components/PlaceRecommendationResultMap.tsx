@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useState } from "react";
 import { CustomOverlayMap, Map } from "react-kakao-maps-sdk";
 
 import {
@@ -6,18 +6,28 @@ import {
   type PlaceRecommendationResultPlace,
   usePlaceRecommendationResultUiContext,
 } from "../state/PlaceRecommendationResult.ui.context";
+import {
+  getFocusedPlaceCenterPoint,
+  getFocusedPlacePanY,
+  getRecommendationBoundsPadding,
+} from "./PlaceRecommendationResultMap.data";
 import { S } from "./PlaceRecommendationResultMap.styled";
 
 const SINGLE_PLACE_MAP_LEVEL = 4;
-const FIT_BOUNDS_PADDING = {
-  bottom: 480,
-  left: 48,
-  right: 48,
-  top: 80,
-} as const;
 
-const PlaceRecommendationResultMap = () => {
-  const { mapCenter, mapZoom, places, selectPlace, selectedPlaceId, setMapCenter, setMapZoom } =
+type PlaceRecommendationResultMapProps = {
+  readonly focusRequest: {
+    readonly placeId: string;
+    readonly sequence: number;
+  } | null;
+  readonly onPlaceSelect: (placeId: string) => void;
+};
+
+const PlaceRecommendationResultMap = ({
+  focusRequest,
+  onPlaceSelect,
+}: PlaceRecommendationResultMapProps) => {
+  const { mapCenter, mapZoom, places, selectedPlaceId, setMapCenter, setMapZoom } =
     usePlaceRecommendationResultUiContext();
   const [map, setMap] = useState<kakao.maps.Map | null>(null);
 
@@ -36,9 +46,8 @@ const PlaceRecommendationResultMap = () => {
   const fitMapToPlaces = useCallback(
     (targetMap: kakao.maps.Map) => {
       fitRecommendationPlaces(targetMap, places);
-      syncMapState(targetMap);
     },
-    [places, syncMapState],
+    [places],
   );
 
   const handleCreate = useCallback(
@@ -56,6 +65,15 @@ const PlaceRecommendationResultMap = () => {
 
     fitMapToPlaces(map);
   }, [fitMapToPlaces, map]);
+
+  useLayoutEffect(() => {
+    if (focusRequest === null || map === null) return;
+
+    const place = places.find((candidate) => candidate.id === focusRequest.placeId);
+    if (place === undefined) return;
+
+    panMapToFocusedPlace(map, place.location);
+  }, [focusRequest, map, places]);
 
   return (
     <S.MapLayer>
@@ -79,7 +97,7 @@ const PlaceRecommendationResultMap = () => {
             <S.MarkerButton
               $isSelected={selectedPlaceId === place.id}
               type="button"
-              onClick={() => selectPlace(place.id)}
+              onClick={() => onPlaceSelect(place.id)}
               aria-label={`${place.rank}번째 추천 장소 ${place.name} 선택`}
             >
               {place.rank}
@@ -104,6 +122,7 @@ const fitRecommendationPlaces = (
 
     map.setCenter(toKakaoLatLng(place.location));
     map.setLevel(SINGLE_PLACE_MAP_LEVEL);
+    panMapToFocusedPlace(map, place.location);
     return;
   }
 
@@ -111,13 +130,34 @@ const fitRecommendationPlaces = (
   places.forEach((place) => {
     bounds.extend(toKakaoLatLng(place.location));
   });
-  map.setBounds(
-    bounds,
-    FIT_BOUNDS_PADDING.top,
-    FIT_BOUNDS_PADDING.right,
-    FIT_BOUNDS_PADDING.bottom,
-    FIT_BOUNDS_PADDING.left,
+  const padding = getRecommendationBoundsPadding(getMapViewportMeasurement(map));
+  map.setBounds(bounds, padding.top, padding.right, padding.bottom, padding.left);
+};
+
+const getMapViewportMeasurement = (map: kakao.maps.Map) => {
+  const mapRect = map.getNode().getBoundingClientRect();
+
+  return {
+    mapBottom: mapRect.bottom,
+    mapHeight: mapRect.height,
+    viewportHeight: window.innerHeight,
+  };
+};
+
+const panMapToFocusedPlace = (
+  map: kakao.maps.Map,
+  location: PlaceRecommendationResultMapCenter,
+) => {
+  const targetLocation = toKakaoLatLng(location);
+  const projection = map.getProjection();
+  const targetPoint = projection.containerPointFromCoords(targetLocation);
+  const panY = getFocusedPlacePanY(getMapViewportMeasurement(map));
+  const centerPoint = getFocusedPlaceCenterPoint(targetPoint, panY);
+  const targetCenter = projection.coordsFromContainerPoint(
+    new kakao.maps.Point(centerPoint.x, centerPoint.y),
   );
+
+  map.panTo(targetCenter);
 };
 
 const toKakaoLatLng = ({ lat, lng }: PlaceRecommendationResultMapCenter) => {

@@ -44,9 +44,29 @@ type RangeSliderProps = {
   step?: number;
   value: SliderProps["value"];
   onChange: SliderProps["onChange"];
+  ariaLabels?: readonly [string, string];
+  disabled?: boolean;
 };
 
-export const RangeSlider = ({ min, max, step, value, onChange }: RangeSliderProps) => (
+type ValueSliderProps = {
+  min: number;
+  max: number;
+  step?: number;
+  value: number;
+  onChange: (value: number) => void;
+  ariaLabel: string;
+  disabled?: boolean;
+};
+
+export const RangeSlider = ({
+  min,
+  max,
+  step,
+  value,
+  onChange,
+  ariaLabels,
+  disabled,
+}: RangeSliderProps) => (
   <SliderWrapper>
     <Slider
       range
@@ -56,6 +76,32 @@ export const RangeSlider = ({ min, max, step, value, onChange }: RangeSliderProp
       value={value}
       onChange={onChange}
       allowCross={false}
+      ariaLabelForHandle={ariaLabels ? [...ariaLabels] : undefined}
+      disabled={disabled}
+    />
+  </SliderWrapper>
+);
+
+export const ValueSlider = ({
+  min,
+  max,
+  step,
+  value,
+  onChange,
+  ariaLabel,
+  disabled,
+}: ValueSliderProps) => (
+  <SliderWrapper>
+    <Slider
+      ariaLabelForHandle={ariaLabel}
+      disabled={disabled}
+      min={min}
+      max={max}
+      step={step}
+      value={value}
+      onChange={(nextValue) => {
+        if (typeof nextValue === "number") onChange(nextValue);
+      }}
     />
   </SliderWrapper>
 );

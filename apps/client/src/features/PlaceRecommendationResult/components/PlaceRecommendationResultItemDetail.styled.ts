@@ -23,10 +23,58 @@ export const S = {
     border-radius: 8px;
     background-color: ${tokens.color.neutral[0]};
   `,
+  TopCardHeader: styled.div`
+    display: flex;
+    min-width: 0;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+  `,
   PlaceName: styled.h2`
     margin: 0;
+    min-width: 0;
     color: ${tokens.color.neutral[900]};
     ${typography.title.sm}
+  `,
+  BookmarkButton: styled.button<{ readonly $isSaved: boolean }>`
+    display: inline-grid;
+    width: 36px;
+    height: 36px;
+    flex: none;
+    place-items: center;
+    padding: 0;
+    border: 1px solid ${tokens.color.neutral[200]};
+    border-radius: 50%;
+    background-color: ${tokens.color.neutral[0]};
+    color: ${({ $isSaved }) =>
+      $isSaved ? tokens.color.primary[500] : tokens.color.primary[700]};
+
+    &:disabled {
+      cursor: wait;
+      opacity: 0.6;
+    }
+  `,
+  BookmarkFeedback: styled.p`
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin: 0;
+    padding: 10px 12px;
+    border: 1px solid ${tokens.color.warning[500]};
+    border-radius: 8px;
+    background-color: ${tokens.color.neutral[0]};
+    color: ${tokens.color.warning[500]};
+    ${typography.body.xs}
+  `,
+  BookmarkRetry: styled.button`
+    flex: none;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: ${tokens.color.primary[700]};
+    text-decoration: underline;
+    ${typography.label.xs}
   `,
   Meta: styled.p`
     margin: 0;

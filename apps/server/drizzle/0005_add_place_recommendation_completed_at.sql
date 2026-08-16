@@ -1,0 +1,1 @@
+ALTER TABLE "place_recommendation_histories" ADD COLUMN "completed_at" timestamp with time zone;

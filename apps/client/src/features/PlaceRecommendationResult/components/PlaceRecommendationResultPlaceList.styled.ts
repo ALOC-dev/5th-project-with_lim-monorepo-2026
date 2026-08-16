@@ -19,10 +19,21 @@ export const S = {
     gap: 2px;
     padding: 0 2px 2px;
   `,
+  SummaryHeader: styled.div`
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  `,
   ResultCount: styled.h2`
     margin: 0;
     color: ${tokens.color.neutral[900]};
     ${typography.title.xs}
+  `,
+  Duration: styled.span`
+    flex: none;
+    color: ${tokens.color.primary[700]};
+    ${typography.label.xs}
   `,
   SelectionStatus: styled.p`
     margin: 0;
@@ -31,6 +42,28 @@ export const S = {
     text-overflow: ellipsis;
     white-space: nowrap;
     ${typography.body.xs}
+  `,
+  BookmarkFeedback: styled.p`
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin: 0;
+    padding: 10px 12px;
+    border: 1px solid ${tokens.color.warning[500]};
+    border-radius: 8px;
+    background-color: ${tokens.color.neutral[0]};
+    color: ${tokens.color.warning[500]};
+    ${typography.body.xs}
+  `,
+  BookmarkRetry: styled.button`
+    flex: none;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: ${tokens.color.primary[700]};
+    text-decoration: underline;
+    ${typography.label.xs}
   `,
   Card: styled.article<{ readonly $isSelected: boolean }>`
     display: flex;
@@ -89,6 +122,28 @@ export const S = {
     border-radius: 999px;
     color: ${tokens.color.primary[500]};
     ${typography.label.xs}
+  `,
+  Actions: styled.div`
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  `,
+  BookmarkButton: styled.button<{ readonly $isSaved: boolean }>`
+    display: inline-grid;
+    width: 36px;
+    height: 36px;
+    flex: none;
+    place-items: center;
+    padding: 0;
+    border: 1px solid ${tokens.color.neutral[200]};
+    border-radius: 50%;
+    background-color: ${tokens.color.neutral[0]};
+    color: ${({ $isSaved }) => ($isSaved ? tokens.color.primary[500] : tokens.color.primary[700])};
+
+    &:disabled {
+      cursor: wait;
+      opacity: 0.6;
+    }
   `,
   Description: styled.p`
     display: -webkit-box;

@@ -50,6 +50,7 @@ export type TravelMatrixRequest = {
   /** 동시 요청 수 상한. */
   concurrency: number;
   tmapAppKey?: string;
+  signal?: AbortSignal;
 };
 
 export type TravelMatrixClient = (request: TravelMatrixRequest) => Promise<WalkTravelMatrix>;

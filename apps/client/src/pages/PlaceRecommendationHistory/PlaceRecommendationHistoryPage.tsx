@@ -1,7 +1,6 @@
 import type { PlaceRecommendationHistoryListResponseData } from "@monorepo/api-contracts";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { type ReactNode, useCallback, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
 
 import {
   deletePlaceRecommendationHistory,
@@ -10,6 +9,7 @@ import {
 } from "../../apis/server/placeRecommendationHistories";
 import PageRoot from "../../components/PageRoot/PageRoot";
 import { tokens } from "../../design-system/tokens.generated";
+import { useAppNavigate } from "../../routes/useAppNavigate";
 import {
   PlaceRecommendationHistoryContext,
   type PlaceRecommendationHistoryContextType,
@@ -26,7 +26,7 @@ export const PlaceRecommendationHistoryProvider = ({
 }: {
   readonly children: ReactNode;
 }) => {
-  const navigate = useNavigate();
+  const navigate = useAppNavigate();
   const queryClient = useQueryClient();
   const {
     data: historyData,

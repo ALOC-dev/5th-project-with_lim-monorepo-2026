@@ -1,19 +1,41 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
 
 import FeedbackState from "../../components/FeedbackState/FeedbackState";
 import { Icon } from "../../components/Icon";
+import { Skeleton } from "../../components/Skeleton";
 import { CourseIconButton } from "../../features/CourseRecommendation/components/CourseIconButton";
 import { CoursePage } from "../../features/CourseRecommendation/components/CoursePage";
+import type { CourseFavorite } from "../../features/CourseRecommendation/course.types";
 import {
   formatDate,
   formatMinutes,
 } from "../../features/CourseRecommendation/courseRecommendation.utils";
 import { courseRepository } from "../../features/CourseRecommendation/courseRepository";
+import { useAppBackNavigate, useAppNavigate } from "../../routes/useAppNavigate";
 import { S } from "./CourseFavoritePage.styled";
 
+const skeletonCardKeys = ["first", "second", "third"] as const;
+
+const CourseFavoriteSkeleton = () => (
+  <S.SkeletonList aria-busy="true" aria-label="찜한 코스를 불러오는 중이에요" role="status">
+    {skeletonCardKeys.map((key) => (
+      <S.SkeletonCard key={key}>
+        <S.SkeletonDate>
+          <Skeleton height={12} width={68} />
+        </S.SkeletonDate>
+        <S.SkeletonInfo>
+          <Skeleton height={20} width="66%" />
+          <Skeleton height={12} width="84%" />
+        </S.SkeletonInfo>
+        <Skeleton borderRadius="50%" height={44} width={44} />
+      </S.SkeletonCard>
+    ))}
+  </S.SkeletonList>
+);
+
 export const CourseFavoritePage = () => {
-  const navigate = useNavigate();
+  const navigate = useAppNavigate();
+  const navigateBack = useAppBackNavigate("/my");
   const queryClient = useQueryClient();
   const favorites = useQuery({
     queryKey: ["course-favorites"],
@@ -21,22 +43,21 @@ export const CourseFavoritePage = () => {
     retry: false,
   });
   const remove = useMutation({
-    mutationFn: (favorite: { courseId: string; optionId: string }) =>
-      courseRepository.toggleFavorite(favorite.courseId, favorite.optionId, false),
+    mutationFn: (favorite: CourseFavorite) => courseRepository.removeFavorite(favorite),
     onSuccess: (_result, favorite) =>
       void Promise.all([
         queryClient.invalidateQueries({ queryKey: ["course-favorites"] }),
         queryClient.invalidateQueries({
-          queryKey: ["course-option", favorite.courseId, favorite.optionId],
+          queryKey: ["course-option", favorite.recommendationId, favorite.optionId],
         }),
-        queryClient.invalidateQueries({ queryKey: ["course", favorite.courseId] }),
+        queryClient.invalidateQueries({ queryKey: ["course", favorite.recommendationId] }),
       ]),
   });
 
   return (
-    <CoursePage onBack={() => navigate(-1)} title="찜한 코스 보기">
+    <CoursePage onBack={navigateBack} title="찜한 코스 보기">
       {favorites.isPending ? (
-        <FeedbackState kind="loading" title="찜한 코스를 불러오는 중이에요" />
+        <CourseFavoriteSkeleton />
       ) : favorites.isError ? (
         <FeedbackState
           action={{ label: "다시 시도", onClick: () => void favorites.refetch() }}
@@ -60,11 +81,12 @@ export const CourseFavoritePage = () => {
           <S.FavoriteList>
             {favorites.data.map((favorite) => (
               <S.Favorite key={`${favorite.recommendationId}:${favorite.optionId}`}>
-                <time>{formatDate(favorite.savedAt)}</time>
+                <time>{favorite.savedAt ? formatDate(favorite.savedAt) : "저장일 정보 없음"}</time>
                 <S.FavoriteOpen
                   onClick={() =>
                     void navigate(
                       `/course/recommendation/${encodeURIComponent(favorite.recommendationId)}/option/${encodeURIComponent(favorite.optionId)}`,
+                      { state: { favorite } },
                     )
                   }
                   type="button"
@@ -78,12 +100,7 @@ export const CourseFavoritePage = () => {
                 <CourseIconButton
                   aria-label={`${favorite.option.title} 찜 삭제`}
                   disabled={remove.isPending}
-                  onClick={() =>
-                    remove.mutate({
-                      courseId: favorite.recommendationId,
-                      optionId: favorite.optionId,
-                    })
-                  }
+                  onClick={() => remove.mutate(favorite)}
                   type="button"
                 >
                   <Icon name="heart-filled" />

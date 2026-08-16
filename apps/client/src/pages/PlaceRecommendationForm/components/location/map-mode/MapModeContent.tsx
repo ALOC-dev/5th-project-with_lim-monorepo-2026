@@ -1,53 +1,69 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { Map, MapMarker } from "react-kakao-maps-sdk";
+import { toast } from "sonner";
 
 import { resolveSelectedLocation, type ReverseGeocodeCoordinates } from "../../../../../apis/kakao";
 import { Button } from "../../../../../components/Button";
+import { Icon } from "../../../../../components/Icon";
 import {
   usePlaceRecommendationFormInput,
   usePlaceRecommendationFormUi,
 } from "../../../PlaceRecommendationForm.context";
+import { useLocationSelection } from "../LocationSelection.context";
 import { S } from "./MapModeContent.styled";
 
 type AddressRequestStatus = "loading" | "resolved" | "failed";
 
 const CENTER_CHANGE_THRESHOLD = 0.000001;
+const DEFAULT_MAP_CENTER = { lat: 37.5665, lng: 126.978 };
 
 const MapModeContent = () => {
   const { locations, setLocations } = usePlaceRecommendationFormInput();
   const { closeSheet } = usePlaceRecommendationFormUi();
-  const [addressRequestStatus, setAddressRequestStatus] =
-    useState<AddressRequestStatus>("resolved");
+  const { clearSelectedLocation, currentLocation, requestCurrentLocation, selectedLocation } =
+    useLocationSelection();
 
   // 초기 지도의 중심 좌표 계산
   const lastLocation = locations[locations.length - 1];
-  const initialLat = lastLocation?.lat ?? 37.5665; // 값이 없으면 서울시청 위도
-  const initialLng = lastLocation?.lng ?? 126.978; // 값이 없으면 서울시청 경도
+  const initialLocation =
+    selectedLocation ??
+    lastLocation ??
+    (currentLocation
+      ? {
+          ...currentLocation,
+          placeName: "",
+          roadNameAddress: "",
+        }
+      : {
+          ...DEFAULT_MAP_CENTER,
+          placeName: "",
+          roadNameAddress: "",
+        });
 
-  const [currentSelectedLocation, setCurrentSelectedLocation] = useState({
-    lat: initialLat,
-    lng: initialLng,
-    placeName: "",
-    roadNameAddress: "",
-  });
+  const [currentSelectedLocation, setCurrentSelectedLocation] = useState(initialLocation);
+  const [addressRequestStatus, setAddressRequestStatus] = useState<AddressRequestStatus>(() =>
+    selectedLocation ? "resolved" : "loading",
+  );
+  const [isLocating, setIsLocating] = useState(false);
 
+  const mapRef = useRef<kakao.maps.Map | null>(null);
   const latestReverseGeocodeRequestIdRef = useRef(0);
-  const latestReverseGeocodeCoordinatesRef = useRef<ReverseGeocodeCoordinates>({
-    lat: initialLat,
-    lng: initialLng,
-  });
-
-  useEffect(() => {
-    latestReverseGeocodeCoordinatesRef.current = {
-      lat: initialLat,
-      lng: initialLng,
-    };
-  }, [initialLat, initialLng]);
+  const latestReverseGeocodeCoordinatesRef = useRef<ReverseGeocodeCoordinates | null>(
+    selectedLocation
+      ? {
+          lat: selectedLocation.lat,
+          lng: selectedLocation.lng,
+        }
+      : null,
+  );
 
   const updateAddressFromMapCenter = async (map: kakao.maps.Map) => {
     const coordinates = getMapCenterCoordinates(map);
 
-    if (isSameCoordinates(coordinates, latestReverseGeocodeCoordinatesRef.current)) {
+    if (
+      latestReverseGeocodeCoordinatesRef.current &&
+      isSameCoordinates(coordinates, latestReverseGeocodeCoordinatesRef.current)
+    ) {
       return;
     }
 
@@ -139,9 +155,10 @@ const MapModeContent = () => {
 
   const handleCompleteSelection = () => {
     if (canCompleteSelection) {
+      clearSelectedLocation();
       setLocations((prev) => {
         if (prev.length >= 8) {
-          alert("출발지는 최대 8개까지만 선택할 수 있습니다.");
+          toast.warning("출발지는 최대 8개까지만 선택할 수 있습니다.");
           return prev;
         }
         return [...prev, currentSelectedLocation];
@@ -150,12 +167,41 @@ const MapModeContent = () => {
     }
   };
 
+  const handleCancelSelection = () => {
+    clearSelectedLocation();
+    closeSheet();
+  };
+
+  const handleMoveToCurrentLocation = useCallback(async () => {
+    if (isLocating) {
+      return;
+    }
+
+    setIsLocating(true);
+
+    try {
+      const location = currentLocation ?? (await requestCurrentLocation());
+
+      if (!location) {
+        toast.warning("현재 위치를 불러올 수 없어요. 위치 권한을 확인해 주세요.");
+        return;
+      }
+
+      mapRef.current?.panTo(new kakao.maps.LatLng(location.lat, location.lng));
+    } finally {
+      setIsLocating(false);
+    }
+  }, [currentLocation, isLocating, requestCurrentLocation]);
+
   return (
     <S.Wrapper>
       <S.MapFrame>
         <Map
           style={{ width: "100%", height: "100%" }}
           onIdle={updateAddressFromMapCenter}
+          onCreate={(map) => {
+            mapRef.current = map;
+          }}
           center={{ lat: currentSelectedLocation.lat, lng: currentSelectedLocation.lng }}
           minLevel={10}
           maxLevel={3}
@@ -165,6 +211,15 @@ const MapModeContent = () => {
           />
         </Map>
         <S.CenterMarker aria-hidden />
+        <S.CurrentLocationButton
+          aria-busy={isLocating}
+          aria-label={isLocating ? "현재 위치 확인 중" : "내 위치로 이동"}
+          disabled={isLocating}
+          onClick={() => void handleMoveToCurrentLocation()}
+          type="button"
+        >
+          <Icon name="my-location" size={24} />
+        </S.CurrentLocationButton>
       </S.MapFrame>
       <div>
         {locationLabel.kind === "resolved" ? (
@@ -173,9 +228,14 @@ const MapModeContent = () => {
           <div>{locationLabel.message}</div>
         )}
       </div>
-      <Button width="full" disabled={!canCompleteSelection} onClick={handleCompleteSelection}>
-        선택 완료
-      </Button>
+      <S.ActionRow>
+        <Button onClick={handleCancelSelection} tone="secondary" type="button" width="100%">
+          취소
+        </Button>
+        <Button width="100%" disabled={!canCompleteSelection} onClick={handleCompleteSelection}>
+          선택 완료
+        </Button>
+      </S.ActionRow>
     </S.Wrapper>
   );
 };

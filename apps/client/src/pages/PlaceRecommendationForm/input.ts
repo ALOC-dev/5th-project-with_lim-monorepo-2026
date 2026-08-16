@@ -6,8 +6,7 @@ import {
   UserInputSchema,
 } from "@monorepo/recommendation-engine/v1/contracts";
 
-import type { CalendarDate } from "./utils/calendarDayViewModel";
-import { toDateISO } from "./utils/calendarDayViewModel";
+import { type CalendarDate, toDateISO } from "../../components/DatePicker/calendar";
 
 export type PlaceRecommendationFormInput = {
   readonly locations: readonly {

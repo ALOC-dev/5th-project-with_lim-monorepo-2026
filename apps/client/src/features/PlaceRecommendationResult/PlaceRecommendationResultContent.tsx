@@ -1,13 +1,15 @@
 import styled from "@emotion/styled";
 import type { EngineOutput } from "@monorepo/recommendation-engine/v1/contracts";
-import { useNavigate, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 
 import FeedbackState from "../../components/FeedbackState/FeedbackState";
 import Header from "../../components/Header/Header";
 import PageRoot from "../../components/PageRoot/PageRoot";
 import { tokens } from "../../design-system/tokens.generated";
-import PlaceRecommendationResultListView from "./components/PlaceRecommendationResultListView";
+import { useAppBackNavigate, useAppNavigate } from "../../routes/useAppNavigate";
 import PlaceRecommendationResultItemDetail from "./components/PlaceRecommendationResultItemDetail";
+import PlaceRecommendationResultListView from "./components/PlaceRecommendationResultListView";
+import { PlaceRecommendationResultBookmarksProvider } from "./state/PlaceRecommendationResult.bookmarks.provider";
 import { PlaceRecommendationResultBoundary } from "./state/PlaceRecommendationResult.boundary";
 import {
   type PlaceRecommendationResultSuccess,
@@ -21,11 +23,11 @@ const PlaceRecommendationResultFeedbackShell = ({
 }: {
   readonly children: React.ReactNode;
 }) => {
-  const navigate = useNavigate();
+  const navigateBack = useAppBackNavigate("/");
 
   return (
     <PageRoot backgroundColor={tokens.color.neutral[50]} layout="contained">
-      <Header onBack={() => navigate("/place/recommendation/history")} title="장소 결과" />
+      <Header onBack={navigateBack} title="장소 결과" />
       <S.StateBody>{children}</S.StateBody>
     </PageRoot>
   );
@@ -40,7 +42,7 @@ const PlaceRecommendationResultLoading = () => {
 };
 
 const PlaceRecommendationResultEmpty = () => {
-  const navigate = useNavigate();
+  const navigate = useAppNavigate();
 
   return (
     <PlaceRecommendationResultFeedbackShell>
@@ -59,7 +61,7 @@ const PlaceRecommendationResultEmpty = () => {
 
 const PlaceRecommendationResultError = () => {
   const dataContext = usePlaceRecommendationResultDataContext();
-  const navigate = useNavigate();
+  const navigate = useAppNavigate();
   const description =
     dataContext.status === "error"
       ? (dataContext.message ?? "추천 기록에서 다시 열거나 새 추천을 요청해 주세요.")
@@ -81,18 +83,28 @@ const PlaceRecommendationResultError = () => {
 };
 
 const PlaceRecommendationResultSuccessView = ({
+  durationLabel,
   result,
 }: {
+  readonly durationLabel: string | null;
   readonly result: PlaceRecommendationResultSuccess;
 }) => {
+  const { recommendationId } = useParams();
+
   return (
-    <PlaceRecommendationResultUiProvider result={result}>
-      <PlaceRecommendationResultResolvedView />
-    </PlaceRecommendationResultUiProvider>
+    <PlaceRecommendationResultBookmarksProvider historyId={recommendationId}>
+      <PlaceRecommendationResultUiProvider result={result}>
+        <PlaceRecommendationResultResolvedView durationLabel={durationLabel} />
+      </PlaceRecommendationResultUiProvider>
+    </PlaceRecommendationResultBookmarksProvider>
   );
 };
 
-const PlaceRecommendationResultResolvedView = () => {
+const PlaceRecommendationResultResolvedView = ({
+  durationLabel,
+}: {
+  readonly durationLabel: string | null;
+}) => {
   const { placeId } = useParams();
 
   if (placeId !== undefined) {
@@ -105,14 +117,20 @@ const PlaceRecommendationResultResolvedView = () => {
 
   return (
     <PageRoot backgroundColor={tokens.color.neutral[50]} layout="full">
-      <PlaceRecommendationResultListView />
+      <PlaceRecommendationResultListView durationLabel={durationLabel} />
     </PageRoot>
   );
 };
 
-const PlaceRecommendationResultContent = ({ output }: { readonly output: EngineOutput }) => {
+const PlaceRecommendationResultContent = ({
+  durationLabel,
+  output,
+}: {
+  readonly durationLabel: string | null;
+  readonly output: EngineOutput;
+}) => {
   return (
-    <PlaceRecommendationResultDataProvider output={output}>
+    <PlaceRecommendationResultDataProvider durationLabel={durationLabel} output={output}>
       <PlaceRecommendationResultBoundary
         views={{
           loading: PlaceRecommendationResultLoading,

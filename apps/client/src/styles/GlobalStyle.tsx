@@ -22,7 +22,9 @@ const globalResetStyle = css`
   }
 
   html {
+    color-scheme: light;
     -webkit-text-size-adjust: 100%;
+    overscroll-behavior-y: none;
   }
 
   body {
@@ -30,6 +32,7 @@ const globalResetStyle = css`
     min-height: 100dvh;
     margin: 0;
     overflow-x: hidden;
+    overscroll-behavior-y: none;
     text-rendering: optimizeSpeed;
     /* Global reset baseline only. Component text must use design-system typography tokens. */
     line-height: 1.5;
@@ -80,6 +83,19 @@ const globalResetStyle = css`
   textarea,
   select {
     font: inherit;
+  }
+
+  button,
+  a {
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  [data-route-frame] {
+    display: flex;
+    min-width: 0;
+    flex: 1;
+    flex-direction: column;
   }
 
   button {

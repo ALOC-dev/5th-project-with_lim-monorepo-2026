@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { PlaceRecommendationFormLocationSnapshotSchema } from "./placeRecommendations.js";
+
 export const PlaceRecommendationHistoryStatusSchema = z.enum(["PENDING", "COMPLETED", "FAILED"]);
 
 export type PlaceRecommendationHistoryStatus = z.infer<
@@ -36,14 +38,20 @@ const PlaceRecommendationHistoryDetailBaseSchema = z.object({
 export const PlaceRecommendationHistoryDetailResponseDataSchema = z.discriminatedUnion("status", [
   PlaceRecommendationHistoryDetailBaseSchema.extend({
     status: z.literal("PENDING"),
+    input: z.unknown(),
+    formLocations: z.array(PlaceRecommendationFormLocationSnapshotSchema),
   }),
   PlaceRecommendationHistoryDetailBaseSchema.extend({
     status: z.literal("COMPLETED"),
+    completedAt: z.iso.datetime({ offset: true }).nullable(),
     input: z.unknown(),
     output: z.unknown(),
   }),
   PlaceRecommendationHistoryDetailBaseSchema.extend({
     status: z.literal("FAILED"),
+    completedAt: z.iso.datetime({ offset: true }).nullable(),
+    input: z.unknown(),
+    formLocations: z.array(PlaceRecommendationFormLocationSnapshotSchema),
     errorMessage: z.string().trim().min(1),
   }),
 ]);

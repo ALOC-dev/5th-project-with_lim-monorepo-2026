@@ -23,6 +23,35 @@ export const RECOMMENDATION_FAILURE_EVENT = Object.freeze({
   message: "추천을 생성하지 못했습니다. 잠시 후 다시 시도해 주세요.",
 } satisfies PublicFailureEvent);
 
+const RECOMMENDATION_FAILURE_MESSAGES: Readonly<Record<string, string>> = Object.freeze({
+  INVALID_INPUT: "입력 정보를 확인하지 못했습니다. 출발지와 요청사항을 확인한 뒤 다시 시도해 주세요.",
+  EXTERNAL_API_FAILURE: "장소 정보를 불러오는 중 문제가 발생했습니다. 잠시 후 다시 시도해 주세요.",
+  DISCOVER_SEEDS_PLAN_ERROR: "추천 조건을 해석하는 중 문제가 발생했습니다. 잠시 후 다시 시도해 주세요.",
+  DISCOVER_SEEDS_PROVIDER_ERROR: "장소 정보를 불러오는 중 문제가 발생했습니다. 잠시 후 다시 시도해 주세요.",
+  DISCOVER_SEEDS_POSTPROCESSING_ERROR:
+    "장소 후보를 정리하는 중 문제가 발생했습니다. 잠시 후 다시 시도해 주세요.",
+  DISCOVER_SEEDS_EXHAUSTED:
+    "조건에 맞는 장소를 찾지 못했습니다. 출발지나 요청사항을 바꿔 다시 시도해 주세요.",
+  EVALUATE_SEEDS_LLM_SCORING_ERROR:
+    "추천 후보를 평가하는 중 문제가 발생했습니다. 잠시 후 다시 시도해 주세요.",
+  EVALUATE_SEEDS_INVALID_SCORING_RESPONSE:
+    "추천 후보 평가 결과를 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+  EVALUATE_SEEDS_NO_RECOMMENDABLE_CANDIDATES:
+    "조건에 맞는 장소를 찾지 못했습니다. 출발지나 요청사항을 바꿔 다시 시도해 주세요.",
+  EVALUATE_SEEDS_POSTPROCESSING_ERROR:
+    "추천 결과를 정리하는 중 문제가 발생했습니다. 잠시 후 다시 시도해 주세요.",
+});
+
+export const toPublicRecommendationFailureEvent = (code: string): PublicFailureEvent => ({
+  type: "error",
+  message: RECOMMENDATION_FAILURE_MESSAGES[code] ?? RECOMMENDATION_FAILURE_EVENT.message,
+});
+
+export const presentStoredRecommendationFailure = (
+  code: string | null,
+): PublicFailureEvent =>
+  code === null ? RECOMMENDATION_FAILURE_EVENT : toPublicRecommendationFailureEvent(code);
+
 const isEngineOutputError = (failure: unknown): failure is EngineOutputError =>
   typeof failure === "object" &&
   failure !== null &&
@@ -80,7 +109,7 @@ export const presentRecommendationError = (
         };
 
   return {
-    publicEvent: RECOMMENDATION_FAILURE_EVENT,
+    publicEvent: toPublicRecommendationFailureEvent(record.code),
     internal: {
       code: redactSecrets(record.code, secrets),
       name: redactSecrets(record.name, secrets),

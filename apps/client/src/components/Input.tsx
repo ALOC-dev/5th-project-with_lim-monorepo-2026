@@ -1,15 +1,15 @@
 import styled from "@emotion/styled";
-import { type InputHTMLAttributes } from "react";
+import { forwardRef, type InputHTMLAttributes } from "react";
 
 import { theme } from "../design-system/theme.generated";
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
-  width?: string;
+  width?: string | number;
 }
 
 const S = {
-  StyledInput: styled.input<{ width?: string }>`
-    width: ${({ width }) => width || "100%"};
+  StyledInput: styled.input<{ width?: string | number }>`
+    width: ${({ width }) => (typeof width === "number" ? `${width}px` : width || "100%")};
     height: 48px;
     padding: 0 14px;
 
@@ -25,7 +25,7 @@ const S = {
     transition: all 0.2s ease;
 
     &::placeholder {
-      color: ${theme.tokens.color.neutral[900]};
+      color: ${theme.tokens.color.neutral[200]};
     }
 
     &:focus {
@@ -35,6 +35,8 @@ const S = {
   `,
 };
 
-export const Input = ({ width, ...props }: InputProps) => {
-  return <S.StyledInput width={width} {...props} />;
-};
+export const Input = forwardRef<HTMLInputElement, InputProps>(({ width, ...props }, ref) => {
+  return <S.StyledInput ref={ref} width={width} {...props} />;
+});
+
+Input.displayName = "Input";

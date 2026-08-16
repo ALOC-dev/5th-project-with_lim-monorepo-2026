@@ -7,7 +7,7 @@ import type {
 import type { Dispatch, SetStateAction } from "react";
 import { createContext, useContext } from "react";
 
-import type { CalendarDate } from "./utils/calendarDayViewModel";
+import type { CalendarDate } from "../../components/DatePicker/calendar";
 
 export type PlaceRecommendationFormLocation = {
   readonly lat: number;
@@ -18,7 +18,7 @@ export type PlaceRecommendationFormLocation = {
 
 export type PlaceRecommendationFormDate = CalendarDate;
 
-export type PlaceRecommendationFormSheet = "location" | "date";
+export type PlaceRecommendationFormSheet = "location";
 
 export type PlaceRecommendationFormInputContextType = {
   readonly locations: PlaceRecommendationFormLocation[];

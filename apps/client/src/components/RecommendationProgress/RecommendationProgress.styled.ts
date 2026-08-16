@@ -43,6 +43,36 @@ export const S = {
     white-space: pre-line;
     ${tokens.typography.body.sm};
   `,
+  DetailList: styled.dl`
+    display: flex;
+    width: 100%;
+    flex-direction: column;
+    gap: 10px;
+    margin: 0 0 24px;
+    padding: 14px 16px;
+    border: 1px solid ${tokens.color.neutral[200]};
+    border-radius: 12px;
+    background-color: ${tokens.color.neutral[0]};
+  `,
+  DetailRow: styled.div`
+    display: grid;
+    grid-template-columns: 48px minmax(0, 1fr);
+    gap: 12px;
+  `,
+  DetailLabel: styled.dt`
+    color: ${tokens.color.neutral[700]};
+    ${tokens.typography.label.xs};
+  `,
+  DetailValue: styled.dd`
+    display: -webkit-box;
+    margin: 0;
+    overflow: hidden;
+    color: ${tokens.color.neutral[900]};
+    overflow-wrap: anywhere;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    ${tokens.typography.body.xs};
+  `,
   StepList: styled.ul`
     display: flex;
     width: 100%;

@@ -37,45 +37,23 @@ export const S = {
   InputRow: styled.div`
     display: flex;
     width: 100%;
-    height: 56px;
+    height: 48px;
     align-items: flex-start;
     gap: 8px;
     flex-shrink: 0;
-  `,
 
-  Input: styled.input`
-    display: flex;
-    flex: 1;
-    height: 56px;
-    padding: 17px 16px;
-    justify-content: center;
-    align-items: center;
-    flex-shrink: 0;
-    border-radius: 10px;
-    border: 1px solid ${tokens.color.neutral["200"]};
-    background: ${tokens.color.neutral["0"]};
-    color: ${tokens.color.neutral["900"]};
-    ${tokens.typography.body.md};
-    font-size: 16px;
-    font-weight: 400;
-    line-height: 22px;
-    transition: border-color 0.2s ease;
-
-    outline: none;
-    &:focus {
-      border-color: ${tokens.color.primary["500"]};
-    }
-
-    &::placeholder {
-      color: #999999;
+    > input {
+      flex: 1;
+      min-width: 0;
+      width: auto;
     }
   `,
 
   ActionButton: styled.button<{ $variant?: "primary" | "secondary" | "disabled" }>`
     display: flex;
-    height: 56px;
+    height: 48px;
     width: 116px;
-    padding: 18px 0px;
+    padding: 14px 0px;
     border-radius: 10px;
     flex-shrink: 0;
     justify-content: center;

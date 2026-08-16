@@ -1,9 +1,9 @@
 import type { ReactNode } from "react";
 
+import { tokens } from "../../design-system/tokens.generated";
 import { Button } from "../Button";
 import Header from "../Header/Header";
 import PageRoot from "../PageRoot/PageRoot";
-import { tokens } from "../../design-system/tokens.generated";
 import { type RecommendationProgressStepStatus, S } from "./RecommendationProgress.styled";
 
 export type RecommendationProgressStep = {
@@ -11,6 +11,11 @@ export type RecommendationProgressStep = {
   readonly label: string;
   readonly status: RecommendationProgressStepStatus;
   readonly meta?: ReactNode;
+};
+
+export type RecommendationProgressDetail = {
+  readonly label: string;
+  readonly value: ReactNode;
 };
 
 type RecommendationProgressAction = {
@@ -29,6 +34,7 @@ type RecommendationProgressProps = {
   readonly onBack?: () => void;
   readonly title: string;
   readonly description?: ReactNode;
+  readonly details?: readonly RecommendationProgressDetail[];
   readonly steps?: readonly RecommendationProgressStep[];
   readonly error?: RecommendationProgressError;
 };
@@ -51,6 +57,7 @@ const RecommendationProgress = ({
   onBack,
   title,
   description,
+  details,
   steps,
   error,
 }: RecommendationProgressProps) => {
@@ -70,6 +77,16 @@ const RecommendationProgress = ({
           {!isError ? <S.Spinner aria-hidden="true" /> : null}
           <S.Title>{visibleTitle}</S.Title>
           {visibleDescription ? <S.Description>{visibleDescription}</S.Description> : null}
+          {!isError && details && details.length > 0 ? (
+            <S.DetailList aria-label="입력한 추천 조건">
+              {details.map((detail) => (
+                <S.DetailRow key={detail.label}>
+                  <S.DetailLabel>{detail.label}</S.DetailLabel>
+                  <S.DetailValue>{detail.value}</S.DetailValue>
+                </S.DetailRow>
+              ))}
+            </S.DetailList>
+          ) : null}
           {!isError && steps && steps.length > 0 ? (
             <S.StepList aria-label="추천 생성 단계">
               {steps.map((step) => (

@@ -26,6 +26,16 @@ export type LogEvent = {
 
 export type LogSink = (event: LogEvent) => void;
 
+/**
+ * A file sink remains callable as a regular {@link LogSink}, while callers that
+ * own a short-lived process can wait until all queued writes are durable.
+ * `drain` is an alias kept for callers that use stream terminology.
+ */
+export type FlushableLogSink = LogSink & {
+  flush(): Promise<void>;
+  drain(): Promise<void>;
+};
+
 type LoggerContext = {
   attemptNo?: number;
   retryNo?: number;
@@ -129,16 +139,46 @@ export const combineSinks =
  * 죽어도 그때까지의 로그가 남는다.
  *
  * 쓰기는 순서를 지키되 이벤트 루프를 막지 않도록 프라미스 체인으로 직렬화한다.
- * 쓰기 실패는 삼킨다. 로깅이 추천을 실패시키면 안 된다.
+ * 일반 logger 호출에서는 쓰기 실패를 던지지 않지만, 단명 프로세스의
+ * 소유자가 `flush()`를 기다리면 내구성 실패를 관찰할 수 있게 한다.
  */
-export const createJsonlFileSink = (filePath: string): LogSink => {
-  let queue: Promise<unknown> = fs.mkdir(path.dirname(filePath), { recursive: true });
-
-  return (event) => {
-    queue = queue
-      .then(() => fs.appendFile(filePath, `${JSON.stringify(event)}\n`, "utf8"))
-      .catch(() => undefined);
+export const createJsonlFileSink = (filePath: string): FlushableLogSink => {
+  let firstWriteFailure: unknown;
+  const rememberFailure = (error: unknown): void => {
+    firstWriteFailure ??= error;
   };
+  let queue: Promise<unknown> = fs
+    .mkdir(path.dirname(filePath), { recursive: true })
+    .catch(rememberFailure);
+
+  const sink: LogSink = (event) => {
+    queue = queue.then(async () => {
+      try {
+        await fs.appendFile(filePath, `${JSON.stringify(event)}\n`, "utf8");
+      } catch (error) {
+        rememberFailure(error);
+      }
+    });
+  };
+
+  const flush = async (): Promise<void> => {
+    // Events can be enqueued while an earlier write is settling. Wait until the
+    // observed tail is still the current tail, rather than only taking one
+    // snapshot of the queue.
+    while (true) {
+      const pending = queue;
+      await pending;
+      if (pending !== queue) continue;
+      if (firstWriteFailure !== undefined) {
+        throw firstWriteFailure instanceof Error
+          ? firstWriteFailure
+          : new Error("JSONL sink write failed with a non-Error rejection");
+      }
+      return;
+    }
+  };
+
+  return Object.assign(sink, { flush, drain: flush });
 };
 
 export const createLogger = (sink: LogSink = noopSink): Logger => buildLogger(sink);

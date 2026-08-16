@@ -47,6 +47,19 @@ const iconRenderers = {
       <circle cx={12} cy={10.5} r={2.5} />
     </g>
   ),
+  "my-location": () => (
+    <g
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+    >
+      <circle cx={12} cy={12} r={5.5} />
+      <circle cx={12} cy={12} fill="currentColor" r={2} stroke="none" />
+      <path d="M12 2v3M12 19v3M2 12h3M19 12h3" />
+    </g>
+  ),
   "back-arrow": () => (
     <path
       d="M19 12H5m7 7-7-7 7-7"
@@ -207,6 +220,25 @@ const iconRenderers = {
       <image height="12.875" href={courseMapIcon} width="12" x="13" y="2" />
     </>
   ),
+  "password-reset": () => (
+    <path
+      fill="currentColor"
+      d="M14 15C14 16.11 13.11 17 12 17C11.4696 17 10.9609 16.7893 10.5858 16.4142C10.2107 16.0391 10 15.5304 10 15C10 13.89 10.89 13 12 13C12.5304 13 13.0391 13.2107 13.4142 13.5858C13.7893 13.9609 14 14.4696 14 15ZM13.09 20C13.21 20.72 13.46 21.39 13.81 22H6C5.46957 22 4.96086 21.7893 4.58579 21.4142C4.21071 21.0391 4 20.5304 4 20V10C4 8.89 4.89 8 6 8H7V6C7 3.24 9.24 1 12 1C14.76 1 17 3.24 17 6V8H18C18.5304 8 19.0391 8.21071 19.4142 8.58579C19.7893 8.96086 20 9.46957 20 10V13.09C19.67 13.04 19.34 13 19 13C18.66 13 18.33 13.04 18 13.09V10H6V20H13.09ZM9 8H15V6C15 4.34 13.66 3 12 3C10.34 3 9 4.34 9 6V8ZM21.34 15.84L17.75 19.43L16.16 17.84L15 19L17.75 22L22.5 17.25L21.34 15.84Z"
+    />
+  ),
+  withdraw: () => (
+    <g
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M18.6668 24.5V22.1667C18.6668 20.929 18.1752 19.742 17.3 18.8668C16.4248 17.9917 15.2378 17.5 14.0002 17.5H7.00016C5.76249 17.5 4.5755 17.9917 3.70033 18.8668C2.82516 19.742 2.3335 20.929 2.3335 22.1667V24.5" />
+      <path d="M10.5002 12.8333C13.0775 12.8333 15.1668 10.744 15.1668 8.16667C15.1668 5.58934 13.0775 3.5 10.5002 3.5C7.92283 3.5 5.8335 5.58934 5.8335 8.16667C5.8335 10.744 7.92283 12.8333 10.5002 12.8333Z" />
+      <path d="M19.8335 9.33325L25.6668 15.1666M25.6668 9.33325L19.8335 15.1666" />
+    </g>
+  ),
 } satisfies Record<IconName, IconRenderer>;
 
 const iconViewBoxes: Partial<Record<IconName, string>> = {
@@ -214,6 +246,7 @@ const iconViewBoxes: Partial<Record<IconName, string>> = {
   "activity-place-favorite": "0 0 28 28",
   "activity-course-history": "0 0 28 28",
   "activity-course-favorite": "0 0 28 28",
+  withdraw: "0 0 28 28",
 };
 
 export const Icon = ({

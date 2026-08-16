@@ -1,0 +1,1 @@
+ALTER TABLE "place_recommendation_histories" ADD COLUMN "form_locations" jsonb DEFAULT '[]' NOT NULL;

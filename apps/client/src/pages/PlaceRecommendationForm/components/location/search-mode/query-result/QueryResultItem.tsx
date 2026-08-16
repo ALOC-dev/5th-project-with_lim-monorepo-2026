@@ -1,4 +1,5 @@
 import styled from "@emotion/styled";
+import { toast } from "sonner";
 
 import { theme } from "../../../../../../design-system/theme.generated";
 import { useLocationSearchHistory } from "../../../../hooks/useLocationSearchHistory";
@@ -26,13 +27,13 @@ const getLocationDisplay = (location: Location) => {
 
 const QueryResultItem = ({ location }: QueryResultItemProps) => {
   const { locations } = usePlaceRecommendationFormInput();
-  const { setQuery, openMapMode } = useLocationSelection();
+  const { openMapModeAtLocation } = useLocationSelection();
   const { insertItem } = useLocationSearchHistory();
   const { mainText, subText } = getLocationDisplay(location);
 
   const selectLocation = () => {
     if (locations.length >= 8) {
-      alert("출발지는 최대 8개까지만 선택할 수 있습니다.");
+      toast.warning("출발지는 최대 8개까지만 선택할 수 있습니다.");
       return;
     }
 
@@ -41,8 +42,7 @@ const QueryResultItem = ({ location }: QueryResultItemProps) => {
       location,
     });
 
-    setQuery("");
-    openMapMode();
+    openMapModeAtLocation(location);
   };
 
   return (

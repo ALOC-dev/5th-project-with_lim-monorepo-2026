@@ -1,4 +1,7 @@
-import type { RecommendationOriginContext } from "@monorepo/recommendation-engine/v1/contracts";
+import type {
+  PlaceRecommendationItem,
+  RecommendationOriginContext,
+} from "@monorepo/recommendation-engine/v1/contracts";
 import type { Dispatch, SetStateAction } from "react";
 import { createContext, useContext } from "react";
 
@@ -26,6 +29,7 @@ export type PlaceRecommendationResultPlace = {
   readonly score: number;
   readonly subInfo: string;
   readonly tags: readonly string[];
+  readonly recommendation: PlaceRecommendationItem;
 };
 
 export type PlaceRecommendationResultUiContextType = {

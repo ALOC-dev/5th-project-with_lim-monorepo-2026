@@ -41,26 +41,6 @@ export const S = {
     color: ${tokens.color.neutral["900"]};
   `,
 
-  Input: styled.input`
-    display: flex;
-    height: 56px;
-    padding: 0 16px;
-    align-items: center;
-    align-self: stretch;
-    border-radius: 12px;
-    border: 1px solid ${tokens.color.neutral["200"]};
-    ${tokens.typography.body.sm}
-    font-weight: 400;
-    font-size: 14px;
-    line-height: 22px;
-    background-color: ${tokens.color.neutral["0"]};
-    outline: none;
-    transition: border-color 0.2s ease;
-
-    &:focus {
-      border-color: ${tokens.color.primary["500"]};
-    }
-  `,
   SubmitButton: styled.button`
     display: flex;
     height: 56px;

@@ -14,6 +14,7 @@ export type WalkLegFetcher = (
   from: TravelPlace,
   to: TravelPlace,
   tmapAppKey: string,
+  signal?: AbortSignal,
 ) => Promise<WalkLeg | undefined>;
 
 const TmapApi = ky.create({
@@ -62,12 +63,13 @@ const toCacheKey = (from: TravelPlace, to: TravelPlace): string => {
 /** 테스트나 장기 실행 프로세스에서 캐시를 비울 때 쓴다. */
 export const clearWalkLegCache = (): void => walkLegCache.clear();
 
-export const fetchTmapWalkLeg: WalkLegFetcher = async (from, to, tmapAppKey) => {
+export const fetchTmapWalkLeg: WalkLegFetcher = async (from, to, tmapAppKey, signal) => {
   const cacheKey = toCacheKey(from, to);
   const cached = walkLegCache.get(cacheKey);
   if (cached) return cached;
 
   const response = await TmapApi.post("routes/pedestrian", {
+    signal,
     searchParams: { version: TMAP_API_VERSION },
     headers: { appKey: tmapAppKey, Accept: "application/json" },
     json: {

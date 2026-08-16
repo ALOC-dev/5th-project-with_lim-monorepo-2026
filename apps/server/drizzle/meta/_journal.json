@@ -15,6 +15,34 @@
       "when": 1786430498795,
       "tag": "0001_merge_recommendation_schema",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1786570140812,
+      "tag": "0002_add_saved_places_unique_index",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1786696846525,
+      "tag": "0003_add_place_recommendation_form_locations",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1786699501282,
+      "tag": "0004_course_real_engine",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1786774453223,
+      "tag": "0005_add_place_recommendation_completed_at",
+      "breakpoints": true
     }
   ]
 }

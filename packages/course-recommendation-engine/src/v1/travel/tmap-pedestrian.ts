@@ -21,10 +21,9 @@ export type TmapPedestrianMatrixOptions = {
   fetchLeg?: WalkLegFetcher;
 };
 
-export const createTmapPedestrianMatrixClient = (
-  options: TmapPedestrianMatrixOptions = {},
-): TravelMatrixClient =>
-  async ({ places, maxWalkableMeters, concurrency, tmapAppKey }) => {
+export const createTmapPedestrianMatrixClient =
+  (options: TmapPedestrianMatrixOptions = {}): TravelMatrixClient =>
+  async ({ places, maxWalkableMeters, concurrency, tmapAppKey, signal }) => {
     if (!tmapAppKey) {
       throw new Error("TMAP app key is required for pedestrian travel times");
     }
@@ -56,15 +55,16 @@ export const createTmapPedestrianMatrixClient = (
     const [head, ...rest] = pairs;
     if (!head) return { minutesByPlaceId, measuredPairCount: 0, calibration: null };
 
-    const headLeg = await fetchLeg(head[0], head[1], tmapAppKey);
+    const headLeg = await fetchLeg(head[0], head[1], tmapAppKey, signal);
     if (headLeg) record(head[0], head[1], toWalkLegMinutes(headLeg));
 
     // 이후 개별 실패는 무시한다. 빠진 쌍은 엔진이 직선거리로 메운다.
     await runWithConcurrency(rest, concurrency, async ([from, to]) => {
       try {
-        const leg = await fetchLeg(from, to, tmapAppKey);
+        const leg = await fetchLeg(from, to, tmapAppKey, signal);
         if (leg) record(from, to, toWalkLegMinutes(leg));
       } catch {
+        signal?.throwIfAborted();
         // 이 쌍만 추정으로 떨어진다.
       }
     });

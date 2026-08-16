@@ -1,15 +1,21 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 
 import { getPlaceRecommendationHistory } from "../../apis/server/placeRecommendationHistories";
 import FeedbackState from "../../components/FeedbackState/FeedbackState";
 import Header from "../../components/Header/Header";
 import PageRoot from "../../components/PageRoot/PageRoot";
 import { tokens } from "../../design-system/tokens.generated";
-import { toCompletedPlaceRecommendationEngineOutput } from "../PlaceRecommendationHistory/PlaceRecommendationHistory.data";
 import PlaceRecommendationResultPending from "../../features/PlaceRecommendationResult/components/PlaceRecommendationResultPending";
+import { getPlaceRecommendationDurationLabel } from "../../features/PlaceRecommendationResult/components/PlaceRecommendationResultPending.data";
 import PlaceRecommendationResultContent from "../../features/PlaceRecommendationResult/PlaceRecommendationResultContent";
+import { useAppBackNavigate, useAppNavigate } from "../../routes/useAppNavigate";
+import {
+  createPlaceRecommendationRetryRouteState,
+  type PlaceRecommendationRetryRouteState,
+} from "../PlaceRecommendationForm/initialValues";
+import { toCompletedPlaceRecommendationEngineOutput } from "../PlaceRecommendationHistory/PlaceRecommendationHistory.data";
 
 const getPlaceRecommendationResultQueryKey = (recommendationId: string) =>
   ["placeRecommendationHistory", recommendationId] as const;
@@ -18,22 +24,28 @@ const PlaceRecommendationResultStatusFeedback = ({
   kind,
   title,
   description,
+  retryState,
 }: {
   readonly kind: "loading" | "empty" | "error";
   readonly title: string;
   readonly description?: string;
+  readonly retryState?: PlaceRecommendationRetryRouteState;
 }) => {
-  const navigate = useNavigate();
+  const navigate = useAppNavigate();
+  const navigateBack = useAppBackNavigate("/");
 
   return (
     <PageRoot backgroundColor={tokens.color.neutral[50]} layout="contained">
-      <Header onBack={() => navigate("/place/recommendation/history")} title="장소 결과" />
+      <Header onBack={navigateBack} title="장소 결과" />
       <FeedbackState
         action={
           kind === "error"
             ? {
                 label: "다시 추천받기",
-                onClick: () => void navigate("/place/recommendation/form"),
+                onClick: () =>
+                  retryState
+                    ? void navigate("/place/recommendation/form", { state: retryState })
+                    : void navigate("/place/recommendation/form"),
               }
             : undefined
         }
@@ -88,13 +100,22 @@ const PlaceRecommendationResultPage = () => {
   switch (recommendation.data.status) {
     case "PENDING":
       return (
-        <PlaceRecommendationResultPending jobId={recommendationId} onTerminal={refreshStatus} />
+        <PlaceRecommendationResultPending
+          formLocations={recommendation.data.formLocations}
+          input={recommendation.data.input}
+          jobId={recommendationId}
+          onTerminal={refreshStatus}
+        />
       );
     case "FAILED":
       return (
         <PlaceRecommendationResultStatusFeedback
           description={recommendation.data.errorMessage}
           kind="error"
+          retryState={createPlaceRecommendationRetryRouteState(
+            recommendation.data.input,
+            recommendation.data.formLocations,
+          )}
           title="추천 결과를 만들지 못했어요"
         />
       );
@@ -109,7 +130,15 @@ const PlaceRecommendationResultPage = () => {
           />
         );
       }
-      return <PlaceRecommendationResultContent output={output} />;
+      return (
+        <PlaceRecommendationResultContent
+          durationLabel={getPlaceRecommendationDurationLabel(
+            recommendation.data.requestedAt,
+            recommendation.data.completedAt,
+          )}
+          output={output}
+        />
+      );
     }
   }
 };

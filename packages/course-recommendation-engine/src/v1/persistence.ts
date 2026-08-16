@@ -1,7 +1,11 @@
 import type { PlaceRecommendationItem } from "@monorepo/recommendation-engine/v1/contracts";
 import { z } from "zod";
 
-import type { CourseRecommendationItem, CourseUserOutput } from "./contracts.js";
+import {
+  CourseCandidateDecisionSchema,
+  type CourseRecommendationItem,
+  type CourseUserOutput,
+} from "./contracts.js";
 
 /**
  * 엔진 출력을 `course_options` / `course_places` 저장 형태로 옮긴다.
@@ -71,6 +75,7 @@ export const CourseUnmappedFieldsSchema = z
     /** 장소별 이동/대기 시간. `course_places`에 대응 컬럼이 없다. */
     placeTravelMinutes: z.array(z.number().int().gte(0)),
     placeWaitMinutes: z.array(z.number().int().gte(0)),
+    candidateDecisions: z.array(CourseCandidateDecisionSchema),
   })
   .strict();
 export type CourseUnmappedFields = z.infer<typeof CourseUnmappedFieldsSchema>;
@@ -182,6 +187,7 @@ export const toCoursePersistencePayload = (
     totalStayMinutes: course.totalStayMinutes,
     placeTravelMinutes: course.timeline.map((item) => item.travelMinutesFromPrevious),
     placeWaitMinutes: course.timeline.map((item) => item.waitMinutesFromPrevious),
+    candidateDecisions: course.candidateDecisions,
   });
 
   return { option, places, unmapped, warnings };

@@ -8,7 +8,7 @@ import {
 } from "./common.contracts.js";
 
 const dateIsoRegex = /^\d{4}-\d{2}-\d{2}$/;
-const time24hRegex = /^([01]\d|2[0-3]):[0-5]\d$/;
+const time24hRegex = /^(?:([01]\d|2[0-3]):[0-5]\d|24:00)$/;
 
 export const ScheduleInputSchema = z
   .object({

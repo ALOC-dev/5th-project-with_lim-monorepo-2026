@@ -6,6 +6,34 @@ import { WalkCalibrationSchema } from "./travel/contracts.js";
 export const PacePreferenceSchema = z.enum(["RELAXED", "NORMAL", "PACKED"]);
 export type PacePreference = z.infer<typeof PacePreferenceSchema>;
 
+export const CourseEngineProgressStepSchema = z.enum([
+  "measuring_travel",
+  "generating_courses",
+  "curating_courses",
+]);
+export type CourseEngineProgressStep = z.infer<typeof CourseEngineProgressStepSchema>;
+
+export const CourseCandidateDecisionCodeSchema = z.enum([
+  "INCLUDED",
+  "DUPLICATE",
+  "UNAVAILABLE_AT_TIME",
+  "OUTSIDE_TRAVEL_BUDGET",
+  "DURATION_LIMIT",
+  "LOOKUP_UNAVAILABLE",
+  "NOT_IN_TOP_COMBINATION",
+]);
+export type CourseCandidateDecisionCode = z.infer<typeof CourseCandidateDecisionCodeSchema>;
+
+export const CourseCandidateDecisionSchema = z
+  .object({
+    placeId: z.string().trim().min(1),
+    placeName: z.string().trim().min(1),
+    decision: CourseCandidateDecisionCodeSchema,
+    message: z.string().trim().min(1),
+  })
+  .strict();
+export type CourseCandidateDecision = z.infer<typeof CourseCandidateDecisionSchema>;
+
 const dateIsoRegex = /^\d{4}-\d{2}-\d{2}$/;
 const time24hRegex = /^([01]\d|2[0-3]):[0-5]\d$/;
 
@@ -23,7 +51,7 @@ export const CourseInputSchema = z
     dateISO: z.string().regex(dateIsoRegex),
     startTime24h: z.string().regex(time24hRegex),
     totalDurationMinutes: z.number().int().positive(),
-    places: z.array(PlaceRecommendationItemSchema).min(1).max(15),
+    places: z.array(PlaceRecommendationItemSchema).min(2).max(15),
     numberOfPeople: z.number().int().positive(),
     // 1인당 예산(원). 주면 예산에 맞는 코스를 우대한다. 없으면 비용은 랭킹에 반영하지 않는다.
     budgetPerPersonWon: z.number().int().positive().optional(),
@@ -111,6 +139,8 @@ export const CourseRecommendationItemSchema = z
     score: z.number().int().min(0).max(100),
     scoreBreakdown: CourseScoreBreakdownSchema,
     reasons: z.array(z.string().trim().min(1)).min(1).max(3),
+    // 후보 풀 전체를 기준으로 이 옵션이 각 후보를 포함했는지 설명한다.
+    candidateDecisions: z.array(CourseCandidateDecisionSchema).min(2).max(15),
   })
   .strict();
 export type CourseRecommendationItem = z.infer<typeof CourseRecommendationItemSchema>;

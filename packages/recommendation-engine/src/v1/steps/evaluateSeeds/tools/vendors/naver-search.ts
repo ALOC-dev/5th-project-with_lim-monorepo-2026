@@ -54,6 +54,7 @@ export const enrichWithNaverSearch = async (
     operationVerifier,
     sourceName: "naver-search",
     sourceTextKind: "snippet",
+    logger: credentials.logger,
   });
   const operationInfo = operationParse.operationInfo;
   const operationVerification = operationInfo

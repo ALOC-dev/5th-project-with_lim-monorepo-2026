@@ -2,6 +2,8 @@ import { createContext, useContext } from "react";
 
 export type FavoritePlaceItem = {
   readonly id: string;
+  readonly historyId: string | null;
+  readonly placeId: string;
   readonly date: string;
   readonly title: string;
   readonly category: string;

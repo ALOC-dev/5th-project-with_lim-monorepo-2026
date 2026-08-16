@@ -1,6 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { type ReactNode, useCallback, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
 
 import {
   deleteSavedPlace,
@@ -10,13 +9,16 @@ import {
 import PageRoot from "../../components/PageRoot/PageRoot";
 import { tokens } from "../../design-system/tokens.generated";
 import {
+  removeSavedPlaceFromCache,
+  savedPlacesQueryKey,
+} from "../../features/SavedPlaces/savedPlaces.data";
+import { useAppNavigate } from "../../routes/useAppNavigate";
+import {
   type FavoritePlaceItem,
   FavoritePlacesContext,
   type FavoritePlacesContextType,
 } from "./FavoritePlaces.context";
 import FavoritePlacesContent from "./FavoritePlacesForm";
-
-const favoritePlacesQueryKey = ["favoritePlaces"] as const;
 
 const seoulDateFormatter = new Intl.DateTimeFormat("en-US", {
   timeZone: "Asia/Seoul",
@@ -47,10 +49,13 @@ const formatSeoulDate = (createdAt: string): string => {
 
 const toFavoritePlaceItem = ({
   id,
+  historyId,
   createdAt,
   placeData,
 }: SavedRecommendationPlace): FavoritePlaceItem => ({
   id,
+  historyId,
+  placeId: placeData.id,
   date: formatSeoulDate(createdAt),
   title: placeData.name,
   category: `${placeData.mainCategory} · ${placeData.subCategory}`,
@@ -77,7 +82,7 @@ const requestSavedPlaceDeletion = async (savedPlaceId: string): Promise<string> 
 };
 
 const FavoritePlacesProvider = ({ children }: { readonly children: ReactNode }) => {
-  const navigate = useNavigate();
+  const navigate = useAppNavigate();
   const queryClient = useQueryClient();
   const [deleteErrorMessage, setDeleteErrorMessage] = useState<string | null>(null);
   const {
@@ -86,7 +91,7 @@ const FavoritePlacesProvider = ({ children }: { readonly children: ReactNode }) 
     isPending: isLoading,
     refetch,
   } = useQuery({
-    queryKey: favoritePlacesQueryKey,
+    queryKey: savedPlacesQueryKey,
     queryFn: requestSavedPlaces,
     retry: false,
   });
@@ -97,8 +102,8 @@ const FavoritePlacesProvider = ({ children }: { readonly children: ReactNode }) 
     },
     onSuccess: (deletedSavedPlaceId) => {
       queryClient.setQueryData<SavedRecommendationPlace[]>(
-        favoritePlacesQueryKey,
-        (currentSavedPlaces) => currentSavedPlaces?.filter(({ id }) => id !== deletedSavedPlaceId),
+        savedPlacesQueryKey,
+        (currentSavedPlaces) => removeSavedPlaceFromCache(currentSavedPlaces, deletedSavedPlaceId),
       );
     },
     onError: () => {

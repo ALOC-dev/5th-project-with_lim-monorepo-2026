@@ -36,6 +36,63 @@ export const S = {
     list-style: none;
   `,
 
+  SkeletonList: styled.ul`
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin: 0;
+    padding: 20px 24px;
+    list-style: none;
+  `,
+
+  SkeletonCard: styled.li`
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 6px;
+    padding: 14px;
+    border: 1px solid ${tokens.color.neutral[200]};
+    border-radius: 12px;
+    background-color: ${tokens.color.neutral[0]};
+  `,
+
+  SkeletonDate: styled.div`
+    display: flex;
+    grid-column: 1 / -1;
+    min-height: 18px;
+    align-items: center;
+  `,
+
+  SkeletonCardBody: styled.div`
+    display: flex;
+    grid-column: 1 / -1;
+    min-width: 0;
+    align-items: center;
+    justify-content: space-between;
+  `,
+
+  SkeletonPlaceInfo: styled.div`
+    display: flex;
+    min-width: 0;
+    flex: 1;
+    flex-direction: column;
+    gap: 6px;
+  `,
+
+  SkeletonControls: styled.div`
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: 8px;
+    margin-left: 12px;
+  `,
+
+  SkeletonTags: styled.div`
+    display: flex;
+    grid-column: 1 / -1;
+    gap: 6px;
+    margin-top: 12px;
+  `,
+
   Card: styled.li`
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;

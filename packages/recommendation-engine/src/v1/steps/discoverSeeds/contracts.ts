@@ -13,11 +13,14 @@ export const EvaluateSeedsRetryReasonSchema = z.enum([
 
 export type EvaluateSeedsRetryReason = z.infer<typeof EvaluateSeedsRetryReasonSchema>;
 
+/** TMAP POI 검색의 페이지당 최대 결과 수. */
+export const TMAP_SEARCH_COUNT_MAX = 20;
+
 export const SearchQuerySchema = z
   .object({
     query: z.string().min(1),
     page: z.number().int().positive().default(1),
-    count: z.number().int().positive(),
+    count: z.number().int().positive().max(TMAP_SEARCH_COUNT_MAX),
     location: z
       .object({
         longitude: z.number().min(-180).max(180),
@@ -49,10 +52,13 @@ export const DiscoveryContextSchema = z
     }
 
     const totalRequested = context.queries.reduce((total, query) => total + query.count, 0);
-    if (context.attemptNo === 1 && totalRequested !== context.targetSeedCount) {
+    if (
+      context.attemptNo === 1 &&
+      (totalRequested <= 0 || totalRequested > context.targetSeedCount)
+    ) {
       issues.addIssue({
         code: z.ZodIssueCode.custom,
-        message: `queries[].count sum must equal targetSeedCount (${context.targetSeedCount}), but got ${totalRequested}`,
+        message: `initial queries[].count sum must be greater than 0 and not exceed targetSeedCount (${context.targetSeedCount}), but got ${totalRequested}`,
         path: ["queries"],
       });
     }

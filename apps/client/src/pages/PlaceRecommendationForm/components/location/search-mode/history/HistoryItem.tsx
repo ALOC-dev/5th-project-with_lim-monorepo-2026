@@ -30,7 +30,7 @@ const assertNever = (value: never): never => {
 };
 
 const HistoryItem = ({ item }: HistoryItemProps) => {
-  const { openMapMode, setQuery } = useLocationSelection();
+  const { openMapModeAtLocation, setQuery } = useLocationSelection();
   const { deleteItem, promoteItem } = useLocationSearchHistory();
 
   const selectQuery = (query: string) => {
@@ -41,8 +41,7 @@ const HistoryItem = ({ item }: HistoryItemProps) => {
   const selectLocation = (location: Location) => {
     promoteItem(item);
 
-    setQuery("");
-    openMapMode();
+    openMapModeAtLocation(location);
   };
 
   const deleteHistoryItem = () => {

@@ -1,41 +1,89 @@
 import type { KeyboardEvent } from "react";
+import { useLayoutEffect, useRef } from "react";
 import { useParams } from "react-router-dom";
 
+import { Icon } from "../../../components/Icon/Icon";
+import { usePlaceRecommendationResultBookmarksContext } from "../state/PlaceRecommendationResult.bookmarks.context";
 import { usePlaceRecommendationResultUiContext } from "../state/PlaceRecommendationResult.ui.context";
 import { S } from "./PlaceRecommendationResultPlaceList.styled";
 
-const PlaceRecommendationResultPlaceList = () => {
+export type PlaceRecommendationResultPlaceSelectionRequest = {
+  readonly placeId: string;
+  readonly sequence: number;
+};
+
+type PlaceRecommendationResultPlaceListProps = {
+  readonly durationLabel: string | null;
+  readonly onPlaceSelect: (placeId: string) => void;
+  readonly selectionRequest: PlaceRecommendationResultPlaceSelectionRequest | null;
+};
+
+const PlaceRecommendationResultPlaceList = ({
+  durationLabel,
+  onPlaceSelect,
+  selectionRequest,
+}: PlaceRecommendationResultPlaceListProps) => {
   const { recommendationId } = useParams();
-  const { places, selectPlace, selectedPlace, selectedPlaceId } =
-    usePlaceRecommendationResultUiContext();
+  const { errorMessage, isBookmarkActionDisabled, isSaved, retry, toggleBookmark } =
+    usePlaceRecommendationResultBookmarksContext();
+  const { places, selectedPlace, selectedPlaceId } = usePlaceRecommendationResultUiContext();
+  const cardElementsRef = useRef(new Map<string, HTMLElement>());
+
+  useLayoutEffect(() => {
+    if (selectionRequest === null) return;
+
+    cardElementsRef.current.get(selectionRequest.placeId)?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  }, [selectionRequest]);
 
   return (
     <S.List aria-label="추천 장소 목록">
       <S.ResultSummary aria-live="polite">
-        <S.ResultCount>추천 장소 {places.length}개</S.ResultCount>
+        <S.SummaryHeader>
+          <S.ResultCount>추천 장소 {places.length}개</S.ResultCount>
+          {durationLabel ? <S.Duration>생성까지 {durationLabel}</S.Duration> : null}
+        </S.SummaryHeader>
         <S.SelectionStatus>
           {selectedPlace
             ? `${selectedPlace.rank}번 ${selectedPlace.name} 선택됨`
             : "장소를 선택하면 지도에서 확인할 수 있어요"}
         </S.SelectionStatus>
       </S.ResultSummary>
+      {errorMessage ? (
+        <S.BookmarkFeedback role="alert">
+          <span>{errorMessage}</span>
+          <S.BookmarkRetry type="button" onClick={retry}>
+            다시 시도
+          </S.BookmarkRetry>
+        </S.BookmarkFeedback>
+      ) : null}
       {places.map((place) => {
         const isSelected = selectedPlaceId === place.id;
+        const isPlaceSaved = isSaved(place.id);
         const detailPath = `/place/recommendation/${recommendationId ?? ""}/place/${place.id}`;
 
         return (
           <S.Card
             key={place.id}
+            ref={(element) => {
+              if (element === null) {
+                cardElementsRef.current.delete(place.id);
+                return;
+              }
+              cardElementsRef.current.set(place.id, element);
+            }}
             $isSelected={isSelected}
             aria-label={`${place.rank}번 ${place.name} ${isSelected ? "선택됨" : "선택"}`}
             aria-pressed={isSelected}
             role="button"
             tabIndex={0}
-            onClick={() => selectPlace(place.id)}
+            onClick={() => onPlaceSelect(place.id)}
             onKeyDown={(event) => {
               if (isSelectionKey(event)) {
                 event.preventDefault();
-                selectPlace(place.id);
+                onPlaceSelect(place.id);
               }
             }}
           >
@@ -45,7 +93,24 @@ const PlaceRecommendationResultPlaceList = () => {
                 <S.PlaceName>{place.name}</S.PlaceName>
                 <S.Category>{place.categoryLabel}</S.Category>
               </S.TitleBlock>
-              <S.ScoreBadge>{place.score}점</S.ScoreBadge>
+              <S.Actions>
+                <S.ScoreBadge>{place.score}점</S.ScoreBadge>
+                <S.BookmarkButton
+                  aria-busy={isBookmarkActionDisabled}
+                  aria-label={`${place.name} ${isPlaceSaved ? "찜 해제" : "찜하기"}`}
+                  aria-pressed={isPlaceSaved}
+                  disabled={isBookmarkActionDisabled}
+                  type="button"
+                  $isSaved={isPlaceSaved}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    toggleBookmark(place.recommendation);
+                  }}
+                  onKeyDown={(event) => event.stopPropagation()}
+                >
+                  <Icon name={isPlaceSaved ? "heart-filled" : "heart-outline"} size={24} />
+                </S.BookmarkButton>
+              </S.Actions>
             </S.CardHeader>
             <S.Description>{place.description}</S.Description>
             <S.SubInfo>{place.subInfo}</S.SubInfo>

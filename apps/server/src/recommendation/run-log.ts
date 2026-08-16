@@ -31,8 +31,11 @@ const getLogDir = (): string => process.env.RECOMMENDATION_LOG_DIR?.trim() || DE
 export type RecommendationRunLog = {
   readonly logger: Logger;
   readonly logFile: string;
+  flush(): Promise<void>;
   writeInput(userInput: UserInput): Promise<void>;
-  writeResult(result: EngineOutput | { readonly status: "THROWN"; readonly error: unknown }): Promise<void>;
+  writeResult(
+    result: EngineOutput | { readonly status: "THROWN"; readonly error: unknown },
+  ): Promise<void>;
 };
 
 const formatPrefix = (date: Date, jobId: string): string => {
@@ -56,10 +59,18 @@ const writeJsonFile = async (filePath: string, value: unknown): Promise<void> =>
 export const createRecommendationRunLog = (jobId: string): RecommendationRunLog => {
   const prefix = path.join(getLogDir(), formatPrefix(new Date(), jobId));
   const logFile = `${prefix}.log.jsonl`;
+  const fileSink = createJsonlFileSink(logFile);
 
   return {
-    logger: createLogger(combineSinks(consoleSink, createJsonlFileSink(logFile))),
+    logger: createLogger(combineSinks(consoleSink, fileSink)),
     logFile,
+    flush: async () => {
+      try {
+        await fileSink.flush();
+      } catch {
+        // 로깅 실패가 추천 요청을 실패시켜서는 안 된다.
+      }
+    },
     writeInput: (userInput) => writeJsonFile(`${prefix}.input.json`, { jobId, userInput }),
     writeResult: (result) =>
       writeJsonFile(`${prefix}.result.json`, {

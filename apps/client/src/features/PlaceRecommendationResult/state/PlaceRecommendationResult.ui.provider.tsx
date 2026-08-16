@@ -10,6 +10,7 @@ import {
 } from "./PlaceRecommendationResult.ui.context";
 
 const DEFAULT_MAP_ZOOM = 10;
+const FOCUSED_PLACE_MAP_ZOOM = 4;
 const PRICE_FORMATTER = new Intl.NumberFormat("ko-KR");
 const DAY_OF_WEEK_LABELS = {
   FRIDAY: "금",
@@ -45,6 +46,10 @@ const toMapCenter = ({
   lat,
   lng,
 });
+
+export const getFocusedMapZoom = (currentMapZoom: number): number => {
+  return Math.min(currentMapZoom, FOCUSED_PLACE_MAP_ZOOM);
+};
 
 const toAverageRecommendationCenter = (
   places: readonly PlaceRecommendationResultPlace[],
@@ -84,6 +89,7 @@ const toPlaceRecommendationResultPlaces = (
       phoneNumber: recommendation.phoneNumber,
       priceRangeLabel,
       rank: index + 1,
+      recommendation,
       referenceUrls: recommendation.referenceUrls,
       roadAddressKo: recommendation.location.roadAddressKo,
       score: recommendation.score,
@@ -197,9 +203,17 @@ const PlaceRecommendationResultUiStateProvider = ({
     [selectedPlaceId, uiModel.places],
   );
 
-  const selectPlace = useCallback((placeId: string) => {
-    setSelectedPlaceId(placeId);
-  }, []);
+  const selectPlace = useCallback(
+    (placeId: string) => {
+      const place = uiModel.places.find((candidate) => candidate.id === placeId);
+      if (place === undefined) return;
+
+      setSelectedPlaceId(placeId);
+      setMapCenter(place.location);
+      setMapZoom(getFocusedMapZoom);
+    },
+    [uiModel.places],
+  );
 
   const clearSelectedPlace = useCallback(() => {
     setSelectedPlaceId(null);

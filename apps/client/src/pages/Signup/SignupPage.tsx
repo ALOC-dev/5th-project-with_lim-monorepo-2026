@@ -1,4 +1,5 @@
 import { type ReactNode, useCallback, useMemo, useState } from "react";
+import { toast } from "sonner";
 
 import {
   requestNicknameCheck,
@@ -34,7 +35,8 @@ export const SignupFlowProvider = ({ children }: { readonly children: ReactNode 
 
   const handleCheckNickname = useCallback(async () => {
     if (nickname.trim().length === 0) {
-      return alert("닉네임을 입력해주세요.");
+      toast.warning("닉네임을 입력해주세요.");
+      return;
     }
 
     try {
@@ -42,39 +44,45 @@ export const SignupFlowProvider = ({ children }: { readonly children: ReactNode 
 
       if (response.success && response.data?.available) {
         setIsNicknameChecked(true);
-        alert("사용 가능한 닉네임입니다.");
+        toast.success("사용 가능한 닉네임입니다.");
       } else {
         setIsNicknameChecked(false);
-        alert("이미 사용 중인 닉네임입니다. 다른 닉네임을 입력해주세요.");
+        toast.warning("이미 사용 중인 닉네임입니다. 다른 닉네임을 입력해주세요.");
       }
     } catch (error) {
       console.error("닉네임 중복 확인 중 오류 발생:", error);
-      alert("닉네임 중복 확인에 실패했습니다. 다시 시도해주세요.");
+      toast.error("닉네임 중복 확인에 실패했습니다. 다시 시도해주세요.");
     }
   }, [nickname]);
 
   const handleSendAuthCode = useCallback(async () => {
-    if (email.length === 0) return alert("이메일을 입력해주세요.");
+    if (email.length === 0) {
+      toast.warning("이메일을 입력해주세요.");
+      return;
+    }
 
     try {
       await requestSendSignupCode({ email });
       setIsEmailCodeSent(true);
-      alert("인증번호가 발송되었습니다. 이메일을 확인해주세요.");
+      toast.success("인증번호가 발송되었습니다. 이메일을 확인해주세요.");
     } catch (error) {
-      alert("인증번호 발송에 실패했습니다.");
+      toast.error("인증번호 발송에 실패했습니다.");
       console.error(error);
     }
   }, [email]);
 
   const handleVerifyAuthCode = useCallback(async () => {
-    if (authCode.length !== 6) return alert("인증번호 6자리를 정확히 입력해주세요.");
+    if (authCode.length !== 6) {
+      toast.warning("인증번호 6자리를 정확히 입력해주세요.");
+      return;
+    }
 
     try {
       await requestVerifySignupCode({ email, code: authCode });
       setIsEmailVerified(true);
-      alert("이메일 인증이 완료되었습니다.");
+      toast.success("이메일 인증이 완료되었습니다.");
     } catch (error) {
-      alert("잘못된 인증번호이거나 만료되었습니다.");
+      toast.error("잘못된 인증번호이거나 만료되었습니다.");
       console.error(error);
     }
   }, [email, authCode]);

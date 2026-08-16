@@ -16,6 +16,7 @@ import { db } from "../db/client.js";
 import { placeRecommendationHistories } from "../db/schema.js";
 import { asyncHandler } from "../lib/asyncHandler.js";
 import { requireAuth } from "../middleware/auth.js";
+import { presentStoredRecommendationFailure } from "../recommendation/error-presentation.js";
 import { deriveRecommendationHistoryStatus } from "../recommendation/history.js";
 
 const router = Router();
@@ -83,6 +84,7 @@ router.get(
         ? {
             ...base,
             status,
+            completedAt: history.completedAt?.toISOString() ?? null,
             input: history.input,
             output: history.output,
           }
@@ -90,11 +92,16 @@ router.get(
           ? {
               ...base,
               status,
-              errorMessage: history.errorMessage ?? "추천 결과를 만드는 중 문제가 발생했습니다.",
+              completedAt: history.completedAt?.toISOString() ?? null,
+              input: history.input,
+              formLocations: [...history.formLocations],
+              errorMessage: presentStoredRecommendationFailure(history.errorCode).message,
             }
           : {
               ...base,
               status: "PENDING",
+              input: history.input,
+              formLocations: [...history.formLocations],
             };
 
     res.status(200).json(createApiResponse(data));

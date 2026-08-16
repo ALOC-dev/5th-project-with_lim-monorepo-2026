@@ -2,6 +2,8 @@ import styled from "@emotion/styled";
 
 import { tokens } from "../../design-system/tokens.generated";
 
+const pickerResultRowHeight = "74px";
+
 export const S = {
   Scroll: styled.div`
     display: flex;
@@ -11,15 +13,42 @@ export const S = {
     padding: 24px;
     overflow: auto;
   `,
+  RequiredNotice: styled.span`
+    margin-bottom: -8px;
+    color: ${tokens.color.primary[500]};
+    ${tokens.typography.label.xs};
+  `,
   Section: styled.section`
     display: flex;
     flex-direction: column;
     gap: 12px;
   `,
-  Heading: styled.h2`
+  SectionHeader: styled.div`
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  `,
+  Heading: styled.h2<{ $required?: boolean }>`
     margin: 0;
     color: ${tokens.color.neutral[900]};
     ${tokens.typography.title.xs};
+
+    &::after {
+      display: ${({ $required }) => ($required ? "inline" : "none")};
+      color: ${tokens.color.primary[500]};
+      content: " *";
+    }
+  `,
+  SectionCount: styled.span`
+    color: ${tokens.color.neutral[700]};
+    white-space: nowrap;
+    ${tokens.typography.body.sm};
+  `,
+  Helper: styled.p`
+    margin: -4px 0 0;
+    color: ${tokens.color.neutral[700]};
+    ${tokens.typography.body.xs};
   `,
   PickerOpen: styled.button`
     display: grid;
@@ -62,7 +91,17 @@ export const S = {
     grid-template-columns: 1fr 1fr;
     gap: 12px;
   `,
-  Field: styled.div`
+  TimeSelection: styled.div`
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: center;
+    gap: 8px;
+  `,
+  TimeSeparator: styled.span`
+    color: ${tokens.color.neutral[700]};
+    ${tokens.typography.body.lg}
+  `,
+  Field: styled.div<{ $required?: boolean }>`
     display: flex;
     flex-direction: column;
     gap: 6px;
@@ -70,14 +109,57 @@ export const S = {
     label {
       color: ${tokens.color.neutral[700]};
       ${tokens.typography.label.sm};
+
+      &::after {
+        display: ${({ $required }) => ($required ? "inline" : "none")};
+        color: ${tokens.color.primary[500]};
+        content: " *";
+      }
     }
   `,
-  Select: styled.select`
-    height: 48px;
-    padding: 0 12px;
-    border: 1px solid ${tokens.color.neutral[200]};
-    border-radius: 8px;
-    background: ${tokens.color.neutral[0]};
+  OptionalRow: styled.div`
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    & > :last-child {
+      flex: 1;
+      width: 100%;
+    }
+  `,
+  Checkbox: styled.input`
+    width: 20px;
+    height: 20px;
+    flex: none;
+    cursor: pointer;
+    accent-color: ${tokens.color.primary[700]};
+  `,
+  OptionalLabel: styled.label`
+    width: 90px;
+    flex: none;
+    color: ${tokens.color.neutral[700]};
+    white-space: nowrap;
+    ${tokens.typography.label.sm};
+  `,
+  BudgetWrapper: styled.div<{ $disabled: boolean }>`
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    justify-content: center;
+    gap: 8px;
+    opacity: ${({ $disabled }) => ($disabled ? 0.4 : 1)};
+    pointer-events: ${({ $disabled }) => ($disabled ? "none" : "auto")};
+    transition: opacity 0.2s ease;
+  `,
+  BudgetAmountText: styled.div`
+    color: ${tokens.color.neutral[700]};
+    text-align: right;
+    ${tokens.typography.label.sm};
+  `,
+  FieldError: styled.p`
+    margin: 0;
+    color: ${tokens.color.warning[500]};
+    ${tokens.typography.body.xs};
   `,
   Bottom: styled.div`
     padding: 16px 24px 24px;
@@ -107,12 +189,17 @@ export const S = {
     border-bottom: 1px solid ${tokens.color.neutral[200]};
   `,
   Tab: styled.button<{ $active: boolean }>`
+    display: flex;
+    min-height: 46px;
+    align-items: center;
+    justify-content: center;
     padding: 10px;
     border: 0;
     border-bottom: 2px solid
       ${({ $active }) => ($active ? tokens.color.primary[500] : "transparent")};
     background: transparent;
     color: ${({ $active }) => ($active ? tokens.color.primary[700] : tokens.color.neutral[700])};
+    text-align: center;
   `,
   Count: styled.p`
     margin: 0;
@@ -131,6 +218,8 @@ export const S = {
   `,
   ListItem: styled.li`
     display: flex;
+    min-height: ${pickerResultRowHeight};
+    flex: none;
     align-items: center;
     justify-content: space-between;
     gap: 8px;
@@ -141,8 +230,15 @@ export const S = {
     span {
       display: flex;
       min-width: 0;
+      flex: 1;
       flex-direction: column;
       gap: 3px;
+    }
+
+    strong {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     small {
@@ -151,6 +247,32 @@ export const S = {
       text-overflow: ellipsis;
       white-space: nowrap;
     }
+  `,
+  PickerSkeleton: styled.ul`
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  `,
+  PickerSkeletonItem: styled.li`
+    display: flex;
+    min-height: ${pickerResultRowHeight};
+    flex: none;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 12px;
+    border: 1px solid ${tokens.color.neutral[200]};
+    border-radius: 10px;
+  `,
+  PickerSkeletonInfo: styled.div`
+    display: flex;
+    min-width: 0;
+    flex: 1;
+    flex-direction: column;
+    gap: 3px;
   `,
   SelectPlace: styled.button`
     padding: 8px;

@@ -11,6 +11,7 @@
   },
   "scripts": {
     "dev": "pnpm -r --parallel dev",
+    "dev:logs": "pnpm --filter @monorepo/log-renderer dev:local",
     "build": "pnpm --filter @monorepo/client build && pnpm --filter @monorepo/server build",
     "format": "prettier . --write",
     "format:check": "prettier . --check",

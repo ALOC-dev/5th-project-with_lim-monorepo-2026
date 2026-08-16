@@ -1,6 +1,7 @@
 import { type InputHTMLAttributes, useRef } from "react";
 
 import { Icon } from "../Icon";
+import { Input } from "../Input";
 import { S } from "./SearchInput.styled";
 
 export type SearchInputProps = InputHTMLAttributes<HTMLInputElement> & {
@@ -37,7 +38,7 @@ export const SearchInput = ({
       >
         <Icon name={isSearchMode ? "back-arrow" : "search"} size={24} />
       </S.IconButton>
-      <S.Input ref={inputRef} placeholder={placeholder} value={value} {...inputProps} />
+      <Input ref={inputRef} placeholder={placeholder} value={value} {...inputProps} />
       <S.IconButton
         aria-label="검색어 지우기"
         disabled={!hasValue}

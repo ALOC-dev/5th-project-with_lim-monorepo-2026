@@ -17,6 +17,7 @@ export type PlaceRecommendationResultDataContextType =
   | {
       readonly status: "success";
       readonly result: PlaceRecommendationResultSuccess;
+      readonly durationLabel: string | null;
     };
 
 export const PlaceRecommendationResultDataContext =

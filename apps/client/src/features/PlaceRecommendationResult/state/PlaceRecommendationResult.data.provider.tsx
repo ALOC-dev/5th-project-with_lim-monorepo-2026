@@ -9,6 +9,7 @@ import {
 
 const toPlaceRecommendationResultDataContextValue = (
   output: EngineOutput | null | undefined,
+  durationLabel: string | null,
 ): PlaceRecommendationResultDataContextType => {
   if (output === null || output === undefined) return { status: "error" };
 
@@ -18,18 +19,23 @@ const toPlaceRecommendationResultDataContextValue = (
     case "SUCCESS":
       return output.userOutput.recommendations.length === 0
         ? { status: "empty" }
-        : { result: output, status: "success" };
+        : { durationLabel, result: output, status: "success" };
   }
 };
 
 export const PlaceRecommendationResultDataProvider = ({
   children,
+  durationLabel,
   output,
 }: {
   readonly children: ReactNode;
+  readonly durationLabel: string | null;
   readonly output: EngineOutput | null;
 }) => {
-  const contextValue = useMemo(() => toPlaceRecommendationResultDataContextValue(output), [output]);
+  const contextValue = useMemo(
+    () => toPlaceRecommendationResultDataContextValue(output, durationLabel),
+    [durationLabel, output],
+  );
 
   return (
     <PlaceRecommendationResultDataContext.Provider value={contextValue}>

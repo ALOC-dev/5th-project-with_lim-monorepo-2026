@@ -8,16 +8,23 @@ import {
   type SavePlaceResponseData,
 } from "@monorepo/api-contracts";
 import { PlaceRecommendationItemSchema } from "@monorepo/recommendation-engine/v1/contracts";
-import { and, desc, eq } from "drizzle-orm";
+import { and, arrayContains, desc, eq, isNull, sql } from "drizzle-orm";
 import { Router } from "express";
 import { z } from "zod";
 
 import { db } from "../db/client.js";
-import { savedPlaces } from "../db/schema.js";
+import { favoritePlaces, placeRecommendationHistories, savedPlaces } from "../db/schema.js";
 import { asyncHandler } from "../lib/asyncHandler.js";
 import { requireAuth } from "../middleware/auth.js";
+import {
+  planLegacySavedPlaceMigrations,
+  toSeoulMigrationSchedule,
+} from "../savedPlaces/legacyCompatibility.js";
 
 const router = Router();
+
+const historyOwnedBy = (userId: string) =>
+  arrayContains(placeRecommendationHistories.userIds, [userId]);
 
 const toSavedPlace = (row: typeof savedPlaces.$inferSelect): SavedPlace => ({
   id: row.id,
@@ -26,11 +33,65 @@ const toSavedPlace = (row: typeof savedPlaces.$inferSelect): SavedPlace => ({
   createdAt: row.createdAt.toISOString(),
 });
 
+const migrateLegacyFavoritesForUser = async (userId: string): Promise<void> => {
+  const [legacyFavorites, existingSavedPlaces] = await Promise.all([
+    db
+      .select()
+      .from(favoritePlaces)
+      .where(and(eq(favoritePlaces.userId, userId), isNull(favoritePlaces.deletedAt)))
+      .orderBy(desc(favoritePlaces.createdAt)),
+    db
+      .select({ placeData: savedPlaces.placeData })
+      .from(savedPlaces)
+      .where(eq(savedPlaces.userId, userId)),
+  ]);
+
+  const plan = planLegacySavedPlaceMigrations(
+    legacyFavorites,
+    existingSavedPlaces,
+    toSeoulMigrationSchedule(new Date()),
+  );
+
+  if (plan.migrations.length > 0) {
+    const inserted = await db
+      .insert(savedPlaces)
+      .values(
+        plan.migrations.map((migration) => ({
+          userId,
+          historyId: null,
+          placeData: migration.placeData,
+          createdAt: migration.createdAt,
+        })),
+      )
+      // Another concurrent first read may have normalized the same canonical Kakao ID.
+      .onConflictDoNothing()
+      .returning({ id: savedPlaces.id });
+    console.info("normalized legacy favorite places", {
+      plannedCount: plan.migrations.length,
+      insertedCount: inserted.length,
+    });
+  }
+
+  if (plan.skipped.length > 0) {
+    const counts = plan.skipped.reduce<Record<string, number>>((accumulator, item) => {
+      accumulator[item.reason] = (accumulator[item.reason] ?? 0) + 1;
+      return accumulator;
+    }, {});
+    console.warn("skipped invalid legacy favorite places during normalization", {
+      counts,
+    });
+  }
+};
+
 // 저장한 장소 조회
 router.get(
   "/",
   requireAuth,
   asyncHandler(async (req, res) => {
+    // Compatibility read: legacy favorites remain untouched. We add validated snapshots
+    // to saved_places once per canonical Kakao ID, then return the canonical source only.
+    await migrateLegacyFavoritesForUser(req.userId);
+
     const rows = await db
       .select()
       .from(savedPlaces)
@@ -63,14 +124,45 @@ router.post(
       return;
     }
 
+    if (parsed.data.historyId) {
+      const [history] = await db
+        .select({ id: placeRecommendationHistories.id })
+        .from(placeRecommendationHistories)
+        .where(
+          and(
+            eq(placeRecommendationHistories.id, parsed.data.historyId),
+            historyOwnedBy(req.userId),
+          ),
+        );
+
+      if (!history) {
+        res.status(400).json(createApiError("invalid history id"));
+        return;
+      }
+    }
+
+    await db.execute(sql`
+      INSERT INTO saved_places (user_id, history_id, place_data)
+      VALUES (
+        ${req.userId},
+        ${parsed.data.historyId ?? null},
+        ${sql.param(placeData.data, savedPlaces.placeData)}::jsonb
+      )
+      ON CONFLICT (user_id, (place_data->>'id'))
+      DO UPDATE SET
+        history_id = EXCLUDED.history_id,
+        place_data = EXCLUDED.place_data
+    `);
+
     const [saved] = await db
-      .insert(savedPlaces)
-      .values({
-        userId: req.userId,
-        historyId: parsed.data.historyId ?? null,
-        placeData: placeData.data,
-      })
-      .returning();
+      .select()
+      .from(savedPlaces)
+      .where(
+        and(
+          eq(savedPlaces.userId, req.userId),
+          sql`${savedPlaces.placeData}->>'id' = ${placeData.data.id}`,
+        ),
+      );
 
     if (!saved) {
       res.status(500).json(createApiError("failed to save place"));

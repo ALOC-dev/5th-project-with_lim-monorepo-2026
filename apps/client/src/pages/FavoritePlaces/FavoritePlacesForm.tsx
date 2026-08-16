@@ -1,10 +1,39 @@
-import { useNavigate } from "react-router-dom";
-
 import FeedbackState from "../../components/FeedbackState/FeedbackState";
 import Header from "../../components/Header/Header";
 import { Icon } from "../../components/Icon/Icon";
+import { Skeleton } from "../../components/Skeleton";
+import { useAppBackNavigate, useAppNavigate } from "../../routes/useAppNavigate";
 import { useFavoritePlaces } from "./FavoritePlaces.context";
 import { S } from "./FavoritePlaces.styled";
+
+const skeletonCardKeys = ["first", "second", "third"] as const;
+
+const FavoritePlacesSkeleton = () => (
+  <S.SkeletonList aria-busy="true" aria-label="찜한 장소를 불러오는 중이에요" role="status">
+    {skeletonCardKeys.map((key) => (
+      <S.SkeletonCard key={key}>
+        <S.SkeletonDate>
+          <Skeleton height={12} width={68} />
+        </S.SkeletonDate>
+        <S.SkeletonCardBody>
+          <S.SkeletonPlaceInfo>
+            <Skeleton height={20} width="68%" />
+            <Skeleton height={12} width="44%" />
+          </S.SkeletonPlaceInfo>
+          <S.SkeletonControls>
+            <Skeleton borderRadius="50%" height={44} width={44} />
+            <Skeleton borderRadius={14} height={32} width={56} />
+          </S.SkeletonControls>
+        </S.SkeletonCardBody>
+        <S.SkeletonTags>
+          <Skeleton borderRadius={14} height={26} width={58} />
+          <Skeleton borderRadius={14} height={26} width={66} />
+          <Skeleton borderRadius={14} height={26} width={54} />
+        </S.SkeletonTags>
+      </S.SkeletonCard>
+    ))}
+  </S.SkeletonList>
+);
 
 export default function FavoritePlacesContent() {
   const {
@@ -17,15 +46,22 @@ export default function FavoritePlacesContent() {
     handleRetry,
     handleGoToPlaceRecommendationHistory,
   } = useFavoritePlaces();
-  const navigate = useNavigate();
+  const navigate = useAppNavigate();
+  const navigateBack = useAppBackNavigate("/my");
+  const handleOpenPlace = (historyId: string | null, placeId: string) => {
+    if (historyId === null) return;
+
+    const resultPath = `/place/recommendation/${encodeURIComponent(historyId)}`;
+    void navigate(`${resultPath}/place/${encodeURIComponent(placeId)}`);
+  };
 
   return (
     <S.Container>
-      <Header title="찜한 장소 보기" onBack={() => navigate(-1)} />
+      <Header title="찜한 장소 보기" onBack={navigateBack} />
 
       <S.Main>
         {isLoading ? (
-          <FeedbackState kind="loading" title="찜한 장소를 불러오는 중이에요" />
+          <FavoritePlacesSkeleton />
         ) : isListError ? (
           <FeedbackState
             action={{ label: "다시 시도", onClick: handleRetry }}
@@ -45,8 +81,31 @@ export default function FavoritePlacesContent() {
               <S.DeleteError role="alert">{deleteErrorMessage}</S.DeleteError>
             ) : null}
             <S.List>
-              {favoriteList.map((item) => (
-                <S.Card key={item.id}>
+              {favoriteList.map((item) => {
+                const canOpenPlace = item.historyId !== null;
+
+                return (
+                  <S.Card
+                    aria-label={canOpenPlace ? `${item.title} 상세 보기` : undefined}
+                    key={item.id}
+                    role={canOpenPlace ? "button" : undefined}
+                    tabIndex={canOpenPlace ? 0 : undefined}
+                    onClick={
+                      canOpenPlace
+                        ? () => handleOpenPlace(item.historyId, item.placeId)
+                        : undefined
+                    }
+                    onKeyDown={
+                      canOpenPlace
+                        ? (event) => {
+                            if (event.key === "Enter" || event.key === " ") {
+                              event.preventDefault();
+                              handleOpenPlace(item.historyId, item.placeId);
+                            }
+                          }
+                        : undefined
+                    }
+                  >
                   <S.DateLabel>{item.date}</S.DateLabel>
 
                   <S.CardBody>
@@ -62,7 +121,11 @@ export default function FavoritePlacesContent() {
                         disabled={isDeleting}
                         type="button"
                         $isFavorited
-                        onClick={() => handleToggleFavorite(item.id)}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          handleToggleFavorite(item.id);
+                        }}
+                        onKeyDown={(event) => event.stopPropagation()}
                       >
                         <Icon name="heart-filled" size={20} />
                       </S.IconButton>
@@ -75,8 +138,9 @@ export default function FavoritePlacesContent() {
                       <S.Tag key={tag}>{tag}</S.Tag>
                     ))}
                   </S.TagsRow>
-                </S.Card>
-              ))}
+                  </S.Card>
+                );
+              })}
             </S.List>
           </S.Content>
         )}
