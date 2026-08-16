@@ -639,9 +639,23 @@ const fsyncParentDirectory = (directory: string): void => {
   }
 };
 
+/**
+ * 디렉터리 fsync를 지원하지 않는 플랫폼인가.
+ *
+ * 부모 디렉터리를 fsync하는 건 rename까지 디스크에 내려가게 하려는 것이지, 없으면
+ * 안 되는 단계가 아니다. 지원하지 않는 플랫폼에서는 조용히 건너뛴다.
+ *
+ * 윈도우는 디렉터리 핸들 플러시를 아예 지원하지 않아 **EPERM**을 준다(실측: 같은
+ * 디렉터리에서 파일 fsync는 성공, 디렉터리 fsync만 EPERM). 이 코드가 목록에 없어서
+ * 윈도우에서 테스트 스크립트가 `EPERM: operation not permitted, fsync`로 죽었다.
+ */
 const isUnsupportedDirectoryFsync = (error: unknown): boolean =>
   isRecord(error) &&
-  (error.code === "EINVAL" || error.code === "ENOTSUP" || error.code === "EISDIR");
+  (error.code === "EINVAL" ||
+    error.code === "ENOTSUP" ||
+    error.code === "EISDIR" ||
+    error.code === "EPERM" ||
+    error.code === "EACCES");
 
 export const writeEngineProcessStartedLifecycleMarkerSync = ({
   options,
