@@ -44,6 +44,8 @@ export const S = {
     border-radius: 16px 16px 0 0;
     pointer-events: auto;
 
+    padding-bottom: 16px;
+
     overflow-x: hidden;
     overflow-y: auto;
     overscroll-behavior-y: none;

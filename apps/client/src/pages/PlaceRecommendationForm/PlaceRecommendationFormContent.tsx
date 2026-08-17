@@ -12,8 +12,13 @@ import { fromDateISO, getLocalTodayDateISO, toDateISO } from "../../components/D
 import { DatePicker } from "../../components/DatePicker/DatePicker";
 import { Dropdown, type DropdownOption } from "../../components/Dropdown";
 import Header from "../../components/Header/Header";
-import { Input } from "../../components/Input";
 import { RangeSlider } from "../../components/Rangeslider";
+import {
+  MIDNIGHT_HOUR_OPTION,
+  NUMBER_OF_PEOPLE_OPTIONS,
+  TIME_HOUR_OPTIONS,
+  TIME_MINUTE_OPTIONS,
+} from "../../components/recommendationFormOptions";
 import { useAppBackNavigate, useAppNavigate } from "../../routes/useAppNavigate";
 import { dispatchPlaceRecommendationRequest } from "./input";
 import {
@@ -36,20 +41,13 @@ const PARTY_OPTIONS: DropdownOption[] = [
   { label: "동료", value: "COLLEAGUES" },
 ];
 
-const NUMBER_OF_PEOPLE_OPTIONS: DropdownOption[] = Array.from({ length: 20 }, (_, index) => {
-  const numberOfPeople = index + 1;
-  return { label: `${numberOfPeople}명`, value: String(numberOfPeople) };
-});
+const HOUR_OPTIONS: readonly DropdownOption[] = [...TIME_HOUR_OPTIONS, MIDNIGHT_HOUR_OPTION];
+const MINUTE_OPTIONS = TIME_MINUTE_OPTIONS;
 
-const HOUR_OPTIONS: DropdownOption[] = Array.from({ length: 25 }, (_, hour) => {
-  const value = String(hour).padStart(2, "0");
-  return { label: `${value}시`, value };
+const STAY_DURATION_OPTIONS: readonly DropdownOption[] = Array.from({ length: 24 }, (_, index) => {
+  const value = (index + 1) * 15;
+  return { label: `${value}분`, value: String(value) };
 });
-
-const MINUTE_OPTIONS: DropdownOption[] = ["00", "15", "30", "45"].map((value) => ({
-  label: `${value}분`,
-  value,
-}));
 
 const ALPHABETS = ["A", "B", "C", "D", "E", "F", "G", "H"];
 
@@ -97,7 +95,7 @@ const PlaceRecommendationFormContent = () => {
   const navigate = useAppNavigate();
   const navigateBack = useAppBackNavigate("/");
 
-  const stayDurationInputRef = useRef<HTMLInputElement>(null);
+  const stayDurationSelectRef = useRef<HTMLSelectElement>(null);
   const activityTypeSelectRef = useRef<HTMLSelectElement>(null);
   const numberOfPeopleSelectRef = useRef<HTMLSelectElement>(null);
   const partyTypeSelectRef = useRef<HTMLSelectElement>(null);
@@ -108,7 +106,9 @@ const PlaceRecommendationFormContent = () => {
       if (!response.success) {
         return;
       }
-      void navigate(`/place/recommendation/${encodeURIComponent(response.data.jobId)}`);
+      void navigate(`/place/recommendation/${encodeURIComponent(response.data.jobId)}`, {
+        replace: true,
+      });
     },
   });
 
@@ -236,7 +236,7 @@ const PlaceRecommendationFormContent = () => {
               onChange={(e) => {
                 if (e.target.checked) {
                   setIsStayDurationEnabled(true);
-                  stayDurationInputRef.current?.focus();
+                  stayDurationSelectRef.current?.focus();
                   return;
                 }
                 setIsStayDurationEnabled(false);
@@ -246,20 +246,26 @@ const PlaceRecommendationFormContent = () => {
             <S.OptionalLabel htmlFor="place-stay-duration-enabled">
               머무는 시간 (분)
             </S.OptionalLabel>
-            <Input
-              aria-label="머무는 시간(분)"
-              ref={stayDurationInputRef}
-              value={stayDurationMinutes || ""}
-              onChange={(e) => {
-                const onlyNumber = e.target.value.replace(/[^0-9]/g, "");
-                setStayDurationMinutes(onlyNumber ? Number(onlyNumber) : null);
-                if (onlyNumber !== "") setIsStayDurationEnabled(true);
+            <Dropdown
+              ariaLabel="머무는 시간(분)"
+              ref={stayDurationSelectRef}
+              value={stayDurationMinutes === null ? undefined : String(stayDurationMinutes)}
+              onChange={(value) => {
+                const parsedStayDuration = Number(value);
+                if (Number.isInteger(parsedStayDuration) && parsedStayDuration > 0) {
+                  setStayDurationMinutes(parsedStayDuration);
+                  setIsStayDurationEnabled(true);
+                  return;
+                }
+                setStayDurationMinutes(null);
+                setIsStayDurationEnabled(false);
               }}
               onBlur={(e) => {
                 if (e.currentTarget.value === "") setIsStayDurationEnabled(false);
               }}
               onFocus={() => setIsStayDurationEnabled(true)}
-              placeholder=""
+              options={STAY_DURATION_OPTIONS}
+              placeholder="선택"
             />
           </S.OptionalRow>
 
