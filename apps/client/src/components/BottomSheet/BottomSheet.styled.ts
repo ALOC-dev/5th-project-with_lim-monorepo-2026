@@ -38,7 +38,7 @@ export const S = {
     right: 0;
     width: 100%;
     min-height: ${({ $minHeight }) => $minHeight};
-    max-height: calc(100dvh - 24px);
+    max-height: calc(100svh - 24px);
     overflow: hidden;
     background-color: ${tokens.color.neutral[50]};
     border-radius: 16px 16px 0 0;

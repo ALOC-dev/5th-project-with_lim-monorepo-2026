@@ -249,6 +249,14 @@ export const S = {
       white-space: nowrap;
     }
   `,
+  PlaceOption: styled.div<{ $disabled: boolean }>`
+    display: flex;
+    width: 100%;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    cursor: ${({ $disabled }) => ($disabled ? "not-allowed" : "pointer")};
+  `,
   PickerSkeleton: styled.ul`
     display: flex;
     flex-direction: column;
@@ -274,16 +282,5 @@ export const S = {
     flex: 1;
     flex-direction: column;
     gap: 3px;
-  `,
-  SelectPlace: styled.button`
-    padding: 8px;
-    border: 0;
-    border-radius: 8px;
-    background: ${tokens.color.primary[100]};
-    color: ${tokens.color.primary[700]};
-
-    &:disabled {
-      background: ${tokens.color.neutral[200]};
-    }
   `,
 };

@@ -72,7 +72,7 @@ const PickerResultsSkeleton = () => (
           <Skeleton height={24} width="42%" />
           <Skeleton height={20} width="72%" />
         </S.PickerSkeletonInfo>
-        <Skeleton borderRadius={8} height={40} width={52} />
+        <Skeleton borderRadius={4} height={20} width={20} />
       </S.PickerSkeletonItem>
     ))}
   </S.PickerSkeleton>
@@ -340,7 +340,7 @@ export const CourseRecommendationFormPage = () => {
       </S.Bottom>
       <BottomSheet
         close={() => setPickerOpen(false)}
-        initialHeight="min(78dvh, 680px)"
+        initialHeight="80svh"
         id="course-place-picker"
         isOpen={isPickerOpen}
         isModal
@@ -406,21 +406,22 @@ export const CourseRecommendationFormPage = () => {
                   const atLimit = places.length >= MAX_SELECTED_PLACES && !selected;
                   return (
                     <S.ListItem key={place.id}>
-                      <span>
-                        <strong>{place.name}</strong>
-                        <small>
-                          {place.category} · {place.address}
-                        </small>
-                      </span>
-                      <S.SelectPlace
-                        aria-label={`${place.name} ${selected ? "선택 해제" : "선택"}`}
-                        aria-pressed={selected}
-                        disabled={atLimit}
-                        onClick={() => toggle(place)}
-                        type="button"
-                      >
-                        {selected ? "선택됨" : atLimit ? "최대 선택" : "선택"}
-                      </S.SelectPlace>
+                      <S.PlaceOption $disabled={atLimit} onClick={() => !atLimit && toggle(place)}>
+                        <span>
+                          <strong>{place.name}</strong>
+                          <small>
+                            {place.category} · {place.address}
+                          </small>
+                        </span>
+                        <S.Checkbox
+                          aria-label={`${place.name} ${selected ? "선택 해제" : "선택"}`}
+                          checked={selected}
+                          disabled={atLimit}
+                          onChange={() => toggle(place)}
+                          onClick={(event) => event.stopPropagation()}
+                          type="checkbox"
+                        />
+                      </S.PlaceOption>
                     </S.ListItem>
                   );
                 })}
