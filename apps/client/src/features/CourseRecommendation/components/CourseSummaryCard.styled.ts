@@ -34,7 +34,7 @@ export const S = {
     color: ${tokens.color.neutral[900]};
     ${tokens.typography.title.sm};
   `,
-  FavoriteButton: styled.button<{ readonly $isSaved: boolean }>`
+  BookmarkButton: styled.button<{ readonly $isSaved: boolean }>`
     display: inline-grid;
     width: 36px;
     height: 36px;

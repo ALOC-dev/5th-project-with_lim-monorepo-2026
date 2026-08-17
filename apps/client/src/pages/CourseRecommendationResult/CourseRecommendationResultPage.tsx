@@ -6,6 +6,20 @@ import { toast } from "sonner";
 import FeedbackState from "../../components/FeedbackState/FeedbackState";
 import { CoursePage } from "../../features/CourseRecommendation/components/CoursePage";
 import { CourseSummaryCard } from "../../features/CourseRecommendation/components/CourseSummaryCard";
+import type {
+  CourseBookmark,
+  CourseOption,
+  CourseRecommendation,
+} from "../../features/CourseRecommendation/course.types";
+import {
+  courseBookmarksQueryKey,
+  courseOptionQueryKey,
+  courseQueryKey,
+  removeCourseBookmark,
+  updateCourseOptionBookmark,
+  updateCourseRecommendationBookmark,
+  upsertCourseBookmark,
+} from "../../features/CourseRecommendation/courseBookmarks.data";
 import { courseRepository } from "../../features/CourseRecommendation/courseRepository";
 import { CourseRecommendationResultPending } from "../../features/CourseRecommendationResult/CourseRecommendationResultPending";
 import { useAppBackNavigate, useAppNavigate } from "../../routes/useAppNavigate";
@@ -28,17 +42,75 @@ export const CourseRecommendationResultPage = () => {
         : false,
     retry: false,
   });
-  const favorite = useMutation({
-    mutationFn: ({ optionId, value }: { readonly optionId: string; readonly value: boolean }) =>
-      courseRepository.toggleFavorite(courseId ?? "", optionId, value),
-    onSuccess: (_result, { optionId }) => {
-      void Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["course", courseId] }),
-        queryClient.invalidateQueries({ queryKey: ["course-option", courseId, optionId] }),
-        queryClient.invalidateQueries({ queryKey: ["course-favorites"] }),
+  const bookmark = useMutation({
+    mutationFn: ({
+      option,
+      isBookmarked,
+    }: {
+      readonly option: CourseOption;
+      readonly isBookmarked: boolean;
+    }) => courseRepository.toggleBookmark(courseId ?? "", option.id, isBookmarked),
+    onMutate: async ({ option, isBookmarked }) => {
+      const recommendationKey = courseQueryKey(courseId ?? "");
+      const optionKey = courseOptionQueryKey(courseId ?? "", option.id);
+      await Promise.all([
+        queryClient.cancelQueries({ queryKey: recommendationKey }),
+        queryClient.cancelQueries({ queryKey: optionKey }),
+        queryClient.cancelQueries({ queryKey: courseBookmarksQueryKey }),
       ]);
+
+      const context = {
+        course: queryClient.getQueryData<CourseRecommendation | null>(recommendationKey),
+        option: queryClient.getQueryData<CourseOption | null>(optionKey),
+        bookmarks: queryClient.getQueryData<readonly CourseBookmark[]>(courseBookmarksQueryKey),
+      };
+
+      queryClient.setQueryData<CourseRecommendation | null | undefined>(
+        recommendationKey,
+        (current) => updateCourseRecommendationBookmark(current, option.id, isBookmarked),
+      );
+      queryClient.setQueryData<CourseOption | null | undefined>(optionKey, (current) =>
+        updateCourseOptionBookmark(current ?? option, isBookmarked),
+      );
+      queryClient.setQueryData<readonly CourseBookmark[] | undefined>(
+        courseBookmarksQueryKey,
+        (current) =>
+          isBookmarked
+            ? upsertCourseBookmark(current, option)
+            : removeCourseBookmark(current, option.id),
+      );
+
+      return context;
     },
-    onError: () => toast.error("코스 찜 상태를 변경하지 못했어요."),
+    onSuccess: (isBookmarked, { option }) => {
+      const recommendationKey = courseQueryKey(courseId ?? "");
+      const optionKey = courseOptionQueryKey(courseId ?? "", option.id);
+      queryClient.setQueryData<CourseRecommendation | null | undefined>(
+        recommendationKey,
+        (current) => updateCourseRecommendationBookmark(current, option.id, isBookmarked),
+      );
+      queryClient.setQueryData<CourseOption | null | undefined>(optionKey, (current) =>
+        updateCourseOptionBookmark(current ?? option, isBookmarked),
+      );
+      queryClient.setQueryData<readonly CourseBookmark[] | undefined>(
+        courseBookmarksQueryKey,
+        (current) =>
+          isBookmarked
+            ? upsertCourseBookmark(current, option)
+            : removeCourseBookmark(current, option.id),
+      );
+    },
+    onError: (_error, variables, context) => {
+      if (context !== undefined) {
+        queryClient.setQueryData(courseQueryKey(courseId ?? ""), context.course);
+        queryClient.setQueryData(
+          courseOptionQueryKey(courseId ?? "", variables.option.id),
+          context.option,
+        );
+        queryClient.setQueryData(courseBookmarksQueryKey, context.bookmarks);
+      }
+      toast.error("코스 찜 상태를 변경하지 못했어요.");
+    },
   });
 
   const refreshStatus = useCallback(() => {
@@ -147,10 +219,10 @@ export const CourseRecommendationResultPage = () => {
         {recommendation.options.map((option) => {
           return (
             <CourseSummaryCard
-              favoritePending={favorite.isPending && favorite.variables?.optionId === option.id}
+              bookmarkPending={bookmark.isPending}
               key={option.id}
-              onFavoriteToggle={() =>
-                favorite.mutate({ optionId: option.id, value: !option.isFavorite })
+              onBookmarkToggle={() =>
+                bookmark.mutate({ option, isBookmarked: !option.isBookmarked })
               }
               onOpen={() =>
                 void navigate(

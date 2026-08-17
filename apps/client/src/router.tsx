@@ -5,7 +5,7 @@ import PageRoot from "./components/PageRoot/PageRoot";
 import { useAuth } from "./contexts/Auth.context";
 import { tokens } from "./design-system/tokens.generated";
 import ChangePasswordPage from "./pages/ChangePassword/ChangePasswordPage";
-import { CourseFavoritePage } from "./pages/CourseFavorite/CourseFavoritePage";
+import { CourseBookmarksPage } from "./pages/CourseFavorite/CourseFavoritePage";
 import { CourseRecommendationFormPage } from "./pages/CourseRecommendationForm/CourseRecommendationFormPage";
 import { CourseRecommendationHistoryPage } from "./pages/CourseRecommendationHistory/CourseRecommendationHistoryPage";
 import { CourseRecommendationResultPage } from "./pages/CourseRecommendationResult/CourseRecommendationResultPage";
@@ -128,7 +128,7 @@ export const router = createBrowserRouter([
           },
           {
             path: "/course/favorite",
-            element: <CourseFavoritePage />,
+            element: <CourseBookmarksPage />,
           },
         ],
       },

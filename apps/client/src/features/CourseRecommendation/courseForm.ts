@@ -7,7 +7,7 @@ export const MIN_DURATION_HOURS = 2;
 export const MAX_DURATION_HOURS = 8;
 export const MIN_BUDGET_PER_PERSON_WON = 5_000;
 export const MAX_BUDGET_PER_PERSON_WON = 500_000;
-export const DEFAULT_BUDGET_PER_PERSON_WON = 40_000;
+export const DEFAULT_BUDGET_PER_PERSON_WON: [number, number] = [20_000, 50_000];
 export const BUDGET_PER_PERSON_STEP_WON = 5_000;
 
 const SEOUL_OFFSET_HOURS = 9;
@@ -135,7 +135,7 @@ export const getCourseFormValidationError = (
   }: {
     readonly selectedPlaceCount: number;
     readonly numberOfPeople: number;
-    readonly budgetPerPersonWon?: number;
+    readonly budgetPerPersonWon?: readonly [number, number];
     readonly date: string;
     readonly startTime: string;
   },
@@ -150,12 +150,14 @@ export const getCourseFormValidationError = (
   if (!Number.isInteger(numberOfPeople) || numberOfPeople < 1 || numberOfPeople > 20) {
     return { field: "numberOfPeople", message: "인원은 1~20명으로 입력해 주세요." };
   }
-  if (
+  const invalidBudget =
     budgetPerPersonWon !== undefined &&
-    (!Number.isInteger(budgetPerPersonWon) ||
-      budgetPerPersonWon < MIN_BUDGET_PER_PERSON_WON ||
-      budgetPerPersonWon > MAX_BUDGET_PER_PERSON_WON)
-  ) {
+    (!Number.isInteger(budgetPerPersonWon[0]) ||
+      !Number.isInteger(budgetPerPersonWon[1]) ||
+      budgetPerPersonWon[0] < MIN_BUDGET_PER_PERSON_WON ||
+      budgetPerPersonWon[1] > MAX_BUDGET_PER_PERSON_WON ||
+      budgetPerPersonWon[0] > budgetPerPersonWon[1]);
+  if (invalidBudget) {
     return {
       field: "budgetPerPersonWon",
       message: "1인당 예산은 5천원~50만원으로 입력해 주세요.",

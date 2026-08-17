@@ -2,7 +2,7 @@
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { removeSavedCourseOption, searchCourseCandidates } from "./courses";
+import { removeSavedCourseBookmark, searchCourseCandidates } from "./courses";
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -81,7 +81,7 @@ describe("saved course option API", () => {
     );
     vi.stubGlobal("fetch", fetchMock);
 
-    await expect(removeSavedCourseOption(savedOptionId)).resolves.toEqual({
+    await expect(removeSavedCourseBookmark(savedOptionId)).resolves.toEqual({
       success: true,
       data: { removedId: savedOptionId },
     });

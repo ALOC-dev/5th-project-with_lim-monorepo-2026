@@ -5,7 +5,19 @@ import { Icon } from "../../components/Icon";
 import { Skeleton } from "../../components/Skeleton";
 import { CourseIconButton } from "../../features/CourseRecommendation/components/CourseIconButton";
 import { CoursePage } from "../../features/CourseRecommendation/components/CoursePage";
-import type { CourseFavorite } from "../../features/CourseRecommendation/course.types";
+import type {
+  CourseBookmark,
+  CourseOption,
+  CourseRecommendation,
+} from "../../features/CourseRecommendation/course.types";
+import {
+  courseBookmarksQueryKey,
+  courseOptionQueryKey,
+  courseQueryKey,
+  updateCourseBookmarksBookmark,
+  updateCourseOptionBookmark,
+  updateCourseRecommendationBookmark,
+} from "../../features/CourseRecommendation/courseBookmarks.data";
 import {
   formatDate,
   formatMinutes,
@@ -16,7 +28,7 @@ import { S } from "./CourseFavoritePage.styled";
 
 const skeletonCardKeys = ["first", "second", "third"] as const;
 
-const CourseFavoriteSkeleton = () => (
+const CourseBookmarksSkeleton = () => (
   <S.SkeletonList aria-busy="true" aria-label="찜한 코스를 불러오는 중이에요" role="status">
     {skeletonCardKeys.map((key) => (
       <S.SkeletonCard key={key}>
@@ -33,38 +45,109 @@ const CourseFavoriteSkeleton = () => (
   </S.SkeletonList>
 );
 
-export const CourseFavoritePage = () => {
+export const CourseBookmarksPage = () => {
   const navigate = useAppNavigate();
   const navigateBack = useAppBackNavigate("/my");
   const queryClient = useQueryClient();
-  const favorites = useQuery({
-    queryKey: ["course-favorites"],
-    queryFn: () => courseRepository.listFavorites(),
+  const bookmarks = useQuery({
+    queryKey: courseBookmarksQueryKey,
+    queryFn: () => courseRepository.listBookmarks(),
     retry: false,
   });
-  const remove = useMutation({
-    mutationFn: (favorite: CourseFavorite) => courseRepository.removeFavorite(favorite),
-    onSuccess: (_result, favorite) =>
-      void Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["course-favorites"] }),
-        queryClient.invalidateQueries({
-          queryKey: ["course-option", favorite.recommendationId, favorite.optionId],
-        }),
-        queryClient.invalidateQueries({ queryKey: ["course", favorite.recommendationId] }),
-      ]),
+  const bookmark = useMutation({
+    mutationFn: async ({
+      bookmark: currentBookmark,
+      isBookmarked,
+    }: {
+      readonly bookmark: CourseBookmark;
+      readonly isBookmarked: boolean;
+    }) => {
+      if (!isBookmarked) {
+        await courseRepository.removeBookmark(currentBookmark);
+        return false;
+      }
+      return courseRepository.toggleBookmark(
+        currentBookmark.recommendationId,
+        currentBookmark.optionId,
+        true,
+      );
+    },
+    onMutate: async ({ bookmark: currentBookmark, isBookmarked }) => {
+      const recommendationKey = courseQueryKey(currentBookmark.recommendationId);
+      const optionKey = courseOptionQueryKey(
+        currentBookmark.recommendationId,
+        currentBookmark.option.id,
+      );
+      await Promise.all([
+        queryClient.cancelQueries({ queryKey: courseBookmarksQueryKey }),
+        queryClient.cancelQueries({ queryKey: recommendationKey }),
+        queryClient.cancelQueries({ queryKey: optionKey }),
+      ]);
+
+      const context = {
+        bookmarks: queryClient.getQueryData<readonly CourseBookmark[]>(courseBookmarksQueryKey),
+        course: queryClient.getQueryData<CourseRecommendation | null>(recommendationKey),
+        option: queryClient.getQueryData<CourseOption | null>(optionKey),
+      };
+
+      queryClient.setQueryData<readonly CourseBookmark[] | undefined>(
+        courseBookmarksQueryKey,
+        (current) =>
+          updateCourseBookmarksBookmark(current, currentBookmark.option.id, isBookmarked),
+      );
+      queryClient.setQueryData<CourseRecommendation | null | undefined>(
+        recommendationKey,
+        (current) =>
+          updateCourseRecommendationBookmark(current, currentBookmark.option.id, isBookmarked),
+      );
+      queryClient.setQueryData<CourseOption | null | undefined>(optionKey, (current) =>
+        updateCourseOptionBookmark(current ?? currentBookmark.option, isBookmarked),
+      );
+
+      return context;
+    },
+    onSuccess: (isBookmarked, { bookmark: currentBookmark }) => {
+      const recommendationKey = courseQueryKey(currentBookmark.recommendationId);
+      const optionKey = courseOptionQueryKey(
+        currentBookmark.recommendationId,
+        currentBookmark.option.id,
+      );
+      queryClient.setQueryData<readonly CourseBookmark[] | undefined>(
+        courseBookmarksQueryKey,
+        (current) =>
+          updateCourseBookmarksBookmark(current, currentBookmark.option.id, isBookmarked),
+      );
+      queryClient.setQueryData<CourseRecommendation | null | undefined>(
+        recommendationKey,
+        (current) =>
+          updateCourseRecommendationBookmark(current, currentBookmark.option.id, isBookmarked),
+      );
+      queryClient.setQueryData<CourseOption | null | undefined>(optionKey, (current) =>
+        updateCourseOptionBookmark(current ?? currentBookmark.option, isBookmarked),
+      );
+    },
+    onError: (_error, variables, context) => {
+      if (context === undefined) return;
+      queryClient.setQueryData(courseBookmarksQueryKey, context.bookmarks);
+      queryClient.setQueryData(courseQueryKey(variables.bookmark.recommendationId), context.course);
+      queryClient.setQueryData(
+        courseOptionQueryKey(variables.bookmark.recommendationId, variables.bookmark.option.id),
+        context.option,
+      );
+    },
   });
 
   return (
     <CoursePage onBack={navigateBack} title="찜한 코스 보기">
-      {favorites.isPending ? (
-        <CourseFavoriteSkeleton />
-      ) : favorites.isError ? (
+      {bookmarks.isPending ? (
+        <CourseBookmarksSkeleton />
+      ) : bookmarks.isError ? (
         <FeedbackState
-          action={{ label: "다시 시도", onClick: () => void favorites.refetch() }}
+          action={{ label: "다시 시도", onClick: () => void bookmarks.refetch() }}
           kind="error"
           title="찜한 코스를 불러오지 못했어요"
         />
-      ) : !favorites.data?.length ? (
+      ) : !bookmarks.data?.length ? (
         <FeedbackState
           action={{
             label: "추천 기록 보기",
@@ -74,41 +157,54 @@ export const CourseFavoritePage = () => {
           title="아직 찜한 코스가 없어요"
         />
       ) : (
-        <S.FavoriteContent>
-          {remove.isError ? (
-            <S.InlineError role="alert">찜을 해제하지 못했어요.</S.InlineError>
+        <S.BookmarkContent>
+          {bookmark.isError ? (
+            <S.InlineError role="alert">찜 상태를 변경하지 못했어요.</S.InlineError>
           ) : null}
-          <S.FavoriteList>
-            {favorites.data.map((favorite) => (
-              <S.Favorite key={`${favorite.recommendationId}:${favorite.optionId}`}>
-                <time>{favorite.savedAt ? formatDate(favorite.savedAt) : "저장일 정보 없음"}</time>
-                <S.FavoriteOpen
+          <S.BookmarkList>
+            {bookmarks.data.map((bookmarkItem) => (
+              <S.Bookmark key={`${bookmarkItem.recommendationId}:${bookmarkItem.optionId}`}>
+                <time>
+                  {bookmarkItem.savedAt ? formatDate(bookmarkItem.savedAt) : "저장일 정보 없음"}
+                </time>
+                <S.BookmarkOpen
                   onClick={() =>
                     void navigate(
-                      `/course/recommendation/${encodeURIComponent(favorite.recommendationId)}/option/${encodeURIComponent(favorite.optionId)}`,
-                      { state: { favorite } },
+                      `/course/recommendation/${encodeURIComponent(bookmarkItem.recommendationId)}/option/${encodeURIComponent(bookmarkItem.optionId)}`,
+                      { state: { bookmark: bookmarkItem } },
                     )
                   }
                   type="button"
                 >
-                  <strong>{favorite.option.title}</strong>
+                  <strong>{bookmarkItem.option.title}</strong>
                   <small>
-                    {favorite.option.stops.length}곳 · 이동 {favorite.option.totalTravelMinutes}분 ·{" "}
-                    {formatMinutes(favorite.option.totalDurationMinutes)}
+                    {bookmarkItem.option.stops.length}곳 · 이동{" "}
+                    {bookmarkItem.option.totalTravelMinutes}분 ·{" "}
+                    {formatMinutes(bookmarkItem.option.totalDurationMinutes)}
                   </small>
-                </S.FavoriteOpen>
+                </S.BookmarkOpen>
                 <CourseIconButton
-                  aria-label={`${favorite.option.title} 찜 삭제`}
-                  disabled={remove.isPending}
-                  onClick={() => remove.mutate(favorite)}
+                  $isBookmarked={bookmarkItem.option.isBookmarked}
+                  aria-busy={bookmark.isPending}
+                  aria-label={`${bookmarkItem.option.title} ${bookmarkItem.option.isBookmarked ? "찜 해제" : "찜하기"}`}
+                  aria-pressed={bookmarkItem.option.isBookmarked}
+                  disabled={bookmark.isPending}
+                  onClick={() =>
+                    bookmark.mutate({
+                      bookmark: bookmarkItem,
+                      isBookmarked: !bookmarkItem.option.isBookmarked,
+                    })
+                  }
                   type="button"
                 >
-                  <Icon name="heart-filled" />
+                  <Icon
+                    name={bookmarkItem.option.isBookmarked ? "heart-filled" : "heart-outline"}
+                  />
                 </CourseIconButton>
-              </S.Favorite>
+              </S.Bookmark>
             ))}
-          </S.FavoriteList>
-        </S.FavoriteContent>
+          </S.BookmarkList>
+        </S.BookmarkContent>
       )}
     </CoursePage>
   );

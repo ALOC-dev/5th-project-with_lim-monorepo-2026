@@ -9,19 +9,19 @@ export const S = {
     display: flex;
     flex: 1;
     flex-direction: column;
-    gap: 24px;
-    padding: 24px;
+    gap: 13px;
+    padding: 24px 28px;
     overflow: auto;
   `,
   RequiredNotice: styled.span`
-    margin-bottom: -8px;
+    margin-bottom: 8px;
     color: ${tokens.color.primary[500]};
     ${tokens.typography.label.xs};
   `,
   Section: styled.section`
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 13px;
   `,
   SectionHeader: styled.div`
     display: flex;
@@ -86,11 +86,6 @@ export const S = {
       white-space: nowrap;
     }
   `,
-  FieldGrid: styled.div`
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
-  `,
   TimeSelection: styled.div`
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
@@ -104,11 +99,13 @@ export const S = {
   Field: styled.div<{ $required?: boolean }>`
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 8px;
 
     label {
-      color: ${tokens.color.neutral[700]};
-      ${tokens.typography.label.sm};
+      color: ${tokens.color.neutral[900]};
+      font-size: 13px;
+      font-weight: 500;
+      line-height: 18px;
 
       &::after {
         display: ${({ $required }) => ($required ? "inline" : "none")};
@@ -138,8 +135,10 @@ export const S = {
     width: 90px;
     flex: none;
     color: ${tokens.color.neutral[700]};
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 18px;
     white-space: nowrap;
-    ${tokens.typography.label.sm};
   `,
   BudgetWrapper: styled.div<{ $disabled: boolean }>`
     display: flex;
@@ -154,7 +153,9 @@ export const S = {
   BudgetAmountText: styled.div`
     color: ${tokens.color.neutral[700]};
     text-align: right;
-    ${tokens.typography.label.sm};
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 18px;
   `,
   FieldError: styled.p`
     margin: 0;
@@ -162,7 +163,7 @@ export const S = {
     ${tokens.typography.body.xs};
   `,
   Bottom: styled.div`
-    padding: 16px 24px 24px;
+    padding: 16px 28px 24px;
     border-top: 1px solid ${tokens.color.neutral[200]};
   `,
   Sheet: styled.div`

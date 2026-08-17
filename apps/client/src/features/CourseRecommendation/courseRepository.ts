@@ -12,14 +12,14 @@ import {
   cancelCourse,
   createCourse,
   deleteCourse,
+  getBookmarkedCourseOptions,
   getCourse,
   getCourseOption,
   getCourses,
-  getFavoriteCourseOptions,
-  removeSavedCourseOption,
+  removeSavedCourseBookmark,
   renameCourse,
   searchCourseCandidates,
-  setCourseOptionFavorite,
+  setCourseOptionBookmark,
 } from "../../apis/server/courses";
 import { getSavedPlaces, type SavedRecommendationPlace } from "../../apis/server/savedPlaces";
 import type {
@@ -161,7 +161,7 @@ const toOption = (
       estimatedCostPerPerson: option.estimatedCostPerPerson,
       mealPlan: option.mealPlan,
       candidateDecisions: option.candidateDecisions.map(toDecision),
-      isFavorite: option.isFavorite,
+      isBookmarked: option.isFavorite,
       routePath: option.routePath,
       routePathSource: option.routePathSource,
       legacy: false,
@@ -213,7 +213,7 @@ const toOption = (
       quality: "ESTIMATED",
     },
     candidateDecisions: [],
-    isFavorite: option.isFavorite,
+    isBookmarked: option.isFavorite,
     routePath: option.routePath,
     routePathSource: "ORDER_ONLY",
     legacy: true,
@@ -358,8 +358,8 @@ export const courseRepository: CourseRecommendationRepository = {
     if (!response.success) throw new Error(response.error);
     return true;
   },
-  listFavorites: async () => {
-    const response = await getFavoriteCourseOptions();
+  listBookmarks: async () => {
+    const response = await getBookmarkedCourseOptions();
     if (!response.success) throw new Error(response.error);
     if (isV2FavoritesResponse(response.data)) {
       return response.data.options.map((saved) => ({
@@ -378,17 +378,17 @@ export const courseRepository: CourseRecommendationRepository = {
       option: toOption(option),
     }));
   },
-  toggleFavorite: async (_courseId, optionId, favorite) => {
-    const response = await setCourseOptionFavorite(optionId, favorite);
+  toggleBookmark: async (_courseId, optionId, bookmarked) => {
+    const response = await setCourseOptionBookmark(optionId, bookmarked);
     if (!response.success) throw new Error(response.error);
-    return true;
+    return response.data.favorite;
   },
-  removeFavorite: async (favorite) => {
-    const response = favorite.sourceCourseOptionId
-      ? await setCourseOptionFavorite(favorite.sourceCourseOptionId, false)
-      : favorite.savedOptionId
-        ? await removeSavedCourseOption(favorite.savedOptionId)
-        : await setCourseOptionFavorite(favorite.optionId, false);
+  removeBookmark: async (bookmark) => {
+    const response = bookmark.sourceCourseOptionId
+      ? await setCourseOptionBookmark(bookmark.sourceCourseOptionId, false)
+      : bookmark.savedOptionId
+        ? await removeSavedCourseBookmark(bookmark.savedOptionId)
+        : await setCourseOptionBookmark(bookmark.optionId, false);
     if (!response.success) throw new Error(response.error);
     return true;
   },

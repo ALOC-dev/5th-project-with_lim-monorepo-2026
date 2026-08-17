@@ -104,6 +104,7 @@ const basePlace = (overrides: Partial<PlaceRecommendationItem>): PlaceRecommenda
     roadAddressKo: "서울시 테스트로 1",
   },
   priceRangePerPerson: [5_000, 15_000],
+  priceRangeSource: "SOURCE",
   score: 80,
   scoreBreakdown: {
     inputMatch: 80,
@@ -1122,7 +1123,7 @@ test("scores a course against the budget when one is given", async () => {
     priceRangePerPerson: [80_000, 120_000],
   });
 
-  const withBudget = async (budgetPerPersonWon?: number) => {
+  const withBudget = async (budgetPerPersonWon?: [number, number]) => {
     const engine = new CourseRecommendationEngine(
       {
         dateISO: "2026-08-03",
@@ -1144,10 +1145,10 @@ test("scores a course against the budget when one is given", async () => {
 
   // 예산을 안 주면 비용은 랭킹에 반영하지 않는다.
   assert.equal(await withBudget(undefined), 0);
-  // 예상 비용 중앙값 107,500원. 예산 20,000원이면 크게 초과해 감점된다.
-  assert.ok((await withBudget(20_000)) < 0);
-  // 예산이 넉넉하면 만점.
-  assert.equal(await withBudget(200_000), 10);
+  // 예상 비용 중앙값 107,500원. 목표 범위가 20,000~20,000원이면 크게 초과해 감점된다.
+  assert.ok((await withBudget([20_000, 20_000])) < 0);
+  // 예상 비용이 목표 범위 안이면 만점.
+  assert.equal(await withBudget([100_000, 200_000]), 10);
 });
 
 test("marks a place as favorite-sourced when the caller supplies the mapping", async () => {

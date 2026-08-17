@@ -67,7 +67,7 @@ describe("course repository adapters", () => {
       startTime: "18:30",
       durationHours: 4,
       numberOfPeople: 3,
-      budgetPerPersonWon: 50_000,
+      budgetPerPersonWon: [20_000, 50_000],
       pacePreference: "NORMAL",
     };
 
@@ -94,7 +94,7 @@ describe("course repository adapters", () => {
       startTime: "18:30",
       durationHours: 4,
       numberOfPeople: 3,
-      budgetPerPersonWon: 50_000,
+      budgetPerPersonWon: [20_000, 50_000],
       pacePreference: "NORMAL",
     });
   });

@@ -3,7 +3,7 @@ import styled from "@emotion/styled";
 import { tokens } from "../../design-system/tokens.generated";
 
 export const S = {
-  FavoriteContent: styled.div`
+  BookmarkContent: styled.div`
     display: flex;
     flex-direction: column;
     gap: 8px;
@@ -13,7 +13,7 @@ export const S = {
     color: ${tokens.color.warning[500]};
     ${tokens.typography.body.xs};
   `,
-  FavoriteList: styled.ul`
+  BookmarkList: styled.ul`
     display: flex;
     flex-direction: column;
     gap: 10px;
@@ -51,7 +51,7 @@ export const S = {
     justify-content: center;
     gap: 8px;
   `,
-  Favorite: styled.li`
+  Bookmark: styled.li`
     display: grid;
     grid-template-columns: 1fr auto;
     gap: 6px;
@@ -65,7 +65,7 @@ export const S = {
       color: ${tokens.color.neutral[700]};
     }
   `,
-  FavoriteOpen: styled.button`
+  BookmarkOpen: styled.button`
     display: flex;
     flex-direction: column;
     align-items: flex-start;

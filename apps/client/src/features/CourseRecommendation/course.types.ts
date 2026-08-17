@@ -15,6 +15,7 @@ export type CourseRecommendationStatus =
 
 export type CoursePlaceSource = "SAVED_PLACE" | "DIRECT_SEARCH";
 export type CoursePacePreference = "RELAXED" | "NORMAL" | "PACKED";
+export type CourseBudgetRangeWon = [number, number];
 
 export type CoursePlace = {
   readonly id: string;
@@ -36,7 +37,7 @@ export type CourseDraft = {
   readonly startTime: string;
   readonly durationHours: number;
   readonly numberOfPeople: number;
-  readonly budgetPerPersonWon?: number;
+  readonly budgetPerPersonWon?: CourseBudgetRangeWon;
   readonly pacePreference: CoursePacePreference;
 };
 
@@ -100,7 +101,7 @@ export type CourseOption = {
     readonly reason: string;
   };
   readonly candidateDecisions: readonly CourseCandidateDecision[];
-  readonly isFavorite: boolean;
+  readonly isBookmarked: boolean;
   readonly legacy: boolean;
 };
 
@@ -127,7 +128,7 @@ export type CourseHistoryItem = {
   readonly legacy?: boolean;
 };
 
-export type CourseFavorite = {
+export type CourseBookmark = {
   readonly savedOptionId?: string;
   readonly sourceCourseOptionId?: string | null;
   readonly optionId: string;
@@ -148,11 +149,11 @@ export type CourseRecommendationRepository = {
   readonly renameHistory: (id: string, title: string) => Promise<boolean>;
   readonly deleteHistory: (id: string) => Promise<boolean>;
   readonly cancelPendingHistory: (id: string) => Promise<boolean>;
-  readonly listFavorites: () => Promise<readonly CourseFavorite[]>;
-  readonly toggleFavorite: (
+  readonly listBookmarks: () => Promise<readonly CourseBookmark[]>;
+  readonly toggleBookmark: (
     recommendationId: string,
     optionId: string,
-    favorite: boolean,
+    bookmarked: boolean,
   ) => Promise<boolean>;
-  readonly removeFavorite: (favorite: CourseFavorite) => Promise<boolean>;
+  readonly removeBookmark: (bookmark: CourseBookmark) => Promise<boolean>;
 };

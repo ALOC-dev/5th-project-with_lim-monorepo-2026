@@ -66,7 +66,7 @@ describe("getCourseRecommendationRetryDraft", () => {
       startTime: "12:00",
       durationHours: 4,
       numberOfPeople: 4,
-      budgetPerPersonWon: 50_000,
+      budgetPerPersonWon: [20_000, 50_000],
       pacePreference: "RELAXED",
     } as const;
 
@@ -77,7 +77,7 @@ describe("getCourseRecommendationRetryDraft", () => {
       startTime: "12:00",
       durationHours: 4,
       numberOfPeople: 4,
-      budgetPerPersonWon: 50_000,
+      budgetPerPersonWon: [20_000, 50_000],
       pacePreference: "RELAXED",
       places: [
         {

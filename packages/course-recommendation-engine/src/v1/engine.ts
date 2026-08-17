@@ -5,9 +5,10 @@ import type {
 
 import { type CourseEngineConfig, DEFAULT_COURSE_ENGINE_CONFIG } from "./configs.js";
 import {
+  type CourseBudgetRange,
   type CourseEngineMeta,
-  type CourseEngineProgressStep,
   type CourseEngineOutput,
+  type CourseEngineProgressStep,
   type CourseInput,
   CourseInputSchema,
   type CourseRecommendationItem,
@@ -91,7 +92,7 @@ type MealContext = {
 type ScoringContext = MealContext & {
   courseStartMinute: number;
   totalDurationMinutes: number;
-  budgetPerPersonWon: number | undefined;
+  budgetPerPersonWon: CourseBudgetRange | undefined;
 };
 
 const LUNCH_WINDOW: MealWindow = {
@@ -797,21 +798,24 @@ const scoreState = (
 
 /**
  * 예산 적합도. 예산을 안 받았으면 비용은 랭킹에 반영하지 않는다.
- * 예산이 있으면 예상 비용 중앙값이 예산 이내일 때 만점, 초과할수록 깎는다.
+ * 예산이 있으면 예상 비용 중앙값이 범위 안일 때 만점, 범위를 벗어날수록 깎는다.
  */
 const getCostFitScore = (
   state: CourseState,
   config: CourseEngineConfig,
-  budgetPerPersonWon: number | undefined,
+  budgetPerPersonWon: CourseBudgetRange | undefined,
 ): number => {
   if (budgetPerPersonWon === undefined) return 0;
 
   const expectedCost = (state.costMinSum + state.costMaxSum) / 2;
-  if (expectedCost <= budgetPerPersonWon) return config.costFitBonus;
+  const [minBudget, maxBudget] = budgetPerPersonWon;
+  if (expectedCost >= minBudget && expectedCost <= maxBudget) return config.costFitBonus;
 
-  const overshootRatio = (expectedCost - budgetPerPersonWon) / budgetPerPersonWon;
-  // 예산의 2배를 넘으면 가산점이 0이 되고 그 아래로는 계속 감점된다.
-  return config.costFitBonus * Math.max(-1, 1 - overshootRatio * 2);
+  const distance = expectedCost < minBudget ? minBudget - expectedCost : expectedCost - maxBudget;
+  const boundary = expectedCost < minBudget ? minBudget : maxBudget;
+  const deviationRatio = distance / boundary;
+  // 목표 범위에서 멀어질수록 감점하고, 두 배 이상 벗어나면 최저점으로 고정한다.
+  return config.costFitBonus * Math.max(-1, 1 - deviationRatio * 2);
 };
 
 /**

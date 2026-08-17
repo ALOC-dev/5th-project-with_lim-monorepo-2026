@@ -5,8 +5,8 @@ import { S } from "./CourseSummaryCard.styled";
 
 type CourseSummaryCardProps = {
   readonly option: CourseOption;
-  readonly favoritePending?: boolean;
-  readonly onFavoriteToggle: () => void;
+  readonly bookmarkPending?: boolean;
+  readonly onBookmarkToggle: () => void;
   readonly onOpen?: () => void;
   readonly showRank?: boolean;
   readonly showReason?: boolean;
@@ -14,8 +14,8 @@ type CourseSummaryCardProps = {
 
 export const CourseSummaryCard = ({
   option,
-  favoritePending = false,
-  onFavoriteToggle,
+  bookmarkPending = false,
+  onBookmarkToggle,
   onOpen,
   showRank = false,
   showReason = false,
@@ -33,17 +33,17 @@ export const CourseSummaryCard = ({
           ) : null}
           <S.Title>{option.title}</S.Title>
         </S.TitleGroup>
-        <S.FavoriteButton
-          $isSaved={option.isFavorite}
-          aria-busy={favoritePending}
-          aria-label={option.isFavorite ? "코스 찜 해제" : "코스 찜하기"}
-          aria-pressed={option.isFavorite}
-          disabled={favoritePending}
-          onClick={onFavoriteToggle}
+        <S.BookmarkButton
+          $isSaved={option.isBookmarked}
+          aria-busy={bookmarkPending}
+          aria-label={option.isBookmarked ? "코스 찜 해제" : "코스 찜하기"}
+          aria-pressed={option.isBookmarked}
+          disabled={bookmarkPending}
+          onClick={onBookmarkToggle}
           type="button"
         >
-          <Icon name={option.isFavorite ? "heart-filled" : "heart-outline"} size={24} />
-        </S.FavoriteButton>
+          <Icon name={option.isBookmarked ? "heart-filled" : "heart-outline"} size={24} />
+        </S.BookmarkButton>
       </S.Header>
       <S.Meta>{formatCourseSummary(option)}</S.Meta>
       <S.Route>{option.stops.map((stop) => stop.name).join(" → ")}</S.Route>

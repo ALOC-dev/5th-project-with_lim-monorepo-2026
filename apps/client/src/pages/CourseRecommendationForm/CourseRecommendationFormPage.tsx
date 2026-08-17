@@ -1,3 +1,4 @@
+import { CourseBudgetRangeSchema } from "@monorepo/api-contracts";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
@@ -8,7 +9,12 @@ import { DatePicker } from "../../components/DatePicker/DatePicker";
 import { Dropdown, type DropdownOption } from "../../components/Dropdown";
 import FeedbackState from "../../components/FeedbackState/FeedbackState";
 import { Icon } from "../../components/Icon";
-import { ValueSlider } from "../../components/Rangeslider";
+import { RangeSlider } from "../../components/Rangeslider";
+import {
+  NUMBER_OF_PEOPLE_OPTIONS,
+  TIME_HOUR_OPTIONS,
+  TIME_MINUTE_OPTIONS,
+} from "../../components/recommendationFormOptions";
 import { SearchInput } from "../../components/SearchInput";
 import { Skeleton } from "../../components/Skeleton";
 import { CourseIconButton } from "../../features/CourseRecommendation/components/CourseIconButton";
@@ -53,23 +59,8 @@ const PACE_OPTIONS: readonly DropdownOption[] = [
   { label: "알차게", value: "PACKED" },
 ];
 
-const NUMBER_OF_PEOPLE_OPTIONS: readonly DropdownOption[] = Array.from(
-  { length: 20 },
-  (_, index) => {
-    const value = index + 1;
-    return { label: `${value}명`, value: String(value) };
-  },
-);
-
-const HOUR_OPTIONS: readonly DropdownOption[] = Array.from({ length: 24 }, (_, hour) => {
-  const value = String(hour).padStart(2, "0");
-  return { label: `${value}시`, value };
-});
-
-const MINUTE_OPTIONS: readonly DropdownOption[] = ["00", "15", "30", "45"].map((value) => ({
-  label: `${value}분`,
-  value,
-}));
+const HOUR_OPTIONS = TIME_HOUR_OPTIONS;
+const MINUTE_OPTIONS = TIME_MINUTE_OPTIONS;
 
 const pickerSkeletonKeys = ["first", "second", "third"] as const;
 
@@ -101,9 +92,10 @@ export const CourseRecommendationFormPage = () => {
   );
   const [durationHours, setDurationHours] = useState(() => retryDraft?.durationHours ?? 3);
   const [numberOfPeople, setNumberOfPeople] = useState(() => retryDraft?.numberOfPeople ?? 2);
-  const [budgetPerPersonWon, setBudgetPerPersonWon] = useState(
-    () => retryDraft?.budgetPerPersonWon ?? DEFAULT_BUDGET_PER_PERSON_WON,
-  );
+  const [budgetPerPersonWon, setBudgetPerPersonWon] = useState<[number, number]>(() => {
+    const budget = retryDraft?.budgetPerPersonWon ?? DEFAULT_BUDGET_PER_PERSON_WON;
+    return [budget[0], budget[1]];
+  });
   const [isBudgetEnabled, setBudgetEnabled] = useState(
     () => retryDraft?.budgetPerPersonWon !== undefined,
   );
@@ -158,7 +150,8 @@ export const CourseRecommendationFormPage = () => {
         ...(isBudgetEnabled ? { budgetPerPersonWon } : {}),
         pacePreference,
       }),
-    onSuccess: (course) => void navigate(`/course/recommendation/${encodeURIComponent(course.id)}`),
+    onSuccess: (course) =>
+      void navigate(`/course/recommendation/${encodeURIComponent(course.id)}`, { replace: true }),
   });
   const toggle = (place: CoursePlace) =>
     setPlaces((current) => [...toggleCoursePlace(current, place)]);
@@ -257,6 +250,7 @@ export const CourseRecommendationFormPage = () => {
             <label htmlFor="course-time-hour">시각</label>
             <S.TimeSelection aria-label="시각 선택">
               <Dropdown
+                ariaLabel="시각(시)"
                 id="course-time-hour"
                 onChange={(hour) => setStartTime(`${hour}:${startTimeMinute || "00"}`)}
                 options={HOUR_OPTIONS}
@@ -266,7 +260,7 @@ export const CourseRecommendationFormPage = () => {
               />
               <S.TimeSeparator aria-hidden>:</S.TimeSeparator>
               <Dropdown
-                ariaLabel="분"
+                ariaLabel="시각(분)"
                 disabled={!startTimeHour}
                 id="course-time-minute"
                 onChange={(minute) => setStartTime(`${startTimeHour}:${minute}`)}
@@ -285,27 +279,25 @@ export const CourseRecommendationFormPage = () => {
               value={String(durationHours)}
             />
           </S.Field>
-          <S.FieldGrid>
-            <S.Field $required>
-              <label htmlFor="course-people">인원</label>
-              <Dropdown
-                id="course-people"
-                onChange={(value) => setNumberOfPeople(Number(value))}
-                options={NUMBER_OF_PEOPLE_OPTIONS}
-                ref={numberOfPeopleRef}
-                value={String(numberOfPeople)}
-              />
-            </S.Field>
-            <S.Field $required>
-              <label htmlFor="course-pace">코스 페이스</label>
-              <Dropdown
-                id="course-pace"
-                onChange={(value) => setPacePreference(value as CoursePacePreference)}
-                options={PACE_OPTIONS}
-                value={pacePreference}
-              />
-            </S.Field>
-          </S.FieldGrid>
+          <S.Field $required>
+            <label htmlFor="course-people">인원</label>
+            <Dropdown
+              id="course-people"
+              onChange={(value) => setNumberOfPeople(Number(value))}
+              options={NUMBER_OF_PEOPLE_OPTIONS}
+              ref={numberOfPeopleRef}
+              value={String(numberOfPeople)}
+            />
+          </S.Field>
+          <S.Field $required>
+            <label htmlFor="course-pace">코스 페이스</label>
+            <Dropdown
+              id="course-pace"
+              onChange={(value) => setPacePreference(value as CoursePacePreference)}
+              options={PACE_OPTIONS}
+              value={pacePreference}
+            />
+          </S.Field>
           <S.OptionalRow>
             <S.Checkbox
               checked={isBudgetEnabled}
@@ -316,13 +308,21 @@ export const CourseRecommendationFormPage = () => {
             />
             <S.OptionalLabel htmlFor="course-budget-enabled">1인당 예산</S.OptionalLabel>
             <S.BudgetWrapper $disabled={!isBudgetEnabled} aria-disabled={!isBudgetEnabled}>
-              <S.BudgetAmountText>{formatCurrency(budgetPerPersonWon)}</S.BudgetAmountText>
-              <ValueSlider
-                ariaLabel="1인당 예산"
+              <S.BudgetAmountText>
+                {formatCurrency(budgetPerPersonWon[0])} ~ {formatCurrency(budgetPerPersonWon[1])}
+              </S.BudgetAmountText>
+              <RangeSlider
+                ariaLabels={["최소 예산", "최대 예산"]}
                 disabled={!isBudgetEnabled}
                 max={MAX_BUDGET_PER_PERSON_WON}
                 min={MIN_BUDGET_PER_PERSON_WON}
-                onChange={setBudgetPerPersonWon}
+                onChange={(newValue) => {
+                  const result = CourseBudgetRangeSchema.safeParse(newValue);
+                  if (result.success) {
+                    setBudgetPerPersonWon(result.data);
+                    setBudgetEnabled(true);
+                  }
+                }}
                 step={BUDGET_PER_PERSON_STEP_WON}
                 value={budgetPerPersonWon}
               />

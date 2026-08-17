@@ -7,9 +7,19 @@ import { CoursePage } from "../../features/CourseRecommendation/components/Cours
 import { CourseSummaryCard } from "../../features/CourseRecommendation/components/CourseSummaryCard";
 import { CourseTimeline } from "../../features/CourseRecommendation/components/CourseTimeline";
 import type {
-  CourseFavorite,
+  CourseBookmark,
   CourseOption,
+  CourseRecommendation,
 } from "../../features/CourseRecommendation/course.types";
+import {
+  courseBookmarksQueryKey,
+  courseOptionQueryKey,
+  courseQueryKey,
+  removeCourseBookmark,
+  updateCourseOptionBookmark,
+  updateCourseRecommendationBookmark,
+  upsertCourseBookmark,
+} from "../../features/CourseRecommendation/courseBookmarks.data";
 import { formatCourseReason } from "../../features/CourseRecommendation/courseRecommendation.utils";
 import { courseRepository } from "../../features/CourseRecommendation/courseRepository";
 import { useAppBackNavigate, useAppNavigate } from "../../routes/useAppNavigate";
@@ -21,40 +31,101 @@ export const CourseRecommendationResultItemDetailPage = () => {
   const resultPath = `/course/recommendation/${encodeURIComponent(courseId ?? "")}`;
   const navigateBack = useAppBackNavigate(resultPath);
   const location = useLocation();
-  const favoriteRoute = (location.state as { readonly favorite?: CourseFavorite } | null)?.favorite;
-  const favoriteSnapshot: CourseOption | undefined = favoriteRoute?.option;
+  const bookmarkRoute = (location.state as { readonly bookmark?: CourseBookmark } | null)?.bookmark;
+  const bookmarkSnapshot: CourseOption | undefined = bookmarkRoute?.option;
   const queryClient = useQueryClient();
   const optionQuery = useQuery({
-    queryKey: ["course-option", courseId, optionId],
+    queryKey: courseOptionQueryKey(courseId ?? "", optionId ?? ""),
     queryFn: () => courseRepository.getOption(courseId ?? "", optionId ?? ""),
     enabled: Boolean(courseId && optionId),
     retry: false,
   });
-  const favorite = useMutation({
-    mutationFn: (value: boolean) =>
-      favoriteRoute && !value
-        ? courseRepository.removeFavorite(favoriteRoute)
-        : courseRepository.toggleFavorite(courseId ?? "", optionId ?? "", value),
-    onSuccess: (_result, value) => {
-      if (favoriteRoute && !value) {
-        void navigate("/course/favorite", { replace: true });
-        return;
+  const bookmark = useMutation({
+    mutationFn: async ({
+      option,
+      isBookmarked,
+    }: {
+      readonly option: CourseOption;
+      readonly isBookmarked: boolean;
+    }) => {
+      if (bookmarkRoute && !isBookmarked) {
+        await courseRepository.removeBookmark(bookmarkRoute);
+        return false;
       }
-      void Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["course-option", courseId, optionId] }),
-        queryClient.invalidateQueries({ queryKey: ["course", courseId] }),
-        queryClient.invalidateQueries({ queryKey: ["course-favorites"] }),
+      return courseRepository.toggleBookmark(courseId ?? "", option.id, isBookmarked);
+    },
+    onMutate: async ({ option, isBookmarked }) => {
+      const recommendationKey = courseQueryKey(courseId ?? "");
+      const optionKey = courseOptionQueryKey(courseId ?? "", option.id);
+      await Promise.all([
+        queryClient.cancelQueries({ queryKey: recommendationKey }),
+        queryClient.cancelQueries({ queryKey: optionKey }),
+        queryClient.cancelQueries({ queryKey: courseBookmarksQueryKey }),
       ]);
+
+      const context = {
+        course: queryClient.getQueryData<CourseRecommendation | null>(recommendationKey),
+        option: queryClient.getQueryData<CourseOption | null>(optionKey),
+        bookmarks: queryClient.getQueryData<readonly CourseBookmark[]>(courseBookmarksQueryKey),
+      };
+
+      queryClient.setQueryData<CourseRecommendation | null | undefined>(
+        recommendationKey,
+        (current) => updateCourseRecommendationBookmark(current, option.id, isBookmarked),
+      );
+      queryClient.setQueryData<CourseOption | null | undefined>(optionKey, (current) =>
+        updateCourseOptionBookmark(current ?? option, isBookmarked),
+      );
+      queryClient.setQueryData<readonly CourseBookmark[] | undefined>(
+        courseBookmarksQueryKey,
+        (current) =>
+          isBookmarked
+            ? upsertCourseBookmark(current, option)
+            : removeCourseBookmark(current, option.id),
+      );
+
+      return context;
+    },
+    onSuccess: (isBookmarked, { option }) => {
+      const recommendationKey = courseQueryKey(courseId ?? "");
+      const optionKey = courseOptionQueryKey(courseId ?? "", option.id);
+      queryClient.setQueryData<CourseRecommendation | null | undefined>(
+        recommendationKey,
+        (current) => updateCourseRecommendationBookmark(current, option.id, isBookmarked),
+      );
+      queryClient.setQueryData<CourseOption | null | undefined>(optionKey, (current) =>
+        updateCourseOptionBookmark(current ?? option, isBookmarked),
+      );
+      queryClient.setQueryData<readonly CourseBookmark[] | undefined>(
+        courseBookmarksQueryKey,
+        (current) =>
+          isBookmarked
+            ? upsertCourseBookmark(current, option)
+            : removeCourseBookmark(current, option.id),
+      );
+      if (bookmarkRoute && !isBookmarked) {
+        void navigate("/course/favorite", { replace: true });
+      }
+    },
+    onError: (_error, variables, context) => {
+      if (context !== undefined) {
+        queryClient.setQueryData(courseQueryKey(courseId ?? ""), context.course);
+        queryClient.setQueryData(
+          courseOptionQueryKey(courseId ?? "", variables.option.id),
+          context.option,
+        );
+        queryClient.setQueryData(courseBookmarksQueryKey, context.bookmarks);
+      }
     },
   });
 
-  if (optionQuery.isPending && !favoriteSnapshot)
+  if (optionQuery.isPending && !bookmarkSnapshot)
     return (
       <CoursePage onBack={navigateBack} title="코스 상세">
         <FeedbackState kind="loading" title="코스 상세를 불러오는 중이에요" />
       </CoursePage>
     );
-  const option = optionQuery.data ?? favoriteSnapshot;
+  const option = optionQuery.data ?? bookmarkSnapshot;
   if (!option)
     return (
       <CoursePage onBack={navigateBack} title="코스 상세">
@@ -72,11 +143,11 @@ export const CourseRecommendationResultItemDetailPage = () => {
     <CoursePage onBack={navigateBack} title="코스 상세">
       <S.Detail>
         <CourseSummaryCard
-          favoritePending={favorite.isPending}
-          onFavoriteToggle={() => favorite.mutate(!option.isFavorite)}
+          bookmarkPending={bookmark.isPending}
+          onBookmarkToggle={() => bookmark.mutate({ option, isBookmarked: !option.isBookmarked })}
           option={option}
         />
-        {favorite.isError ? (
+        {bookmark.isError ? (
           <S.InlineError role="alert">코스 찜 상태를 변경하지 못했어요.</S.InlineError>
         ) : null}
         <S.Card>

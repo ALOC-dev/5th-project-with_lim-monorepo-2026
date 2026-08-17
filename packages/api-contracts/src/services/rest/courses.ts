@@ -70,6 +70,19 @@ export type CourseCandidateInput = z.infer<typeof CourseCandidateInputSchema>;
 export const CoursePacePreferenceSchema = z.enum(["RELAXED", "NORMAL", "PACKED"]);
 export type CoursePacePreference = z.infer<typeof CoursePacePreferenceSchema>;
 
+export const CourseBudgetRangeSchema = z
+  .tuple([z.number().int().min(5_000).max(500_000), z.number().int().min(5_000).max(500_000)])
+  .refine(([min, max]) => min <= max, {
+    message: "budget min must be less than or equal to max",
+  });
+export type CourseBudgetRange = z.infer<typeof CourseBudgetRangeSchema>;
+
+/** Accept the previous single-value budget when reading stored v2 requests. */
+export const CourseBudgetPerPersonWonSchema = z.preprocess(
+  (value) => (typeof value === "number" ? [value, value] : value),
+  CourseBudgetRangeSchema,
+);
+
 export const CreateCourseV2RequestSchema = z
   .object({
     version: z.literal(2),
@@ -78,7 +91,7 @@ export const CreateCourseV2RequestSchema = z
     startTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/u),
     durationHours: z.number().int().min(2).max(8),
     numberOfPeople: z.number().int().min(1).max(20),
-    budgetPerPersonWon: z.number().int().min(5_000).max(500_000).optional(),
+    budgetPerPersonWon: CourseBudgetPerPersonWonSchema.optional(),
     pacePreference: CoursePacePreferenceSchema,
   })
   .strict();
@@ -516,9 +529,7 @@ export type ListFavoriteCourseOptionsResponseData = z.infer<
   typeof ListFavoriteCourseOptionsResponseDataSchema
 >;
 
-export const RemoveSavedCourseOptionResponseDataSchema = z
-  .object({ removedId: z.uuid() })
-  .strict();
+export const RemoveSavedCourseOptionResponseDataSchema = z.object({ removedId: z.uuid() }).strict();
 export type RemoveSavedCourseOptionResponseData = z.infer<
   typeof RemoveSavedCourseOptionResponseDataSchema
 >;

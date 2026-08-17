@@ -39,6 +39,11 @@ test("accepts v2 mixed candidate pools and keeps legacy requests readable", () =
   assert.deepEqual(CreateCourseV2RequestSchema.parse(v2), v2);
   assert.equal(CreateCourseRequestSchema.safeParse(v2).success, true);
 
+  assert.deepEqual(
+    CreateCourseV2RequestSchema.parse({ ...v2, budgetPerPersonWon: 50_000 }).budgetPerPersonWon,
+    [50_000, 50_000],
+  );
+
   const legacy = {
     places: [
       {

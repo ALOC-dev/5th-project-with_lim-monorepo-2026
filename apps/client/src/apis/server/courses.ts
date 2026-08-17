@@ -118,7 +118,7 @@ export const cancelCourse = async (courseId: string) => {
   }
 };
 
-export const getFavoriteCourseOptions = async () => {
+export const getBookmarkedCourseOptions = async () => {
   try {
     return favoritesResponseSchema.parse(
       await serverApi.get(`${ENDPOINT}/options/favorites`).json<unknown>(),
@@ -128,12 +128,12 @@ export const getFavoriteCourseOptions = async () => {
   }
 };
 
-export const setCourseOptionFavorite = async (optionId: string, favorite: boolean) => {
+export const setCourseOptionBookmark = async (optionId: string, bookmarked: boolean) => {
   try {
     return favoriteResponseSchema.parse(
       await serverApi
         .patch(`${ENDPOINT}/options/${encodeURIComponent(optionId)}/favorite`, {
-          json: SetCourseOptionFavoriteRequestSchema.parse({ favorite }),
+          json: SetCourseOptionFavoriteRequestSchema.parse({ favorite: bookmarked }),
         })
         .json<unknown>(),
     );
@@ -142,7 +142,7 @@ export const setCourseOptionFavorite = async (optionId: string, favorite: boolea
   }
 };
 
-export const removeSavedCourseOption = async (savedOptionId: string) => {
+export const removeSavedCourseBookmark = async (savedOptionId: string) => {
   try {
     return removeSavedOptionResponseSchema.parse(
       await serverApi

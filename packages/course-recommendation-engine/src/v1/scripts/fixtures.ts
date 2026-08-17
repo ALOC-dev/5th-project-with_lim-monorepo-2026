@@ -284,6 +284,7 @@ const toPlace = (seed: PlaceSeed, index: number): PlaceRecommendationItem => ({
     roadAddressKo: seed.roadAddressKo,
   },
   priceRangePerPerson: seed.priceRangePerPerson,
+  priceRangeSource: "CATEGORY_ESTIMATE",
   score: seed.score,
   scoreBreakdown: {
     inputMatch: seed.score,
@@ -318,7 +319,7 @@ export const MOCK_SCENARIOS = {
     startTime24h: "12:00",
     totalDurationMinutes: 360,
     numberOfPeople: 2,
-    budgetPerPersonWon: 40_000,
+    budgetPerPersonWon: [40_000, 40_000],
   },
   /** 6명 단체. 식사/술자리 체류가 늘어나야 한다. */
   group: {

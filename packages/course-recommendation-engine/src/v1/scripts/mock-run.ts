@@ -3,16 +3,16 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
+  type CourseCurationClient,
+  type CourseEngineMeta,
   CourseRecommendationEngine,
   type CourseRecommendationItem,
   DEFAULT_COURSE_ENGINE_CONFIG,
-  type CourseCurationClient,
-  type CourseEngineMeta,
 } from "../index.js";
 import {
   isMockScenarioName,
-  type MockScenarioName,
   MOCK_SCENARIOS,
+  type MockScenarioName,
   toMockCourseInput,
 } from "./fixtures.js";
 
@@ -117,7 +117,10 @@ function formatInput(): string {
     `${input.dateISO} ${input.startTime24h}부터 ${input.totalDurationMinutes}분`,
     `${input.numberOfPeople}명`,
   ];
-  if ("budgetPerPersonWon" in input) parts.push(`예산 ${formatWon(input.budgetPerPersonWon)}/인`);
+  if ("budgetPerPersonWon" in input) {
+    const [minBudget, maxBudget] = input.budgetPerPersonWon;
+    parts.push(`예산 ${formatWon(minBudget)}~${formatWon(maxBudget)}/인`);
+  }
   if ("pacePreference" in input) parts.push(`페이스 ${input.pacePreference}`);
   return parts.join(" · ");
 }
@@ -139,7 +142,9 @@ function formatSummary(courses: CourseRecommendationItem[]): string {
         ...course.timeline.map(
           (item) =>
             `  ${item.time24h}  ${item.placeName} (${item.stayDurationMinutes}분, ${item.categoryLabel})` +
-            (item.travelMinutesFromPrevious > 0 ? ` ← 도보 ${item.travelMinutesFromPrevious}분` : "") +
+            (item.travelMinutesFromPrevious > 0
+              ? ` ← 도보 ${item.travelMinutesFromPrevious}분`
+              : "") +
             (item.waitMinutesFromPrevious > 0 ? ` + 대기 ${item.waitMinutesFromPrevious}분` : ""),
         ),
         `식사: ${course.mealPlan.status} - ${course.mealPlan.reason}`,

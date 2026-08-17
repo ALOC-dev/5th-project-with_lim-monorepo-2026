@@ -81,7 +81,7 @@ describe("getCourseFormValidationError", () => {
           ...validInput,
           selectedPlaceCount: 1,
           numberOfPeople: 0,
-          budgetPerPersonWon: 1_000,
+          budgetPerPersonWon: [1_000, 20_000],
         },
         now,
       ),
@@ -90,7 +90,7 @@ describe("getCourseFormValidationError", () => {
       field: "numberOfPeople",
     });
     expect(
-      getCourseFormValidationError({ ...validInput, budgetPerPersonWon: 1_000 }, now),
+      getCourseFormValidationError({ ...validInput, budgetPerPersonWon: [1_000, 20_000] }, now),
     ).toMatchObject({ field: "budgetPerPersonWon" });
   });
 

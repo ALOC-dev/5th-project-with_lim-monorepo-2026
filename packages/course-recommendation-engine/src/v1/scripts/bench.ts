@@ -33,6 +33,7 @@ const createPlace = (index: number): PlaceRecommendationItem => ({
   accessibility: { score: 80, distanceMeters: 300, perOrigin: [{ originId: "host", distanceMeters: 300 }] },
   location: { lat: 37.5 + index * 0.001, lng: 127 + index * 0.001, placeName: `장소 ${index}`, roadAddressKo: "서울시 벤치로 1" },
   priceRangePerPerson: [5_000, 15_000],
+  priceRangeSource: "CATEGORY_ESTIMATE",
   score: 70 + (index % 30),
   scoreBreakdown: { inputMatch: 80, trust: 80, accessibility: 80, diversity: 80, total: 80 },
   reasons: ["벤치마크 근거"],

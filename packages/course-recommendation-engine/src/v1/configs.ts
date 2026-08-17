@@ -54,7 +54,7 @@ export const DEFAULT_COURSE_ENGINE_CONFIG: CourseEngineConfig = {
   // 서로 다른 카테고리로 구성된 코스에 주는 가산점. 카페만 세 곳 도는 코스와
   // 식당+전시+카페 코스가 동점이 되지 않게 한다.
   categoryDiversityBonus: 8,
-  // 예산(budgetPerPersonWon)을 받은 경우에만 적용하는 예산 적합도 가산점.
+  // 예산 범위(budgetPerPersonWon)를 받은 경우에만 적용하는 예산 적합도 가산점.
   costFitBonus: 10,
   // 영업시간을 모르는 장소 1곳당 감점. 모르는 곳을 밤늦게 배치하는 걸 억제한다.
   unknownHoursPenalty: 5,

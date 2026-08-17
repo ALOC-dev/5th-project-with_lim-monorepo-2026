@@ -37,6 +37,19 @@ export type CourseCandidateDecision = z.infer<typeof CourseCandidateDecisionSche
 const dateIsoRegex = /^\d{4}-\d{2}-\d{2}$/;
 const time24hRegex = /^([01]\d|2[0-3]):[0-5]\d$/;
 
+export const CourseBudgetRangeSchema = z
+  .tuple([z.number().int().positive(), z.number().int().positive()])
+  .refine(([min, max]) => min <= max, {
+    message: "budget min must be less than or equal to max",
+  });
+export type CourseBudgetRange = z.infer<typeof CourseBudgetRangeSchema>;
+
+/** Keep engine inputs from older callers readable while using a budget range internally. */
+const CourseBudgetPerPersonWonSchema = z.preprocess(
+  (value) => (typeof value === "number" ? [value, value] : value),
+  CourseBudgetRangeSchema,
+);
+
 export const CourseScheduleInputSchema = z
   .object({
     dateISO: z.string().regex(dateIsoRegex),
@@ -54,7 +67,7 @@ export const CourseInputSchema = z
     places: z.array(PlaceRecommendationItemSchema).min(2).max(15),
     numberOfPeople: z.number().int().positive(),
     // 1인당 예산(원). 주면 예산에 맞는 코스를 우대한다. 없으면 비용은 랭킹에 반영하지 않는다.
-    budgetPerPersonWon: z.number().int().positive().optional(),
+    budgetPerPersonWon: CourseBudgetPerPersonWonSchema.optional(),
     // 코스 페이스. 체류 시간 범위 전체를 늘리거나 줄인다. 기본은 NORMAL.
     pacePreference: PacePreferenceSchema.optional(),
   })
