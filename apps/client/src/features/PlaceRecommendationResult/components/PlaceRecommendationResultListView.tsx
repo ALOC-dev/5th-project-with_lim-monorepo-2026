@@ -6,7 +6,10 @@ import { useAppBackNavigate } from "../../../routes/useAppNavigate";
 import { usePlaceRecommendationResultUiContext } from "../state/PlaceRecommendationResult.ui.context";
 import { S } from "./PlaceRecommendationResultListView.styled";
 import PlaceRecommendationResultMap from "./PlaceRecommendationResultMap";
-import { RESULT_LIST_SHEET_INITIAL_HEIGHT } from "./PlaceRecommendationResultMap.data";
+import {
+  RESULT_LIST_SHEET_INITIAL_HEIGHT,
+  RESULT_LIST_SHEET_MIN_HEIGHT,
+} from "./PlaceRecommendationResultMap.data";
 import PlaceRecommendationResultPlaceList, {
   type PlaceRecommendationResultPlaceSelectionRequest,
 } from "./PlaceRecommendationResultPlaceList";
@@ -51,7 +54,7 @@ const PlaceRecommendationResultListView = ({
         backdropTone="none"
         handleType="resizable"
         initialHeight={RESULT_LIST_SHEET_INITIAL_HEIGHT}
-        minHeight={RESULT_LIST_SHEET_INITIAL_HEIGHT}
+        minHeight={RESULT_LIST_SHEET_MIN_HEIGHT}
         minimumTop={52}
       >
         <PlaceRecommendationResultPlaceList
