@@ -37,6 +37,7 @@ import {
   MAX_SELECTED_PLACES,
   MIN_BUDGET_PER_PERSON_WON,
   MIN_DURATION_HOURS,
+  normalizeCourseBudgetRange,
   toggleCoursePlace,
 } from "../../features/CourseRecommendation/courseForm";
 import { formatCurrency } from "../../features/CourseRecommendation/courseRecommendation.utils";
@@ -90,17 +91,20 @@ export const CourseRecommendationFormPage = () => {
   const [startTime, setStartTime] = useState(
     () => retryDraft?.startTime ?? defaultSchedule.startTime,
   );
-  const [durationHours, setDurationHours] = useState(() => retryDraft?.durationHours ?? 3);
-  const [numberOfPeople, setNumberOfPeople] = useState(() => retryDraft?.numberOfPeople ?? 2);
-  const [budgetPerPersonWon, setBudgetPerPersonWon] = useState<[number, number]>(() => {
-    const budget = retryDraft?.budgetPerPersonWon ?? DEFAULT_BUDGET_PER_PERSON_WON;
-    return [budget[0], budget[1]];
-  });
+  const [durationHours, setDurationHours] = useState<number | undefined>(
+    () => retryDraft?.durationHours,
+  );
+  const [numberOfPeople, setNumberOfPeople] = useState<number | undefined>(
+    () => retryDraft?.numberOfPeople,
+  );
+  const [pacePreference, setPacePreference] = useState<CoursePacePreference | undefined>(
+    () => retryDraft?.pacePreference,
+  );
+  const [budgetPerPersonWon, setBudgetPerPersonWon] = useState<[number, number]>(() =>
+    normalizeCourseBudgetRange(retryDraft?.budgetPerPersonWon ?? DEFAULT_BUDGET_PER_PERSON_WON),
+  );
   const [isBudgetEnabled, setBudgetEnabled] = useState(
     () => retryDraft?.budgetPerPersonWon !== undefined,
-  );
-  const [pacePreference, setPacePreference] = useState<CoursePacePreference>(
-    () => retryDraft?.pacePreference ?? "NORMAL",
   );
   const [isPickerOpen, setPickerOpen] = useState(false);
   const [pickerSource, setPickerSource] = useState<CoursePlaceSource>("SAVED_PLACE");
@@ -108,7 +112,9 @@ export const CourseRecommendationFormPage = () => {
   const pickerTriggerRef = useRef<HTMLButtonElement>(null);
   const dateRef = useRef<HTMLInputElement>(null);
   const startTimeRef = useRef<HTMLSelectElement>(null);
+  const durationRef = useRef<HTMLSelectElement>(null);
   const numberOfPeopleRef = useRef<HTMLSelectElement>(null);
+  const paceRef = useRef<HTMLSelectElement>(null);
   const budgetRef = useRef<HTMLInputElement>(null);
   const retrySavedPlaceIds =
     retryDraft?.places.flatMap(({ savedPlaceId }) => (savedPlaceId ? [savedPlaceId] : [])) ?? [];
@@ -140,16 +146,8 @@ export const CourseRecommendationFormPage = () => {
           (left, right) => left.value.localeCompare(right.value),
         );
   const createMutation = useMutation({
-    mutationFn: () =>
-      courseRepository.startRecommendation({
-        places,
-        date,
-        startTime,
-        durationHours,
-        numberOfPeople,
-        ...(isBudgetEnabled ? { budgetPerPersonWon } : {}),
-        pacePreference,
-      }),
+    mutationFn: (draft: Parameters<typeof courseRepository.startRecommendation>[0]) =>
+      courseRepository.startRecommendation(draft),
     onSuccess: (course) =>
       void navigate(`/course/recommendation/${encodeURIComponent(course.id)}`, { replace: true }),
   });
@@ -157,8 +155,10 @@ export const CourseRecommendationFormPage = () => {
     setPlaces((current) => [...toggleCoursePlace(current, place)]);
   const validationInput = {
     selectedPlaceCount: places.length,
+    durationHours,
     numberOfPeople,
     ...(isBudgetEnabled ? { budgetPerPersonWon } : {}),
+    pacePreference,
     date,
     startTime,
   } as const;
@@ -175,6 +175,12 @@ export const CourseRecommendationFormPage = () => {
       case "budgetPerPersonWon":
         budgetRef.current?.focus();
         return;
+      case "durationHours":
+        durationRef.current?.focus();
+        return;
+      case "pacePreference":
+        paceRef.current?.focus();
+        return;
       case "date":
         dateRef.current?.focus();
         return;
@@ -184,11 +190,26 @@ export const CourseRecommendationFormPage = () => {
   };
   const handleSubmit = () => {
     const validationError = getCourseFormValidationError(validationInput);
-    if (validationError) {
-      focusValidationField(validationError.field);
+    if (
+      validationError ||
+      durationHours === undefined ||
+      numberOfPeople === undefined ||
+      pacePreference === undefined
+    ) {
+      if (validationError) {
+        focusValidationField(validationError.field);
+      }
       return;
     }
-    createMutation.mutate();
+    createMutation.mutate({
+      places,
+      date,
+      startTime,
+      durationHours,
+      numberOfPeople,
+      ...(isBudgetEnabled ? { budgetPerPersonWon } : {}),
+      pacePreference,
+    });
   };
 
   return (
@@ -276,7 +297,8 @@ export const CourseRecommendationFormPage = () => {
               id="course-duration"
               onChange={(value) => setDurationHours(Number(value))}
               options={DURATION_OPTIONS}
-              value={String(durationHours)}
+              ref={durationRef}
+              value={durationHours === undefined ? undefined : String(durationHours)}
             />
           </S.Field>
           <S.Field $required>
@@ -286,7 +308,7 @@ export const CourseRecommendationFormPage = () => {
               onChange={(value) => setNumberOfPeople(Number(value))}
               options={NUMBER_OF_PEOPLE_OPTIONS}
               ref={numberOfPeopleRef}
-              value={String(numberOfPeople)}
+              value={numberOfPeople === undefined ? undefined : String(numberOfPeople)}
             />
           </S.Field>
           <S.Field $required>
@@ -295,6 +317,7 @@ export const CourseRecommendationFormPage = () => {
               id="course-pace"
               onChange={(value) => setPacePreference(value as CoursePacePreference)}
               options={PACE_OPTIONS}
+              ref={paceRef}
               value={pacePreference}
             />
           </S.Field>
@@ -316,10 +339,10 @@ export const CourseRecommendationFormPage = () => {
                 disabled={!isBudgetEnabled}
                 max={MAX_BUDGET_PER_PERSON_WON}
                 min={MIN_BUDGET_PER_PERSON_WON}
-                onChange={(newValue) => {
-                  const result = CourseBudgetRangeSchema.safeParse(newValue);
+                onChange={(nextBudget) => {
+                  const result = CourseBudgetRangeSchema.safeParse(nextBudget);
                   if (result.success) {
-                    setBudgetPerPersonWon(result.data);
+                    setBudgetPerPersonWon(normalizeCourseBudgetRange(result.data));
                     setBudgetEnabled(true);
                   }
                 }}

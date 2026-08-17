@@ -43,6 +43,9 @@ const PARTY_OPTIONS: DropdownOption[] = [
 
 const HOUR_OPTIONS: readonly DropdownOption[] = [...TIME_HOUR_OPTIONS, MIDNIGHT_HOUR_OPTION];
 const MINUTE_OPTIONS = TIME_MINUTE_OPTIONS;
+const MIN_BUDGET_PER_PERSON_WON = 5_000;
+const MAX_BUDGET_PER_PERSON_WON = 100_000;
+const DEFAULT_BUDGET_PER_PERSON_WON: [number, number] = [20_000, 50_000];
 
 const STAY_DURATION_OPTIONS: readonly DropdownOption[] = Array.from({ length: 24 }, (_, index) => {
   const value = (index + 1) * 15;
@@ -399,19 +402,19 @@ const PlaceRecommendationFormContent = () => {
                 setIsBudgetEnabled(e.target.checked);
               }}
             />
-            <S.OptionalLabel htmlFor="place-budget-enabled">예산</S.OptionalLabel>
+            <S.OptionalLabel htmlFor="place-budget-enabled">1인당 예산</S.OptionalLabel>
             <S.BudgetWrapper $disabled={!isBudgetEnabled} aria-disabled={!isBudgetEnabled}>
               <S.BudgetAmountText>
-                {formatCurrency(budgetPerPerson?.[0] ?? 20000)} ~{" "}
-                {formatCurrency(budgetPerPerson?.[1] ?? 40000)}
+                {formatCurrency(budgetPerPerson?.[0] ?? DEFAULT_BUDGET_PER_PERSON_WON[0])} ~{" "}
+                {formatCurrency(budgetPerPerson?.[1] ?? DEFAULT_BUDGET_PER_PERSON_WON[1])}
               </S.BudgetAmountText>
               <RangeSlider
                 ariaLabels={["최소 예산", "최대 예산"]}
                 disabled={!isBudgetEnabled}
-                min={0}
-                max={150000}
+                min={MIN_BUDGET_PER_PERSON_WON}
+                max={MAX_BUDGET_PER_PERSON_WON}
                 step={5000}
-                value={budgetPerPerson || [20000, 40000]}
+                value={budgetPerPerson || DEFAULT_BUDGET_PER_PERSON_WON}
                 onChange={(newValue) => {
                   const res = BudgetRangeSchema.safeParse(newValue);
                   if (res.success) {

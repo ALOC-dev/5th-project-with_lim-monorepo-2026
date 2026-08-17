@@ -1,6 +1,7 @@
 import { type UserInput, UserInputSchema } from "@monorepo/recommendation-engine/v1/contracts";
 
 import type { CalendarDate } from "../../components/DatePicker/calendar";
+import { getDefaultCourseSchedule } from "../../features/CourseRecommendation/courseForm";
 import type {
   PlaceRecommendationFormInputContextType,
   PlaceRecommendationFormLocation,
@@ -39,14 +40,16 @@ const getInitialLocations = (): PlaceRecommendationFormLocation[] => [];
 
 export const getPlaceRecommendationFormInitialValues = (
   usePredefined: boolean = USE_PREDEFINED,
+  now = new Date(),
 ): PlaceRecommendationFormInitialValues => {
   const locations = getInitialLocations();
+  const defaultSchedule = getDefaultScheduleValues(now);
 
   if (!usePredefined) {
     return {
       locations,
-      date: null,
-      time24h: null,
+      date: defaultSchedule.date,
+      time24h: defaultSchedule.time24h,
       stayDurationMinutes: null,
       numberOfPeople: null,
       partyType: null,
@@ -63,8 +66,8 @@ export const getPlaceRecommendationFormInitialValues = (
 
   return {
     locations: [...locations],
-    date: null,
-    time24h: null,
+    date: defaultSchedule.date,
+    time24h: defaultSchedule.time24h,
     stayDurationMinutes: null,
     numberOfPeople: null,
     partyType: null,
@@ -91,6 +94,14 @@ const toCalendarDate = (dateISO: string): CalendarDate | null => {
     month: Number(monthText),
     day: Number(dayText),
   };
+};
+
+const getDefaultScheduleValues = (now = new Date()) => {
+  const schedule = getDefaultCourseSchedule(now);
+  const date = toCalendarDate(schedule.date);
+  if (date === null) throw new Error("기본 추천 날짜를 만들 수 없습니다.");
+
+  return { date, time24h: schedule.startTime } as const;
 };
 
 const toFormLocations = (

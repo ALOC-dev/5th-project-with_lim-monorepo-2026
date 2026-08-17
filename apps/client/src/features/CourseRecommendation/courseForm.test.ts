@@ -5,6 +5,7 @@ import {
   getCourseFormValidationError,
   getCourseScheduleDateBounds,
   getDefaultCourseSchedule,
+  normalizeCourseBudgetRange,
   toggleCoursePlace,
   validateCourseSchedule,
 } from "./courseForm";
@@ -68,7 +69,9 @@ describe("validateCourseSchedule", () => {
 describe("getCourseFormValidationError", () => {
   const validInput = {
     selectedPlaceCount: 2,
+    durationHours: 3,
     numberOfPeople: 2,
+    pacePreference: "NORMAL" as const,
     date: "2026-08-14",
     startTime: "18:30",
   } as const;
@@ -90,7 +93,16 @@ describe("getCourseFormValidationError", () => {
       field: "numberOfPeople",
     });
     expect(
+      getCourseFormValidationError({ ...validInput, durationHours: undefined }, now),
+    ).toMatchObject({ field: "durationHours" });
+    expect(
+      getCourseFormValidationError({ ...validInput, pacePreference: undefined }, now),
+    ).toMatchObject({ field: "pacePreference" });
+    expect(
       getCourseFormValidationError({ ...validInput, budgetPerPersonWon: [1_000, 20_000] }, now),
+    ).toMatchObject({ field: "budgetPerPersonWon" });
+    expect(
+      getCourseFormValidationError({ ...validInput, budgetPerPersonWon: [20_000, 155_000] }, now),
     ).toMatchObject({ field: "budgetPerPersonWon" });
   });
 
@@ -114,6 +126,10 @@ describe("getCourseFormValidationError", () => {
     expect(
       getCourseFormValidationError({ ...validInput, budgetPerPersonWon: undefined }, now),
     ).toBeNull();
+  });
+
+  it("normalizes a retry budget into the available slider range", () => {
+    expect(normalizeCourseBudgetRange([1_000, 200_000])).toEqual([5_000, 150_000]);
   });
 });
 

@@ -1,4 +1,4 @@
-import type { CoursePlace } from "./course.types";
+import type { CoursePacePreference, CoursePlace } from "./course.types";
 
 export const COURSE_TIME_ZONE = "Asia/Seoul";
 export const MIN_SELECTED_PLACES = 2;
@@ -6,7 +6,7 @@ export const MAX_SELECTED_PLACES = 15;
 export const MIN_DURATION_HOURS = 2;
 export const MAX_DURATION_HOURS = 8;
 export const MIN_BUDGET_PER_PERSON_WON = 5_000;
-export const MAX_BUDGET_PER_PERSON_WON = 500_000;
+export const MAX_BUDGET_PER_PERSON_WON = 150_000;
 export const DEFAULT_BUDGET_PER_PERSON_WON: [number, number] = [20_000, 50_000];
 export const BUDGET_PER_PERSON_STEP_WON = 5_000;
 
@@ -49,6 +49,15 @@ const toSeoulDateTime = (value: Date): SeoulDateTime => {
 };
 
 const pad2 = (value: number) => String(value).padStart(2, "0");
+
+const clampCourseBudget = (value: number) =>
+  Math.min(MAX_BUDGET_PER_PERSON_WON, Math.max(MIN_BUDGET_PER_PERSON_WON, value));
+
+export const normalizeCourseBudgetRange = (budget: readonly [number, number]): [number, number] => {
+  const minimum = clampCourseBudget(budget[0]);
+  const maximum = clampCourseBudget(budget[1]);
+  return [Math.min(minimum, maximum), Math.max(minimum, maximum)];
+};
 
 export const getDefaultCourseSchedule = (now = new Date()) => {
   const current = toSeoulDateTime(now);
@@ -115,8 +124,10 @@ export const validateCourseSchedule = (
 
 export type CourseFormValidationField =
   | "places"
+  | "durationHours"
   | "numberOfPeople"
   | "budgetPerPersonWon"
+  | "pacePreference"
   | "date"
   | "startTime";
 
@@ -128,14 +139,18 @@ export type CourseFormValidationError = {
 export const getCourseFormValidationError = (
   {
     selectedPlaceCount,
+    durationHours,
     numberOfPeople,
     budgetPerPersonWon,
+    pacePreference,
     date,
     startTime,
   }: {
     readonly selectedPlaceCount: number;
-    readonly numberOfPeople: number;
+    readonly durationHours?: number;
+    readonly numberOfPeople?: number;
     readonly budgetPerPersonWon?: readonly [number, number];
+    readonly pacePreference?: CoursePacePreference;
     readonly date: string;
     readonly startTime: string;
   },
@@ -147,7 +162,23 @@ export const getCourseFormValidationError = (
       message: `후보 장소를 ${MIN_SELECTED_PLACES}곳 이상 선택해 주세요.`,
     };
   }
-  if (!Number.isInteger(numberOfPeople) || numberOfPeople < 1 || numberOfPeople > 20) {
+  if (
+    durationHours === undefined ||
+    !Number.isInteger(durationHours) ||
+    durationHours < MIN_DURATION_HOURS ||
+    durationHours > MAX_DURATION_HOURS
+  ) {
+    return {
+      field: "durationHours",
+      message: `총 시간은 ${MIN_DURATION_HOURS}~${MAX_DURATION_HOURS}시간으로 선택해 주세요.`,
+    };
+  }
+  if (
+    numberOfPeople === undefined ||
+    !Number.isInteger(numberOfPeople) ||
+    numberOfPeople < 1 ||
+    numberOfPeople > 20
+  ) {
     return { field: "numberOfPeople", message: "인원은 1~20명으로 입력해 주세요." };
   }
   const invalidBudget =
@@ -160,8 +191,11 @@ export const getCourseFormValidationError = (
   if (invalidBudget) {
     return {
       field: "budgetPerPersonWon",
-      message: "1인당 예산은 5천원~50만원으로 입력해 주세요.",
+      message: "1인당 예산은 5천원~15만원으로 입력해 주세요.",
     };
+  }
+  if (pacePreference === undefined) {
+    return { field: "pacePreference", message: "코스 페이스를 선택해 주세요." };
   }
   if (!/^([01]\d|2[0-3]):[0-5]\d$/u.test(startTime)) {
     return { field: "startTime", message: "올바른 시작 시간을 입력해 주세요." };

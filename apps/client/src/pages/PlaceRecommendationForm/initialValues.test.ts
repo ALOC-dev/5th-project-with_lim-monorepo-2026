@@ -15,7 +15,11 @@ describe("getPlaceRecommendationFormInitialValues", () => {
   );
 
   it("keeps optional defaults disabled for a new recommendation", () => {
-    expect(getPlaceRecommendationFormInitialValues()).toMatchObject({
+    expect(
+      getPlaceRecommendationFormInitialValues(true, new Date("2026-08-14T09:01:00.000Z")),
+    ).toMatchObject({
+      date: { year: 2026, month: 8, day: 14 },
+      time24h: "18:30",
       budgetPerPerson: [20000, 50000],
       isBudgetEnabled: false,
     });

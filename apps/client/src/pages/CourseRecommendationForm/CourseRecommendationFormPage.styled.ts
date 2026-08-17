@@ -114,6 +114,18 @@ export const S = {
       }
     }
   `,
+  FieldError: styled.p`
+    margin: 0;
+    color: ${tokens.color.warning[500]};
+    ${tokens.typography.body.xs};
+  `,
+  Checkbox: styled.input`
+    width: 20px;
+    height: 20px;
+    flex: none;
+    cursor: pointer;
+    accent-color: ${tokens.color.primary[700]};
+  `,
   OptionalRow: styled.div`
     display: flex;
     align-items: center;
@@ -123,13 +135,6 @@ export const S = {
       flex: 1;
       width: 100%;
     }
-  `,
-  Checkbox: styled.input`
-    width: 20px;
-    height: 20px;
-    flex: none;
-    cursor: pointer;
-    accent-color: ${tokens.color.primary[700]};
   `,
   OptionalLabel: styled.label`
     width: 90px;
@@ -156,11 +161,6 @@ export const S = {
     font-size: 13px;
     font-weight: 500;
     line-height: 18px;
-  `,
-  FieldError: styled.p`
-    margin: 0;
-    color: ${tokens.color.warning[500]};
-    ${tokens.typography.body.xs};
   `,
   Bottom: styled.div`
     padding: 16px 28px 24px;
