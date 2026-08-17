@@ -16,6 +16,7 @@ import {
   type PlaceRecommendationRetryRouteState,
 } from "../PlaceRecommendationForm/initialValues";
 import { toCompletedPlaceRecommendationEngineOutput } from "../PlaceRecommendationHistory/PlaceRecommendationHistory.data";
+import { PlaceRecommendationResultErrorBoundary } from "./PlaceRecommendationResultErrorBoundary";
 
 const getPlaceRecommendationResultQueryKey = (recommendationId: string) =>
   ["placeRecommendationHistory", recommendationId] as const;
@@ -57,7 +58,7 @@ const PlaceRecommendationResultStatusFeedback = ({
   );
 };
 
-const PlaceRecommendationResultPage = () => {
+const PlaceRecommendationResultPageContent = () => {
   const { recommendationId } = useParams();
   const queryClient = useQueryClient();
   const recommendation = useQuery({
@@ -122,13 +123,7 @@ const PlaceRecommendationResultPage = () => {
     case "COMPLETED": {
       const output = toCompletedPlaceRecommendationEngineOutput(recommendation.data);
       if (output === null) {
-        return (
-          <PlaceRecommendationResultStatusFeedback
-            description="저장된 추천 결과를 화면에 표시할 수 없습니다."
-            kind="error"
-            title="추천 결과를 불러오지 못했어요"
-          />
-        );
+        throw new Error("completed recommendation did not produce an engine output");
       }
       return (
         <PlaceRecommendationResultContent
@@ -142,5 +137,11 @@ const PlaceRecommendationResultPage = () => {
     }
   }
 };
+
+const PlaceRecommendationResultPage = () => (
+  <PlaceRecommendationResultErrorBoundary>
+    <PlaceRecommendationResultPageContent />
+  </PlaceRecommendationResultErrorBoundary>
+);
 
 export default PlaceRecommendationResultPage;

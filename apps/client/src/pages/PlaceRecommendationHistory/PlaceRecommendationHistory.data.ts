@@ -33,6 +33,36 @@ export class PlaceRecommendationHistoryRequestError extends Error {
   }
 }
 
+export type PlaceRecommendationHistoryParseStage = "input" | "output" | "engine-output";
+
+export class PlaceRecommendationHistoryParseError extends Error {
+  readonly name = "PlaceRecommendationHistoryParseError";
+
+  constructor(
+    readonly stage: PlaceRecommendationHistoryParseStage,
+    readonly issue: string,
+  ) {
+    super(`저장된 추천 결과 ${stage} 검증 실패: ${issue}`);
+  }
+}
+
+const toParseError = (
+  stage: PlaceRecommendationHistoryParseStage,
+  error: {
+    readonly issues: readonly {
+      readonly path: readonly PropertyKey[];
+      readonly message: string;
+    }[];
+  },
+): PlaceRecommendationHistoryParseError => {
+  const firstIssue = error.issues[0];
+  const path = firstIssue?.path.length ? firstIssue.path.join(".") : "(root)";
+  return new PlaceRecommendationHistoryParseError(
+    stage,
+    `${path}: ${firstIssue?.message ?? "schema validation failed"}`,
+  );
+};
+
 const getPlaceRecommendationHistoryDisplayStatus = (
   status: PlaceRecommendationHistoryStatus,
 ): PlaceRecommendationHistoryDisplayStatus => {
@@ -87,12 +117,12 @@ export const toCompletedPlaceRecommendationEngineOutput = (
 
   const parsedInput = UserInputSchema.safeParse(detail.input);
   if (!parsedInput.success) {
-    return null;
+    throw toParseError("input", parsedInput.error);
   }
 
   const parsedOutput = UserOutputSchema.safeParse(detail.output);
   if (!parsedOutput.success) {
-    return null;
+    throw toParseError("output", parsedOutput.error);
   }
 
   const parsedEngineOutput = EngineOutputSchema.safeParse({
@@ -101,5 +131,9 @@ export const toCompletedPlaceRecommendationEngineOutput = (
     userOutput: parsedOutput.data,
   });
 
-  return parsedEngineOutput.success ? parsedEngineOutput.data : null;
+  if (!parsedEngineOutput.success) {
+    throw toParseError("engine-output", parsedEngineOutput.error);
+  }
+
+  return parsedEngineOutput.data;
 };
