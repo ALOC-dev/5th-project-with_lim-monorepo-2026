@@ -43,6 +43,13 @@
       "when": 1786774453223,
       "tag": "0005_add_place_recommendation_completed_at",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1786952053859,
+      "tag": "0006_classy_owl",
+      "breakpoints": true
     }
   ]
 }

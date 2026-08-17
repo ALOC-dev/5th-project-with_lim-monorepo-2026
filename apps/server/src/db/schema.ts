@@ -85,7 +85,7 @@ export const savedPlaces = pgTable(
     id: uuid("id").primaryKey().defaultRandom(),
     userId: uuid("user_id")
       .notNull()
-      .references(() => users.id),
+      .references(() => users.id, { onDelete: "cascade" }),
     historyId: uuid("history_id").references(() => placeRecommendationHistories.id, {
       onDelete: "set null",
     }),
