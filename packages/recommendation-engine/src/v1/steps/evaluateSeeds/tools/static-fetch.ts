@@ -9,6 +9,49 @@ import { DEFAULT_EXTERNAL_API_TIMEOUT_MS, DESKTOP_BROWSER_USER_AGENT } from "./s
 import { stripHtml } from "./shared/text.js";
 import type { UrlScrapeResult } from "./types.js";
 
+const PAGE_TITLE_PATTERN = /<title\b[^>]*>([\s\S]*?)<\/title>/iu;
+const META_TAG_PATTERN = /<meta\b[^>]*>/giu;
+const META_ATTRIBUTE_PATTERN = /([\w:-]+)\s*=\s*["']([^"']*)["']/gu;
+
+const getMetaAttributes = (tag: string): Record<string, string> => {
+  const attributes: Record<string, string> = {};
+  for (const [, rawName, rawValue] of tag.matchAll(META_ATTRIBUTE_PATTERN)) {
+    if (rawName !== undefined && rawValue !== undefined) {
+      attributes[rawName.toLowerCase()] = rawValue;
+    }
+  }
+  return attributes;
+};
+
+const decodeHtmlEntities = (value: string): string =>
+  value
+    .replace(/&amp;/giu, "&")
+    .replace(/&quot;/giu, '"')
+    .replace(/&#39;|&apos;/giu, "'")
+    .replace(/&lt;/giu, "<")
+    .replace(/&gt;/giu, ">");
+
+const normalizePageTitle = (value: string | undefined): string | undefined => {
+  const title =
+    value === undefined ? "" : stripHtml(decodeHtmlEntities(value)).replace(/\s+/gu, " ").trim();
+  return title.length > 0 ? title.slice(0, 200) : undefined;
+};
+
+const getMetaTitle = (html: string): string | undefined => {
+  for (const tag of html.matchAll(META_TAG_PATTERN)) {
+    const attributes = getMetaAttributes(tag[0]);
+    const property = (attributes.property ?? attributes.name)?.toLowerCase();
+    if (property === "og:title" || property === "twitter:title") {
+      const title = normalizePageTitle(attributes.content);
+      if (title) return title;
+    }
+  }
+  return undefined;
+};
+
+export const extractPageTitle = (html: string): string | undefined =>
+  getMetaTitle(html) ?? normalizePageTitle(PAGE_TITLE_PATTERN.exec(html)?.[1]);
+
 const isPrivateIPv4 = (ip: string): boolean => {
   const parts = ip.split(".").map(Number);
   if (parts.length !== 4 || parts.some((part) => Number.isNaN(part))) return true;
@@ -101,10 +144,12 @@ export const getOrFetchStaticUrl = async (
       },
     })
     .text();
+  const title = extractPageTitle(raw);
   const snapshot: ScrapedUrlSnapshot = {
     schemaVersion: 1,
     url: parsedUrl.toString(),
     capturedAt: new Date().toISOString(),
+    ...(title ? { title } : {}),
     frameTexts: [
       {
         url: parsedUrl.toString(),

@@ -3,6 +3,7 @@ export * from "./services/rest/auth.js";
 export * from "./services/rest/courses.js";
 export * from "./services/rest/favorites.js";
 export * from "./services/rest/health.js";
+export * from "./services/rest/linkMetadata.js";
 export * from "./services/rest/placeRecommendationHistories.js";
 export * from "./services/rest/placeRecommendations.js";
 export * from "./services/rest/savedPlaces.js";

@@ -13,6 +13,7 @@ export type ScrapedUrlSnapshot = {
   url: string;
   capturedAt: string;
   frameTexts: ScrapedUrlFrameText[];
+  title?: string;
 };
 
 export type UrlScrapeCacheEntry = {
@@ -129,6 +130,7 @@ const parseSnapshot = (value: unknown): ScrapedUrlSnapshot | undefined => {
   if (snapshot.schemaVersion !== 1) return undefined;
   if (typeof snapshot.url !== "string") return undefined;
   if (typeof snapshot.capturedAt !== "string") return undefined;
+  if (snapshot.title !== undefined && typeof snapshot.title !== "string") return undefined;
   if (!Array.isArray(snapshot.frameTexts)) return undefined;
   if (
     !snapshot.frameTexts.every(

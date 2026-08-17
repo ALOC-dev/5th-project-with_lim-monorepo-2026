@@ -46,8 +46,7 @@ export const S = {
     border: 1px solid ${tokens.color.neutral[200]};
     border-radius: 50%;
     background-color: ${tokens.color.neutral[0]};
-    color: ${({ $isSaved }) =>
-      $isSaved ? tokens.color.primary[500] : tokens.color.primary[700]};
+    color: ${({ $isSaved }) => ($isSaved ? tokens.color.primary[500] : tokens.color.primary[700])};
 
     &:disabled {
       cursor: wait;
@@ -114,17 +113,47 @@ export const S = {
     ${typography.body.xs}
   `,
   ReferenceLinks: styled.div`
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
   `,
   ReferenceLink: styled.a`
-    padding: 10px 8px;
-    border: 1px solid ${tokens.color.neutral[200]};
-    border-radius: 8px;
-    color: ${tokens.color.neutral[900]};
-    text-align: center;
+    display: inline-flex;
+    width: fit-content;
+    max-width: 100%;
+    align-items: flex-start;
+    gap: 8px;
+    color: inherit;
     text-decoration: none;
+  `,
+  ReferenceContent: styled.span`
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 2px;
+  `,
+  ReferenceFavicon: styled.img`
+    width: 16px;
+    height: 16px;
+    flex: none;
+    border-radius: 3px;
+  `,
+  ReferenceTitle: styled.span`
+    min-width: 0;
+    overflow: hidden;
+    color: ${tokens.color.primary[700]};
+    text-overflow: ellipsis;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    white-space: nowrap;
     ${typography.label.xs}
+  `,
+  ReferenceDomain: styled.span`
+    min-width: 0;
+    overflow: hidden;
+    color: ${tokens.color.secondary[500]};
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    ${typography.utility.caption}
   `,
 };

@@ -42,6 +42,7 @@ export {
   createOpenAiLlmScoringClient,
   createScoringPipeline,
 } from "./steps/evaluateSeeds/llm/scoring.js";
+export { getOrFetchStaticUrl } from "./steps/evaluateSeeds/tools/static-fetch.js";
 export { OperationVerifier } from "./steps/evaluateSeeds/utils/operation-hours.js";
 export {
   assessSemanticFit,

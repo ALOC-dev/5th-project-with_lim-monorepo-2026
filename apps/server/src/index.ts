@@ -11,6 +11,7 @@ import {
 } from "./courseRecommendation/engine.js";
 import authRouter from "./routes/auth.js";
 import favoritesRouter from "./routes/favorites.js";
+import linkMetadataRouter from "./routes/linkMetadata.js";
 import placeRecommendationHistoriesRouter from "./routes/placeRecommendationHistories.js";
 import savedPlacesRouter from "./routes/savedPlaces.js";
 import usersRouter from "./routes/users.js";
@@ -45,6 +46,7 @@ app.use("/api/auth", authRouter);
 app.use("/api/course-candidates", createCourseCandidatesRouter(secrets.kakaoRestApiKey));
 app.use("/api/courses", coursesRouter(courseEngine));
 app.use("/api/favorites", favoritesRouter);
+app.use("/api/link-metadata", linkMetadataRouter);
 app.use("/api/place-recommendation-histories", placeRecommendationHistoriesRouter);
 app.use("/api/recommend", createRecommendationRouter(secrets));
 app.use("/api/saved-places", savedPlacesRouter);
