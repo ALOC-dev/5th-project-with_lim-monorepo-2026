@@ -13,21 +13,21 @@ const mobileMapMeasurement = {
 };
 
 describe("place recommendation map viewport measurements", () => {
-  it("excludes the initial 30dvh result sheet from the fitted map bounds", () => {
+  it("excludes the initial 40dvh result sheet from the fitted map bounds", () => {
     const padding = getRecommendationBoundsPadding(mobileMapMeasurement);
 
     expect(padding).toMatchObject({ left: 24, right: 24, top: 24 });
-    expect(padding.bottom).toBeCloseTo(277.2);
+    expect(padding.bottom).toBeCloseTo(361.6);
   });
 
   it("moves a focused place halfway toward the visible map area", () => {
-    expect(getFocusedPlacePanY(mobileMapMeasurement)).toBeCloseTo(126.6);
+    expect(getFocusedPlacePanY(mobileMapMeasurement)).toBeCloseTo(168.8);
   });
 
   it("derives the destination map center from the current target position", () => {
-    expect(getFocusedPlaceCenterPoint({ x: 195, y: 396 }, 126.6)).toEqual({
+    expect(getFocusedPlaceCenterPoint({ x: 195, y: 396 }, 168.8)).toEqual({
       x: 195,
-      y: 522.6,
+      y: 564.8,
     });
   });
 });

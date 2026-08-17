@@ -22,9 +22,10 @@ export const SavedRecommendationPlaceSchema = SavedPlaceSchema.extend({
 
 export type SavedRecommendationPlace = z.infer<typeof SavedRecommendationPlaceSchema>;
 
-export const SaveSavedPlaceInputSchema = SavePlaceRequestSchema.extend({
-  placeData: PlaceRecommendationItemSchema,
-});
+// 저장 전 화면에 다시 표시된 과거 추천 결과는 현재 엔진 스키마의 필수 필드를
+// 아직 갖지 않을 수 있다. 요청 본문은 서버의 호환 정규화 계층에서 검증하므로,
+// 여기서는 API 계약의 불투명한 placeData를 그대로 전달한다.
+export const SaveSavedPlaceInputSchema = SavePlaceRequestSchema;
 
 export type SaveSavedPlaceInput = z.infer<typeof SaveSavedPlaceInputSchema>;
 

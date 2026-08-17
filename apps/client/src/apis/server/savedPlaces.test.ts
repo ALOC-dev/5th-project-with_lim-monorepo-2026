@@ -54,6 +54,7 @@ const testRecommendation: PlaceRecommendationItem = {
     roadAddressKo: "서울 중구 세종대로 110",
   },
   priceRangePerPerson: [28_000, 42_000],
+  priceRangeSource: "SOURCE",
   score: 92,
   scoreBreakdown: {
     inputMatch: 94,
@@ -191,6 +192,40 @@ describe("saved places server API", () => {
     expect(requestBody).toEqual({
       historyId: testHistoryId,
       placeData: testRecommendation,
+    });
+  });
+
+  it("sends a legacy recommendation snapshot for server-side normalization", async () => {
+    // Given
+    const legacyRecommendation = Object.fromEntries(
+      Object.entries(testRecommendation).filter(([key]) => key !== "priceRangeSource"),
+    );
+    stubJsonFetch({
+      success: true,
+      data: {
+        savedPlace: testSavedPlace,
+      },
+    });
+
+    // When
+    const result = await saveSavedPlace({
+      historyId: testHistoryId,
+      placeData: legacyRecommendation,
+    });
+
+    // Then
+    expect(result).toEqual({
+      success: true,
+      data: {
+        savedPlace: testSavedPlace,
+      },
+    });
+    if (receivedRequestBody === null) {
+      throw new Error("Expected the API adapter to send a request body");
+    }
+    expect(JSON.parse(receivedRequestBody)).toEqual({
+      historyId: testHistoryId,
+      placeData: legacyRecommendation,
     });
   });
 

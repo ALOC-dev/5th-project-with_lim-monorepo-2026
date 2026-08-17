@@ -23,8 +23,14 @@ const rawMockEngineOutput = {
     userNaturalLanguageRequest: "대화하기 좋은 분위기의 저녁 식사 장소를 추천해줘.",
   },
   meta: {
-    source: "frontend-mock",
-    generatedAt: "2026-04-30T12:00:00.000Z",
+    attemptCount: 1,
+    discoveredSeedCount: 3,
+    tooFarCount: 0,
+    enrichedCount: 3,
+    operationVerifiedCount: 3,
+    operationUnverifiedUsedCount: 0,
+    referenceRejectedCount: 0,
+    durationMs: 1200,
   },
   userOutput: {
     originContext: {
@@ -140,6 +146,7 @@ const rawMockEngineOutput = {
           roadAddressKo: "서울 중구 세종대로 110",
         },
         priceRangePerPerson: [28000, 42000],
+        priceRangeSource: "SOURCE",
         score: 92,
         scoreBreakdown: {
           inputMatch: 94,
@@ -246,6 +253,7 @@ const rawMockEngineOutput = {
           roadAddressKo: "서울 영등포구 여의대로 24",
         },
         priceRangePerPerson: [24000, 36000],
+        priceRangeSource: "SOURCE",
         score: 88,
         scoreBreakdown: {
           inputMatch: 90,
@@ -348,6 +356,7 @@ const rawMockEngineOutput = {
           roadAddressKo: "서울 마포구 와우산로 29",
         },
         priceRangePerPerson: [9000, 16000],
+        priceRangeSource: "CATEGORY_ESTIMATE",
         score: 81,
         scoreBreakdown: {
           inputMatch: 82,

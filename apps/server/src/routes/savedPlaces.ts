@@ -7,7 +7,6 @@ import {
   SavePlaceRequestSchema,
   type SavePlaceResponseData,
 } from "@monorepo/api-contracts";
-import { PlaceRecommendationItemSchema } from "@monorepo/recommendation-engine/v1/contracts";
 import { and, arrayContains, desc, eq, isNull, sql } from "drizzle-orm";
 import { Router } from "express";
 import { z } from "zod";
@@ -17,6 +16,7 @@ import { favoritePlaces, placeRecommendationHistories, savedPlaces } from "../db
 import { asyncHandler } from "../lib/asyncHandler.js";
 import { requireAuth } from "../middleware/auth.js";
 import {
+  normalizeSavedPlaceSnapshot,
   planLegacySavedPlaceMigrations,
   toSeoulMigrationSchedule,
 } from "../savedPlaces/legacyCompatibility.js";
@@ -26,10 +26,13 @@ const router = Router();
 const historyOwnedBy = (userId: string) =>
   arrayContains(placeRecommendationHistories.userIds, [userId]);
 
-const toSavedPlace = (row: typeof savedPlaces.$inferSelect): SavedPlace => ({
+const toSavedPlace = (
+  row: typeof savedPlaces.$inferSelect,
+  placeData: unknown = row.placeData,
+): SavedPlace => ({
   id: row.id,
   historyId: row.historyId,
-  placeData: row.placeData,
+  placeData,
   createdAt: row.createdAt.toISOString(),
 });
 
@@ -98,9 +101,18 @@ router.get(
       .where(eq(savedPlaces.userId, req.userId))
       .orderBy(desc(savedPlaces.createdAt));
 
+    const normalizedRows = rows.flatMap((row) => {
+      const placeData = normalizeSavedPlaceSnapshot(row.placeData);
+      if (placeData === null) {
+        console.warn("skipped invalid saved place snapshot", { savedPlaceId: row.id });
+        return [];
+      }
+      return [toSavedPlace(row, placeData)];
+    });
+
     res.status(200).json(
       createApiResponse({
-        savedPlaces: rows.map(toSavedPlace),
+        savedPlaces: normalizedRows,
       } satisfies ListSavedPlacesResponseData),
     );
   }),
@@ -117,9 +129,10 @@ router.post(
       return;
     }
 
-    // placeData는 계약에서 불투명(unknown)하므로 엔진 스키마로 엄격 검증한다.
-    const placeData = PlaceRecommendationItemSchema.safeParse(parsed.data.placeData);
-    if (!placeData.success) {
+    // placeData는 계약에서 불투명(unknown)하므로 엔진 스키마로 검증하고,
+    // 구버전 스냅샷은 호환 가능한 기본값을 채운다.
+    const placeData = normalizeSavedPlaceSnapshot(parsed.data.placeData);
+    if (placeData === null) {
       res.status(400).json(createApiError("invalid place data"));
       return;
     }
@@ -146,7 +159,7 @@ router.post(
       VALUES (
         ${req.userId},
         ${parsed.data.historyId ?? null},
-        ${sql.param(placeData.data, savedPlaces.placeData)}::jsonb
+        ${sql.param(placeData, savedPlaces.placeData)}::jsonb
       )
       ON CONFLICT (user_id, (place_data->>'id'))
       DO UPDATE SET
@@ -160,7 +173,7 @@ router.post(
       .where(
         and(
           eq(savedPlaces.userId, req.userId),
-          sql`${savedPlaces.placeData}->>'id' = ${placeData.data.id}`,
+          sql`${savedPlaces.placeData}->>'id' = ${placeData.id}`,
         ),
       );
 
@@ -171,7 +184,7 @@ router.post(
 
     res.status(201).json(
       createApiResponse({
-        savedPlace: toSavedPlace(saved),
+        savedPlace: toSavedPlace(saved, placeData),
       } satisfies SavePlaceResponseData),
     );
   }),

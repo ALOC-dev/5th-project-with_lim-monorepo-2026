@@ -1,6 +1,6 @@
 import { createContext, useContext } from "react";
 
-export type FavoritePlaceItem = {
+export type BookmarkedPlaceItem = {
   readonly id: string;
   readonly historyId: string | null;
   readonly placeId: string;
@@ -9,25 +9,26 @@ export type FavoritePlaceItem = {
   readonly category: string;
   readonly score: number;
   readonly tags: readonly string[];
+  readonly isBookmarked: boolean;
 };
 
-export type FavoritePlacesContextType = {
-  readonly favoriteList: readonly FavoritePlaceItem[];
+export type BookmarkedPlacesContextType = {
+  readonly bookmarkList: readonly BookmarkedPlaceItem[];
   readonly isLoading: boolean;
   readonly isListError: boolean;
-  readonly isDeleting: boolean;
-  readonly deleteErrorMessage: string | null;
-  readonly handleToggleFavorite: (id: string) => void;
+  readonly isBookmarking: boolean;
+  readonly bookmarkErrorMessage: string | null;
+  readonly handleToggleBookmark: (id: string) => void;
   readonly handleRetry: () => void;
   readonly handleGoToPlaceRecommendationHistory: () => void;
 };
 
-export const FavoritePlacesContext = createContext<FavoritePlacesContextType | null>(null);
+export const BookmarkedPlacesContext = createContext<BookmarkedPlacesContextType | null>(null);
 
-export const useFavoritePlaces = () => {
-  const context = useContext(FavoritePlacesContext);
+export const useBookmarkedPlaces = () => {
+  const context = useContext(BookmarkedPlacesContext);
   if (!context) {
-    throw new Error("useFavoritePlaces must be used within FavoritePlacesProvider");
+    throw new Error("useBookmarkedPlaces must be used within BookmarkedPlacesProvider");
   }
   return context;
 };

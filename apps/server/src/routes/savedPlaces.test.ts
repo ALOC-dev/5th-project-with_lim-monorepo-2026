@@ -3,9 +3,10 @@ import test from "node:test";
 
 import {
   canonicalizeKakaoPlaceId,
+  type LegacyFavoritePlaceForMigration,
+  normalizeSavedPlaceSnapshot,
   planLegacySavedPlaceMigrations,
   toSeoulMigrationSchedule,
-  type LegacyFavoritePlaceForMigration,
 } from "../savedPlaces/legacyCompatibility.js";
 
 const favorite = (
@@ -54,6 +55,21 @@ void test("legacy snapshots preserve identity while marking schedule and price u
   );
   assert.match(migration.placeData.reasons.join(" "), /가격은 확인되지 않았/u);
   assert.equal(migration.createdAt.toISOString(), "2025-01-02T03:04:05.000Z");
+});
+
+void test("saved snapshots from before price source was added are read as estimates", () => {
+  const schedule = { date: "2026-08-14", startTime: "09:30" };
+  const plan = planLegacySavedPlaceMigrations([favorite()], [], schedule);
+  const snapshot = plan.migrations[0]?.placeData;
+  assert.ok(snapshot);
+
+  const oldSnapshot = Object.fromEntries(
+    Object.entries(snapshot).filter(([key]) => key !== "priceRangeSource"),
+  );
+  const normalized = normalizeSavedPlaceSnapshot(oldSnapshot);
+
+  assert.ok(normalized);
+  assert.equal(normalized.priceRangeSource, "CATEGORY_ESTIMATE");
 });
 
 void test("migration planning is idempotent by canonical Kakao ID", () => {

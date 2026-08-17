@@ -5,13 +5,15 @@ import { type ReactNode, useCallback, useMemo, useState } from "react";
 import {
   deleteSavedPlace,
   getSavedPlaces,
-  saveSavedPlace,
   type SavedRecommendationPlace,
+  saveSavedPlace,
 } from "../../../apis/server/savedPlaces";
 import {
   findSavedPlaceByRecommendationId,
+  isSavedPlaceBookmarked,
   removeSavedPlaceFromCache,
   savedPlacesQueryKey,
+  type SavedRecommendationPlaceCacheItem,
   upsertSavedPlaceInCache,
 } from "../../SavedPlaces/savedPlaces.data";
 import {
@@ -22,6 +24,16 @@ import {
 type BookmarkMutationResult =
   | { readonly kind: "saved"; readonly savedPlace: SavedRecommendationPlace }
   | { readonly kind: "removed"; readonly savedPlaceId: string };
+
+type BookmarkMutationVariables = {
+  readonly place: PlaceRecommendationItem;
+  readonly savedPlace: SavedRecommendationPlace | undefined;
+};
+
+type BookmarkMutationContext = {
+  readonly previousSavedPlaces: SavedRecommendationPlaceCacheItem[] | undefined;
+  readonly optimisticSavedPlaceId: string;
+};
 
 class SavedPlacesRequestError extends Error {
   constructor(message: string) {
@@ -48,27 +60,28 @@ export const PlaceRecommendationResultBookmarksProvider = ({
 }) => {
   const queryClient = useQueryClient();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const savedPlacesQuery = useQuery({
+  const savedPlacesQuery = useQuery<SavedRecommendationPlaceCacheItem[]>({
     queryKey: savedPlacesQueryKey,
     queryFn: requestSavedPlaces,
     retry: false,
   });
-  const savedPlaces = savedPlacesQuery.data ?? [];
+  const savedPlaces = useMemo(() => savedPlacesQuery.data ?? [], [savedPlacesQuery.data]);
   const savedPlaceByRecommendationId = useMemo(
     () =>
       new Map(
-        savedPlaces.map((savedPlace) => [savedPlace.placeData.id, savedPlace] as const),
+        savedPlaces
+          .filter(isSavedPlaceBookmarked)
+          .map((savedPlace) => [savedPlace.placeData.id, savedPlace] as const),
       ),
     [savedPlaces],
   );
-  const bookmarkMutation = useMutation({
-    mutationFn: async ({
-      place,
-      savedPlace,
-    }: {
-      readonly place: PlaceRecommendationItem;
-      readonly savedPlace: SavedRecommendationPlace | undefined;
-    }): Promise<BookmarkMutationResult> => {
+  const bookmarkMutation = useMutation<
+    BookmarkMutationResult,
+    Error,
+    BookmarkMutationVariables,
+    BookmarkMutationContext
+  >({
+    mutationFn: async ({ place, savedPlace }): Promise<BookmarkMutationResult> => {
       if (savedPlace) {
         const response = await deleteSavedPlace(savedPlace.id);
         if (!response.success) {
@@ -89,21 +102,54 @@ export const PlaceRecommendationResultBookmarksProvider = ({
 
       return { kind: "saved", savedPlace: response.data.savedPlace };
     },
-    onMutate: () => {
+    onMutate: async ({ place, savedPlace }) => {
+      await queryClient.cancelQueries({ queryKey: savedPlacesQueryKey });
+
+      const previousSavedPlaces =
+        queryClient.getQueryData<SavedRecommendationPlaceCacheItem[]>(savedPlacesQueryKey);
+      const optimisticSavedPlaceId = savedPlace?.id ?? crypto.randomUUID();
+
+      if (savedPlace) {
+        queryClient.setQueryData<SavedRecommendationPlaceCacheItem[] | undefined>(
+          savedPlacesQueryKey,
+          (currentSavedPlaces) => removeSavedPlaceFromCache(currentSavedPlaces, savedPlace.id),
+        );
+      } else {
+        const optimisticSavedPlace = {
+          createdAt: new Date().toISOString(),
+          historyId: historyId ?? null,
+          id: optimisticSavedPlaceId,
+          isBookmarked: true,
+          placeData: place,
+        } satisfies SavedRecommendationPlaceCacheItem;
+        queryClient.setQueryData<SavedRecommendationPlaceCacheItem[]>(
+          savedPlacesQueryKey,
+          (currentSavedPlaces) => upsertSavedPlaceInCache(currentSavedPlaces, optimisticSavedPlace),
+        );
+      }
+
       setErrorMessage(null);
+      return { optimisticSavedPlaceId, previousSavedPlaces };
     },
-    onSuccess: (result) => {
-      queryClient.setQueryData<SavedRecommendationPlace[]>(
+    onSuccess: (result, _variables, context) => {
+      queryClient.setQueryData<SavedRecommendationPlaceCacheItem[]>(
         savedPlacesQueryKey,
-        (currentSavedPlaces) =>
-          result.kind === "saved"
-            ? upsertSavedPlaceInCache(currentSavedPlaces, result.savedPlace)
-            : removeSavedPlaceFromCache(currentSavedPlaces, result.savedPlaceId),
+        (currentSavedPlaces) => {
+          const withoutOptimistic = removeSavedPlaceFromCache(
+            currentSavedPlaces,
+            context.optimisticSavedPlaceId,
+          );
+          return result.kind === "saved"
+            ? upsertSavedPlaceInCache(withoutOptimistic, result.savedPlace)
+            : removeSavedPlaceFromCache(withoutOptimistic, result.savedPlaceId);
+        },
       );
     },
-    onError: () => {
+    onError: (_error, _variables, context) => {
+      if (context !== undefined) {
+        queryClient.setQueryData(savedPlacesQueryKey, context.previousSavedPlaces);
+      }
       setErrorMessage("찜 상태를 변경하지 못했습니다. 다시 시도해 주세요.");
-      void queryClient.invalidateQueries({ queryKey: savedPlacesQueryKey });
     },
   });
 
@@ -118,7 +164,12 @@ export const PlaceRecommendationResultBookmarksProvider = ({
         savedPlace: savedPlaceByRecommendationId.get(place.id),
       });
     },
-    [bookmarkMutation, savedPlaceByRecommendationId, savedPlacesQuery.isError, savedPlacesQuery.isPending],
+    [
+      bookmarkMutation,
+      savedPlaceByRecommendationId,
+      savedPlacesQuery.isError,
+      savedPlacesQuery.isPending,
+    ],
   );
 
   const retry = useCallback(() => {
@@ -143,7 +194,6 @@ export const PlaceRecommendationResultBookmarksProvider = ({
       bookmarkMutation.isPending,
       errorMessage,
       retry,
-      savedPlaceByRecommendationId,
       savedPlaces,
       savedPlacesQuery.isError,
       savedPlacesQuery.isPending,

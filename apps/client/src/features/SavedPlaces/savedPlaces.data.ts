@@ -1,33 +1,66 @@
 import type { SavedRecommendationPlace } from "../../apis/server/savedPlaces";
 
+export type SavedRecommendationPlaceCacheItem = SavedRecommendationPlace & {
+  readonly isBookmarked?: boolean;
+};
+
 export const savedPlacesQueryKey = ["savedPlaces"] as const;
 
+export const isSavedPlaceBookmarked = (savedPlace: SavedRecommendationPlaceCacheItem): boolean =>
+  savedPlace.isBookmarked !== false;
+
 export const findSavedPlaceByRecommendationId = (
-  savedPlaces: readonly SavedRecommendationPlace[],
+  savedPlaces: readonly SavedRecommendationPlaceCacheItem[],
   recommendationId: string,
-): SavedRecommendationPlace | undefined =>
-  savedPlaces.find((savedPlace) => savedPlace.placeData.id === recommendationId);
+): SavedRecommendationPlaceCacheItem | undefined =>
+  savedPlaces.find(
+    (savedPlace) =>
+      savedPlace.placeData.id === recommendationId && isSavedPlaceBookmarked(savedPlace),
+  );
 
 export const upsertSavedPlaceInCache = (
-  savedPlaces: readonly SavedRecommendationPlace[] | undefined,
+  savedPlaces: readonly SavedRecommendationPlaceCacheItem[] | undefined,
   nextSavedPlace: SavedRecommendationPlace,
-): SavedRecommendationPlace[] => {
+): SavedRecommendationPlaceCacheItem[] => {
   if (savedPlaces === undefined) {
     return [nextSavedPlace];
   }
 
-  const existingIndex = savedPlaces.findIndex(({ id }) => id === nextSavedPlace.id);
+  const existingIndex = savedPlaces.findIndex(
+    ({ id, placeData }) => id === nextSavedPlace.id || placeData.id === nextSavedPlace.placeData.id,
+  );
   if (existingIndex === -1) {
     return [nextSavedPlace, ...savedPlaces];
   }
 
-  return savedPlaces.map((savedPlace) =>
-    savedPlace.id === nextSavedPlace.id ? nextSavedPlace : savedPlace,
+  return savedPlaces.map((savedPlace, index) =>
+    index === existingIndex ? nextSavedPlace : savedPlace,
   );
 };
 
 export const removeSavedPlaceFromCache = (
-  savedPlaces: readonly SavedRecommendationPlace[] | undefined,
+  savedPlaces: readonly SavedRecommendationPlaceCacheItem[] | undefined,
   savedPlaceId: string,
-): SavedRecommendationPlace[] | undefined =>
+): SavedRecommendationPlaceCacheItem[] | undefined =>
   savedPlaces?.filter(({ id }) => id !== savedPlaceId);
+
+export const updateSavedPlaceBookmarkInCache = (
+  savedPlaces: readonly SavedRecommendationPlaceCacheItem[] | undefined,
+  recommendationId: string,
+  isBookmarked: boolean,
+  savedPlace?: SavedRecommendationPlace,
+): SavedRecommendationPlaceCacheItem[] | undefined =>
+  savedPlaces?.map((currentSavedPlace) => {
+    if (currentSavedPlace.placeData.id !== recommendationId) return currentSavedPlace;
+
+    if (savedPlace === undefined) {
+      return { ...currentSavedPlace, isBookmarked };
+    }
+
+    return {
+      ...currentSavedPlace,
+      id: savedPlace.id,
+      historyId: savedPlace.historyId,
+      isBookmarked,
+    };
+  });

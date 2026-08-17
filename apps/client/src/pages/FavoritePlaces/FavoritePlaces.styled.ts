@@ -22,7 +22,7 @@ export const S = {
     flex-direction: column;
     gap: 8px;
   `,
-  DeleteError: styled.p`
+  BookmarkError: styled.p`
     ${typography.body.xs}
     color: ${tokens.color.warning[500]};
     margin: 20px 24px 0;
@@ -148,10 +148,10 @@ export const S = {
     align-items: center;
     gap: 8px;
   `,
-  IconButton: styled.button<{ $isFavorited?: boolean }>`
+  IconButton: styled.button<{ $isBookmarked?: boolean }>`
     background-color: transparent;
-    color: ${({ $isFavorited = true }) =>
-      $isFavorited ? tokens.color.primary[500] : tokens.color.neutral[700]};
+    color: ${({ $isBookmarked = true }) =>
+      $isBookmarked ? tokens.color.primary[500] : tokens.color.neutral[700]};
     border: 0;
     border-radius: 50%;
     width: 44px;

@@ -26,7 +26,7 @@ const PlaceRecommendationResultPlaceList = ({
   const { recommendationId } = useParams();
   const { errorMessage, isBookmarkActionDisabled, isSaved, retry, toggleBookmark } =
     usePlaceRecommendationResultBookmarksContext();
-  const { places, selectedPlace, selectedPlaceId } = usePlaceRecommendationResultUiContext();
+  const { places, selectedPlaceId } = usePlaceRecommendationResultUiContext();
   const cardElementsRef = useRef(new Map<string, HTMLElement>());
 
   useLayoutEffect(() => {
@@ -45,11 +45,6 @@ const PlaceRecommendationResultPlaceList = ({
           <S.ResultCount>추천 장소 {places.length}개</S.ResultCount>
           {durationLabel ? <S.Duration>생성까지 {durationLabel}</S.Duration> : null}
         </S.SummaryHeader>
-        <S.SelectionStatus>
-          {selectedPlace
-            ? `${selectedPlace.rank}번 ${selectedPlace.name} 선택됨`
-            : "장소를 선택하면 지도에서 확인할 수 있어요"}
-        </S.SelectionStatus>
       </S.ResultSummary>
       {errorMessage ? (
         <S.BookmarkFeedback role="alert">

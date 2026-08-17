@@ -6,8 +6,8 @@ import type {
 } from "@monorepo/api-contracts";
 import type { CourseInput } from "@monorepo/course-recommendation-engine";
 import {
-  PlaceRecommendationItemSchema,
   type PlaceRecommendationItem,
+  PlaceRecommendationItemSchema,
 } from "@monorepo/recommendation-engine/v1/contracts";
 import { and, eq, inArray } from "drizzle-orm";
 
@@ -142,6 +142,7 @@ export const toUnknownPlaceRecommendationItem = (
       roadAddressKo: candidate.address,
     },
     priceRangePerPerson: estimatedPriceRange(candidate.category),
+    priceRangeSource: "CATEGORY_ESTIMATE",
     score: 50,
     scoreBreakdown: {
       inputMatch: 50,

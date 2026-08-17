@@ -5,20 +5,22 @@ import {
   deleteSavedPlace,
   getSavedPlaces,
   type SavedRecommendationPlace,
+  saveSavedPlace,
 } from "../../apis/server/savedPlaces";
 import PageRoot from "../../components/PageRoot/PageRoot";
 import { tokens } from "../../design-system/tokens.generated";
 import {
-  removeSavedPlaceFromCache,
   savedPlacesQueryKey,
+  type SavedRecommendationPlaceCacheItem,
+  updateSavedPlaceBookmarkInCache,
 } from "../../features/SavedPlaces/savedPlaces.data";
 import { useAppNavigate } from "../../routes/useAppNavigate";
 import {
-  type FavoritePlaceItem,
-  FavoritePlacesContext,
-  type FavoritePlacesContextType,
+  type BookmarkedPlaceItem,
+  BookmarkedPlacesContext,
+  type BookmarkedPlacesContextType,
 } from "./FavoritePlaces.context";
-import FavoritePlacesContent from "./FavoritePlacesForm";
+import BookmarkedPlacesContent from "./FavoritePlacesForm";
 
 const seoulDateFormatter = new Intl.DateTimeFormat("en-US", {
   timeZone: "Asia/Seoul",
@@ -28,9 +30,9 @@ const seoulDateFormatter = new Intl.DateTimeFormat("en-US", {
 });
 
 class SavedPlacesRequestError extends Error {
-  readonly operation: "delete" | "list";
+  readonly operation: "bookmark" | "list";
 
-  constructor(operation: "delete" | "list", message: string) {
+  constructor(operation: "bookmark" | "list", message: string) {
     super(message);
     this.name = "SavedPlacesRequestError";
     this.operation = operation;
@@ -47,12 +49,10 @@ const formatSeoulDate = (createdAt: string): string => {
   return `${dateParts.get("year") ?? ""}.${dateParts.get("month") ?? ""}.${dateParts.get("day") ?? ""}`;
 };
 
-const toFavoritePlaceItem = ({
-  id,
-  historyId,
-  createdAt,
-  placeData,
-}: SavedRecommendationPlace): FavoritePlaceItem => ({
+const toBookmarkedPlaceItem = (
+  { id, historyId, createdAt, placeData }: SavedRecommendationPlace,
+  isBookmarked: boolean,
+): BookmarkedPlaceItem => ({
   id,
   historyId,
   placeId: placeData.id,
@@ -61,6 +61,7 @@ const toFavoritePlaceItem = ({
   category: `${placeData.mainCategory} · ${placeData.subCategory}`,
   score: placeData.score,
   tags: placeData.tags,
+  isBookmarked,
 });
 
 const requestSavedPlaces = async (): Promise<SavedRecommendationPlace[]> => {
@@ -72,56 +73,107 @@ const requestSavedPlaces = async (): Promise<SavedRecommendationPlace[]> => {
   return response.data.savedPlaces;
 };
 
-const requestSavedPlaceDeletion = async (savedPlaceId: string): Promise<string> => {
-  const response = await deleteSavedPlace(savedPlaceId);
-  if (!response.success) {
-    throw new SavedPlacesRequestError("delete", response.error);
-  }
-
-  return savedPlaceId;
+type PlaceBookmarkMutationVariables = {
+  readonly savedPlace: SavedRecommendationPlace;
+  readonly isBookmarked: boolean;
 };
 
-const FavoritePlacesProvider = ({ children }: { readonly children: ReactNode }) => {
+type PlaceBookmarkMutationResult = {
+  readonly isBookmarked: boolean;
+  readonly savedPlace?: SavedRecommendationPlace;
+};
+
+const requestPlaceBookmark = async ({
+  isBookmarked,
+  savedPlace,
+}: PlaceBookmarkMutationVariables): Promise<PlaceBookmarkMutationResult> => {
+  if (!isBookmarked) {
+    const response = await deleteSavedPlace(savedPlace.id);
+    if (!response.success) {
+      throw new SavedPlacesRequestError("bookmark", response.error);
+    }
+
+    return { isBookmarked: false };
+  }
+
+  const response = await saveSavedPlace({
+    ...(savedPlace.historyId ? { historyId: savedPlace.historyId } : {}),
+    placeData: savedPlace.placeData,
+  });
+  if (!response.success) {
+    throw new SavedPlacesRequestError("bookmark", response.error);
+  }
+
+  return { isBookmarked: true, savedPlace: response.data.savedPlace };
+};
+
+const BookmarkedPlacesProvider = ({ children }: { readonly children: ReactNode }) => {
   const navigate = useAppNavigate();
+  const [bookmarkErrorMessage, setBookmarkErrorMessage] = useState<string | null>(null);
   const queryClient = useQueryClient();
-  const [deleteErrorMessage, setDeleteErrorMessage] = useState<string | null>(null);
   const {
     data: savedPlaces = [],
     isError: isListError,
     isPending: isLoading,
     refetch,
-  } = useQuery({
+  } = useQuery<SavedRecommendationPlaceCacheItem[]>({
     queryKey: savedPlacesQueryKey,
     queryFn: requestSavedPlaces,
     retry: false,
   });
-  const { isPending: isDeleting, mutate: deleteFavoritePlace } = useMutation({
-    mutationFn: requestSavedPlaceDeletion,
-    onMutate: () => {
-      setDeleteErrorMessage(null);
-    },
-    onSuccess: (deletedSavedPlaceId) => {
-      queryClient.setQueryData<SavedRecommendationPlace[]>(
+  const bookmarkMutation = useMutation({
+    mutationFn: requestPlaceBookmark,
+    onMutate: async ({ savedPlace, isBookmarked }: PlaceBookmarkMutationVariables) => {
+      const recommendationId = savedPlace.placeData.id;
+      await queryClient.cancelQueries({ queryKey: savedPlacesQueryKey });
+      const previousSavedPlaces =
+        queryClient.getQueryData<SavedRecommendationPlaceCacheItem[]>(savedPlacesQueryKey);
+
+      setBookmarkErrorMessage(null);
+      queryClient.setQueryData<SavedRecommendationPlaceCacheItem[] | undefined>(
         savedPlacesQueryKey,
-        (currentSavedPlaces) => removeSavedPlaceFromCache(currentSavedPlaces, deletedSavedPlaceId),
+        (current) => updateSavedPlaceBookmarkInCache(current, recommendationId, isBookmarked),
       );
+
+      return { previousSavedPlaces };
     },
-    onError: () => {
-      setDeleteErrorMessage("찜한 장소를 삭제하지 못했습니다. 다시 시도해 주세요.");
+    onSuccess: (result, { savedPlace }) => {
+      const recommendationId = savedPlace.placeData.id;
+      if (result.savedPlace) {
+        queryClient.setQueryData<SavedRecommendationPlaceCacheItem[] | undefined>(
+          savedPlacesQueryKey,
+          (current) =>
+            updateSavedPlaceBookmarkInCache(current, recommendationId, true, result.savedPlace),
+        );
+      }
+    },
+    onError: (_error, _variables, context) => {
+      setBookmarkErrorMessage("찜한 장소의 북마크 상태를 변경하지 못했습니다.");
+      queryClient.setQueryData(savedPlacesQueryKey, context?.previousSavedPlaces);
     },
   });
 
-  const favoriteList = useMemo(() => savedPlaces.map(toFavoritePlaceItem), [savedPlaces]);
+  const bookmarkList = useMemo(
+    () =>
+      savedPlaces.map((savedPlace) =>
+        toBookmarkedPlaceItem(savedPlace, savedPlace.isBookmarked !== false),
+      ),
+    [savedPlaces],
+  );
 
-  const handleToggleFavorite = useCallback(
+  const handleToggleBookmark = useCallback(
     (savedPlaceId: string) => {
-      if (isDeleting) {
+      if (bookmarkMutation.isPending) {
         return;
       }
 
-      deleteFavoritePlace(savedPlaceId);
+      const savedPlace = savedPlaces.find((candidate) => candidate.id === savedPlaceId);
+      if (!savedPlace) return;
+
+      const isBookmarked = savedPlace.isBookmarked !== false;
+      bookmarkMutation.mutate({ savedPlace, isBookmarked: !isBookmarked });
     },
-    [deleteFavoritePlace, isDeleting],
+    [bookmarkMutation, savedPlaces],
   );
 
   const handleRetry = useCallback(() => {
@@ -132,40 +184,42 @@ const FavoritePlacesProvider = ({ children }: { readonly children: ReactNode }) 
     void navigate("/place/recommendation/history");
   }, [navigate]);
 
-  const contextValue = useMemo<FavoritePlacesContextType>(
+  const contextValue = useMemo<BookmarkedPlacesContextType>(
     () => ({
-      favoriteList,
+      bookmarkList,
       isLoading,
       isListError,
-      isDeleting,
-      deleteErrorMessage,
-      handleToggleFavorite,
+      isBookmarking: bookmarkMutation.isPending,
+      bookmarkErrorMessage,
+      handleToggleBookmark,
       handleRetry,
       handleGoToPlaceRecommendationHistory,
     }),
     [
-      favoriteList,
+      bookmarkList,
       isLoading,
       isListError,
-      isDeleting,
-      deleteErrorMessage,
-      handleToggleFavorite,
+      bookmarkMutation.isPending,
+      bookmarkErrorMessage,
+      handleToggleBookmark,
       handleRetry,
       handleGoToPlaceRecommendationHistory,
     ],
   );
 
   return (
-    <FavoritePlacesContext.Provider value={contextValue}>{children}</FavoritePlacesContext.Provider>
+    <BookmarkedPlacesContext.Provider value={contextValue}>
+      {children}
+    </BookmarkedPlacesContext.Provider>
   );
 };
 
-export default function FavoritePlacesPage() {
+export default function BookmarkedPlacesPage() {
   return (
-    <FavoritePlacesProvider>
+    <BookmarkedPlacesProvider>
       <PageRoot backgroundColor={tokens.color.neutral[50]} layout="contained">
-        <FavoritePlacesContent />
+        <BookmarkedPlacesContent />
       </PageRoot>
-    </FavoritePlacesProvider>
+    </BookmarkedPlacesProvider>
   );
 }

@@ -3,12 +3,12 @@ import Header from "../../components/Header/Header";
 import { Icon } from "../../components/Icon/Icon";
 import { Skeleton } from "../../components/Skeleton";
 import { useAppBackNavigate, useAppNavigate } from "../../routes/useAppNavigate";
-import { useFavoritePlaces } from "./FavoritePlaces.context";
+import { useBookmarkedPlaces } from "./FavoritePlaces.context";
 import { S } from "./FavoritePlaces.styled";
 
 const skeletonCardKeys = ["first", "second", "third"] as const;
 
-const FavoritePlacesSkeleton = () => (
+const BookmarkedPlacesSkeleton = () => (
   <S.SkeletonList aria-busy="true" aria-label="찜한 장소를 불러오는 중이에요" role="status">
     {skeletonCardKeys.map((key) => (
       <S.SkeletonCard key={key}>
@@ -35,17 +35,17 @@ const FavoritePlacesSkeleton = () => (
   </S.SkeletonList>
 );
 
-export default function FavoritePlacesContent() {
+export default function BookmarkedPlacesContent() {
   const {
-    favoriteList,
+    bookmarkList,
     isLoading,
     isListError,
-    isDeleting,
-    deleteErrorMessage,
-    handleToggleFavorite,
+    isBookmarking,
+    bookmarkErrorMessage,
+    handleToggleBookmark,
     handleRetry,
     handleGoToPlaceRecommendationHistory,
-  } = useFavoritePlaces();
+  } = useBookmarkedPlaces();
   const navigate = useAppNavigate();
   const navigateBack = useAppBackNavigate("/my");
   const handleOpenPlace = (historyId: string | null, placeId: string) => {
@@ -61,7 +61,7 @@ export default function FavoritePlacesContent() {
 
       <S.Main>
         {isLoading ? (
-          <FavoritePlacesSkeleton />
+          <BookmarkedPlacesSkeleton />
         ) : isListError ? (
           <FeedbackState
             action={{ label: "다시 시도", onClick: handleRetry }}
@@ -69,7 +69,7 @@ export default function FavoritePlacesContent() {
             kind="error"
             title="찜한 장소를 불러오지 못했어요"
           />
-        ) : favoriteList.length === 0 ? (
+        ) : bookmarkList.length === 0 ? (
           <FeedbackState
             action={{ label: "추천 기록 보기", onClick: handleGoToPlaceRecommendationHistory }}
             kind="empty"
@@ -77,11 +77,11 @@ export default function FavoritePlacesContent() {
           />
         ) : (
           <S.Content>
-            {deleteErrorMessage ? (
-              <S.DeleteError role="alert">{deleteErrorMessage}</S.DeleteError>
+            {bookmarkErrorMessage ? (
+              <S.BookmarkError role="alert">{bookmarkErrorMessage}</S.BookmarkError>
             ) : null}
             <S.List>
-              {favoriteList.map((item) => {
+              {bookmarkList.map((item) => {
                 const canOpenPlace = item.historyId !== null;
 
                 return (
@@ -91,9 +91,7 @@ export default function FavoritePlacesContent() {
                     role={canOpenPlace ? "button" : undefined}
                     tabIndex={canOpenPlace ? 0 : undefined}
                     onClick={
-                      canOpenPlace
-                        ? () => handleOpenPlace(item.historyId, item.placeId)
-                        : undefined
+                      canOpenPlace ? () => handleOpenPlace(item.historyId, item.placeId) : undefined
                     }
                     onKeyDown={
                       canOpenPlace
@@ -106,38 +104,42 @@ export default function FavoritePlacesContent() {
                         : undefined
                     }
                   >
-                  <S.DateLabel>{item.date}</S.DateLabel>
+                    <S.DateLabel>{item.date}</S.DateLabel>
 
-                  <S.CardBody>
-                    <S.PlaceInfo>
-                      <S.PlaceTitle>{item.title}</S.PlaceTitle>
-                      <S.PlaceCategory>{item.category}</S.PlaceCategory>
-                    </S.PlaceInfo>
+                    <S.CardBody>
+                      <S.PlaceInfo>
+                        <S.PlaceTitle>{item.title}</S.PlaceTitle>
+                        <S.PlaceCategory>{item.category}</S.PlaceCategory>
+                      </S.PlaceInfo>
 
-                    <S.RightControls>
-                      <S.IconButton
-                        aria-busy={isDeleting}
-                        aria-label={`${item.title} 찜 삭제`}
-                        disabled={isDeleting}
-                        type="button"
-                        $isFavorited
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          handleToggleFavorite(item.id);
-                        }}
-                        onKeyDown={(event) => event.stopPropagation()}
-                      >
-                        <Icon name="heart-filled" size={20} />
-                      </S.IconButton>
-                      <S.ScoreBadge>{item.score}점</S.ScoreBadge>
-                    </S.RightControls>
-                  </S.CardBody>
+                      <S.RightControls>
+                        <S.IconButton
+                          aria-busy={isBookmarking}
+                          aria-label={`${item.title} ${item.isBookmarked ? "찜 해제" : "찜하기"}`}
+                          aria-pressed={item.isBookmarked}
+                          disabled={isBookmarking}
+                          type="button"
+                          $isBookmarked={item.isBookmarked}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            handleToggleBookmark(item.id);
+                          }}
+                          onKeyDown={(event) => event.stopPropagation()}
+                        >
+                          <Icon
+                            name={item.isBookmarked ? "heart-filled" : "heart-outline"}
+                            size={20}
+                          />
+                        </S.IconButton>
+                        <S.ScoreBadge>{item.score}점</S.ScoreBadge>
+                      </S.RightControls>
+                    </S.CardBody>
 
-                  <S.TagsRow>
-                    {item.tags.map((tag) => (
-                      <S.Tag key={tag}>{tag}</S.Tag>
-                    ))}
-                  </S.TagsRow>
+                    <S.TagsRow>
+                      {item.tags.map((tag) => (
+                        <S.Tag key={tag}>{tag}</S.Tag>
+                      ))}
+                    </S.TagsRow>
                   </S.Card>
                 );
               })}

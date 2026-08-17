@@ -1,6 +1,6 @@
 import {
-  PlaceRecommendationItemSchema,
   type PlaceRecommendationItem,
+  PlaceRecommendationItemSchema,
 } from "@monorepo/recommendation-engine/v1/contracts";
 
 const DAYS = [
@@ -49,6 +49,29 @@ export type LegacySavedPlaceMigrationPlan = {
   readonly skipped: readonly LegacySavedPlaceMigrationSkip[];
 };
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
+
+/**
+ * `priceRangeSource` was added after saved-place snapshots had already been
+ * persisted. Treat old snapshots as category estimates until they are replaced
+ * by a newly generated recommendation.
+ */
+export const normalizeSavedPlaceSnapshot = (
+  placeData: unknown,
+): PlaceRecommendationItem | null => {
+  const current = PlaceRecommendationItemSchema.safeParse(placeData);
+  if (current.success) return current.data;
+
+  if (!isRecord(placeData) || "priceRangeSource" in placeData) return null;
+
+  const compatible = PlaceRecommendationItemSchema.safeParse({
+    ...placeData,
+    priceRangeSource: "CATEGORY_ESTIMATE",
+  });
+  return compatible.success ? compatible.data : null;
+};
+
 const canonicalDigits = (value: string): string | null => {
   if (!/^\d+$/u.test(value)) return null;
   const withoutLeadingZeros = value.replace(/^0+(?=\d)/u, "");
@@ -74,12 +97,12 @@ export const canonicalizeKakaoPlaceId = (value: string): string | null => {
 };
 
 const kakaoIdFromSavedPlace = (placeData: unknown): string | null => {
-  const parsed = PlaceRecommendationItemSchema.safeParse(placeData);
-  if (parsed.success) {
-    const fromUrl = parsed.data.referenceUrls.kakaoMap
-      ? canonicalizeKakaoPlaceId(parsed.data.referenceUrls.kakaoMap)
+  const parsed = normalizeSavedPlaceSnapshot(placeData);
+  if (parsed) {
+    const fromUrl = parsed.referenceUrls.kakaoMap
+      ? canonicalizeKakaoPlaceId(parsed.referenceUrls.kakaoMap)
       : null;
-    return fromUrl ?? canonicalizeKakaoPlaceId(parsed.data.id);
+    return fromUrl ?? canonicalizeKakaoPlaceId(parsed.id);
   }
 
   // An older saved snapshot may no longer satisfy the current schema. Read only its
@@ -170,6 +193,7 @@ const toLegacySavedPlaceSnapshot = (
     // The legacy table has no price evidence. The current engine snapshot schema has
     // no quality field, so [0, 0] is the compatibility sentinel for an unknown price.
     priceRangePerPerson: UNKNOWN_PRICE_RANGE,
+    priceRangeSource: "CATEGORY_ESTIMATE",
     score: 50,
     scoreBreakdown: {
       inputMatch: 50,

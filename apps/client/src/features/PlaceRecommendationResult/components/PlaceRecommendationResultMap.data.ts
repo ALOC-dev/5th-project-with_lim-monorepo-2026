@@ -1,6 +1,6 @@
-export const RESULT_LIST_SHEET_INITIAL_HEIGHT = "30dvh";
+export const RESULT_LIST_SHEET_INITIAL_HEIGHT = "40dvh";
 
-const RESULT_LIST_SHEET_VIEWPORT_RATIO = 0.3;
+const RESULT_LIST_SHEET_VIEWPORT_RATIO = 0.4;
 const MAP_EDGE_PADDING = 24;
 
 type MapViewportMeasurement = {
